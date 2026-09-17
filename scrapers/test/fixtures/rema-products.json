@@ -1,0 +1,300 @@
+{
+ "data": [
+  {
+   "id": 400037,
+   "name": "SPARERIBS MED BBQ",
+   "underline": "575 GR. / REMA 1000",
+   "age_limit": null,
+   "labels": [
+    {
+     "id": 9001,
+     "name": "Avisvare",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/9001-64.webp"
+    },
+    {
+     "id": 70,
+     "name": "Dansk",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/70-64.webp"
+    }
+   ],
+   "images": [
+    {
+     "small": "https://rema-product-images.digital.rema1000.dk/400037/1-small-JzPJgV4Jok.webp",
+     "medium": "https://rema-product-images.digital.rema1000.dk/400037/1-medium-JzPJgV4Jok.webp",
+     "large": "https://rema-product-images.digital.rema1000.dk/400037/1-large-JzPJgV4Jok.webp"
+    }
+   ],
+   "prices": [
+    {
+     "price": 49,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": true,
+     "is_campaign": false,
+     "starting_at": "2026-09-13T00:00:00+00:00",
+     "ending_at": "2099-12-31T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "kg",
+     "compare_unit_price": 85.22,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    }
+   ],
+   "temperature_zone": "refrigerated_5_degrees_celsius",
+   "is_self_scale_item": false,
+   "is_weight_item": false,
+   "is_available_in_all_stores": false,
+   "is_batch_item": false,
+   "origin_country": null
+  },
+  {
+   "id": 400180,
+   "name": "HK. OKSE 8-12%",
+   "underline": "400 GR. / FRILAND, ØKOLOGISK",
+   "age_limit": null,
+   "labels": [
+    {
+     "id": 9001,
+     "name": "Avisvare",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/9001-64.webp"
+    },
+    {
+     "id": 6,
+     "name": "Økologi",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/6-64.webp"
+    },
+    {
+     "id": 70,
+     "name": "Dansk",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/70-64.webp"
+    },
+    {
+     "id": 203,
+     "name": "Bedre dyrevelfærd 3",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/203-64.webp"
+    }
+   ],
+   "images": [
+    {
+     "small": "https://rema-product-images.digital.rema1000.dk/400180/1-small-7doLrbkj96.webp",
+     "medium": "https://rema-product-images.digital.rema1000.dk/400180/1-medium-7doLrbkj96.webp",
+     "large": "https://rema-product-images.digital.rema1000.dk/400180/1-large-7doLrbkj96.webp"
+    }
+   ],
+   "prices": [
+    {
+     "price": 49,
+     "price_over_max_quantity": 62.95,
+     "max_quantity": 6,
+     "is_advertised": true,
+     "is_campaign": true,
+     "starting_at": "2026-09-13T00:00:00+00:00",
+     "ending_at": "2026-09-19T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "kg",
+     "compare_unit_price": 122.5,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    },
+    {
+     "price": 62.95,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": false,
+     "is_campaign": false,
+     "starting_at": "2026-09-20T00:00:00+00:00",
+     "ending_at": "2026-09-26T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "kg",
+     "compare_unit_price": 157.38,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    }
+   ],
+   "temperature_zone": "refrigerated_5_degrees_celsius",
+   "is_self_scale_item": false,
+   "is_weight_item": false,
+   "is_available_in_all_stores": true,
+   "is_batch_item": false,
+   "origin_country": null
+  },
+  {
+   "id": 400466,
+   "name": "HK. OKSEKØD, 35% GRØNT",
+   "underline": "400 GR. / REMA 1000",
+   "age_limit": null,
+   "labels": [
+    {
+     "id": 9001,
+     "name": "Avisvare",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/9001-64.webp"
+    },
+    {
+     "id": 70,
+     "name": "Dansk",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/70-64.webp"
+    }
+   ],
+   "images": [
+    {
+     "small": "https://rema-product-images.digital.rema1000.dk/400466/1-small-pyozbk2AoX.webp",
+     "medium": "https://rema-product-images.digital.rema1000.dk/400466/1-medium-pyozbk2AoX.webp",
+     "large": "https://rema-product-images.digital.rema1000.dk/400466/1-large-pyozbk2AoX.webp"
+    }
+   ],
+   "prices": [
+    {
+     "price": 29,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": true,
+     "is_campaign": true,
+     "starting_at": "2026-09-13T00:00:00+00:00",
+     "ending_at": "2026-09-19T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "kg",
+     "compare_unit_price": 72.5,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    },
+    {
+     "price": 29.95,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": false,
+     "is_campaign": false,
+     "starting_at": "2026-09-20T00:00:00+00:00",
+     "ending_at": "2026-10-03T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "kg",
+     "compare_unit_price": 74.88,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    }
+   ],
+   "temperature_zone": "refrigerated_5_degrees_celsius",
+   "is_self_scale_item": false,
+   "is_weight_item": false,
+   "is_available_in_all_stores": true,
+   "is_batch_item": false,
+   "origin_country": null
+  },
+  {
+   "id": 100325,
+   "name": "HAVREDRIK",
+   "underline": "1 LTR. / PLANTEKØKKENET",
+   "age_limit": null,
+   "labels": [
+    {
+     "id": 40,
+     "name": "Nøglehul",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/40-64.webp"
+    },
+    {
+     "id": 31,
+     "name": "Ikke tilsat sukker",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/31-64.webp"
+    },
+    {
+     "id": 6,
+     "name": "Økologi",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/6-64.webp"
+    },
+    {
+     "id": 5,
+     "name": "Økologi",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/5-64.webp"
+    },
+    {
+     "id": 2,
+     "name": "REMA1000",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/2-64.webp"
+    }
+   ],
+   "images": [
+    {
+     "small": "https://rema-product-images.digital.rema1000.dk/100325/1-small-Ea91Zd85Pz.webp",
+     "medium": "https://rema-product-images.digital.rema1000.dk/100325/1-medium-Ea91Zd85Pz.webp",
+     "large": "https://rema-product-images.digital.rema1000.dk/100325/1-large-Ea91Zd85Pz.webp"
+    }
+   ],
+   "prices": [
+    {
+     "price": 11.95,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": false,
+     "is_campaign": false,
+     "starting_at": "2026-05-21T00:00:00+00:00",
+     "ending_at": "2099-12-31T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "ltr",
+     "compare_unit_price": 11.95,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    }
+   ],
+   "temperature_zone": null,
+   "is_self_scale_item": false,
+   "is_weight_item": false,
+   "is_available_in_all_stores": true,
+   "is_batch_item": false,
+   "origin_country": null
+  },
+  {
+   "id": 100327,
+   "name": "USØDET SOJADRIK",
+   "underline": "1 LTR. / PLANTEKØKKENET",
+   "age_limit": null,
+   "labels": [
+    {
+     "id": 5,
+     "name": "Økologi",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/5-64.webp"
+    },
+    {
+     "id": 2,
+     "name": "REMA1000",
+     "image": "https://static-assets.digital.rema1000.dk/product/labels/2-64.webp"
+    }
+   ],
+   "images": [
+    {
+     "small": "https://rema-product-images.digital.rema1000.dk/100327/1-small-OW9OVykyqg.webp",
+     "medium": "https://rema-product-images.digital.rema1000.dk/100327/1-medium-OW9OVykyqg.webp",
+     "large": "https://rema-product-images.digital.rema1000.dk/100327/1-large-OW9OVykyqg.webp"
+    }
+   ],
+   "prices": [
+    {
+     "price": 11.95,
+     "price_over_max_quantity": null,
+     "max_quantity": null,
+     "is_advertised": false,
+     "is_campaign": false,
+     "starting_at": "2026-05-21T00:00:00+00:00",
+     "ending_at": "2099-12-31T00:00:00+00:00",
+     "deposit": null,
+     "compare_unit": "ltr",
+     "compare_unit_price": 11.95,
+     "consumption_unit": null,
+     "consumption_quantity": null
+    }
+   ],
+   "temperature_zone": null,
+   "is_self_scale_item": false,
+   "is_weight_item": false,
+   "is_available_in_all_stores": true,
+   "is_batch_item": false,
+   "origin_country": null
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "current_page": 1,
+   "last_page": 1,
+   "per_page": 100,
+   "total": 5
+  }
+ }
+}

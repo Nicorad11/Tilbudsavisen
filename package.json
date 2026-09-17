@@ -1,0 +1,33 @@
+{
+  "name": "tilbudsradar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TilbudsRadar – smart søgning i danske tilbudsaviser",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "scrapers",
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=20.10"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm:dev -w backend\" \"npm:dev -w frontend\"",
+    "build": "npm run build -w frontend && npm run build -w backend",
+    "start": "npm run start -w backend",
+    "test": "npm run test -w scrapers && npm run test -w backend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "scrape": "npm run scrape -w scrapers --",
+    "db:generate": "npm run db:generate -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed-demo": "npm run db:seed-demo -w backend --",
+    "ingest": "npm run ingest -w backend --",
+    "reprocess": "npm run reprocess -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.8.0"
+  }
+}

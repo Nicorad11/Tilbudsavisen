@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <title>Ugens tilbud – Testbutikken</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebPage", "name": "Ugens tilbud" },
+      {
+        "@type": "ItemList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "item": {
+              "@type": "Product",
+              "name": "Arla Letmælk 1 liter",
+              "sku": "TB-1001",
+              "brand": { "@type": "Brand", "name": "Arla" },
+              "image": "/img/letmaelk.jpg",
+              "offers": {
+                "@type": "Offer",
+                "price": "9.95",
+                "priceCurrency": "DKK",
+                "priceValidUntil": "2099-01-07",
+                "url": "/varer/letmaelk",
+                "priceSpecification": [
+                  { "@type": "UnitPriceSpecification", "priceType": "https://schema.org/StrikethroughPrice", "price": 13.5 }
+                ]
+              }
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "item": {
+              "@type": "Product",
+              "name": "Hakket oksekød 8-12%",
+              "description": "500 g. Dansk",
+              "sku": "TB-2002",
+              "image": { "@type": "ImageObject", "url": "https://cdn.example.dk/okse.jpg" },
+              "offers": { "@type": "Offer", "price": 39, "priceCurrency": "DKK" }
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "item": { "@type": "Product", "name": "Vare uden pris", "offers": { "@type": "Offer" } }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">{ ikke gyldig json </script>
+</head>
+<body><h1>Ugens tilbud</h1></body>
+</html>

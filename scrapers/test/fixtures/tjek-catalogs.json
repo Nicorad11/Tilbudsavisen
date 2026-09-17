@@ -1,0 +1,38 @@
+[
+ {
+  "id": "0PYIjcFX",
+  "dealer_id": "11deC",
+  "label": "Uge 39",
+  "run_from": "2026-09-19T22:00:00+0000",
+  "run_till": "2026-09-26T21:59:59+0000",
+  "offer_count": 147,
+  "page_count": 29
+ },
+ {
+  "id": "LzUT_NuJ",
+  "dealer_id": "11deC",
+  "label": "Uge 38 Indstik",
+  "run_from": "2026-09-16T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "offer_count": 9,
+  "page_count": 4
+ },
+ {
+  "id": "rnfuOoGl",
+  "dealer_id": "11deC",
+  "label": "Uge 38",
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "offer_count": 121,
+  "page_count": 28
+ },
+ {
+  "id": "JZGiFPYS",
+  "dealer_id": "11deC",
+  "label": "Meget mere sæson - september",
+  "run_from": "2026-08-31T22:00:00+0000",
+  "run_till": "2026-09-30T21:59:59+0000",
+  "offer_count": 0,
+  "page_count": 18
+ }
+]

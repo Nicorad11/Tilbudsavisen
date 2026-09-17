@@ -1,0 +1,48 @@
+{
+  "name": "@tilbudsradar/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/scripts/migrate.ts",
+    "db:seed-demo": "tsx src/scripts/seedDemoHistory.ts",
+    "ingest": "tsx src/scripts/ingest.ts",
+    "reprocess": "tsx src/scripts/reprocess.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "@electric-sql/pglite": "^0.3.0",
+    "@tilbudsradar/scrapers": "*",
+    "@tilbudsradar/shared": "*",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "drizzle-orm": "^0.44.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.0.0",
+    "pg": "^8.16.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.3",
+    "drizzle-kit": "^0.31.0",
+    "supertest": "^7.1.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.2.0"
+  }
+}

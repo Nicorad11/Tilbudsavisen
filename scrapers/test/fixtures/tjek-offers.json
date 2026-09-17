@@ -1,0 +1,519 @@
+[
+ {
+  "id": "0BZn4ZclArE7Nl15DE_vB",
+  "heading": "REMA 1000 Hakket dansk oksekød med grønt, grise- og kalvekød, kyllingekød eller Frilandsgris skinkekød 4-7%",
+  "description": "400 g 72.50 pr. kg",
+  "catalog_page": 3,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 29,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "g",
+    "si": {
+     "symbol": "kg",
+     "factor": 0.001
+    }
+   },
+   "size": {
+    "from": 400,
+    "to": 400
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=300&x1r=0.007&x2r=0.994&y1r=0.01&y2r=0.475&s=c25ed193ab20db89e69e5053194afd53",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=600&x1r=0.007&x2r=0.994&y1r=0.01&y2r=0.475&s=389a59a34fec67c76ed990f5b077d528",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=1000&x1r=0.007&x2r=0.994&y1r=0.01&y2r=0.475&s=f66a6362963dfeba77fa6d80e0a48c04"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "5xsuj38RJaHbh0oB0aetH",
+  "heading": "REMA 1000 skyr naturel eller Mammen skyr vanilje",
+  "description": "1000 g",
+  "catalog_page": 15,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 19.95,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "g",
+    "si": {
+     "symbol": "kg",
+     "factor": 0.001
+    }
+   },
+   "size": {
+    "from": 1000,
+    "to": 1000
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-15.webp&w=300&x1r=0.03&x2r=0.5&y1r=0.46&y2r=0.74&s=7ea41c1d1e17428961fb5410beaa807c",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-15.webp&w=600&x1r=0.03&x2r=0.5&y1r=0.46&y2r=0.74&s=d9498e91269176808c281c921fd05954",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-15.webp&w=1000&x1r=0.03&x2r=0.5&y1r=0.46&y2r=0.74&s=14be736778b1780cd9c28b4c90e7f974"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "fhU7PnrWGq68_vsg1NYKP",
+  "heading": "Vallø Slotsæg",
+  "description": "Økologiske\nStr. M/L, 6 stk.\n4.17 pr. stk.",
+  "catalog_page": 12,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 25,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "pcs",
+    "si": {
+     "symbol": "pcs",
+     "factor": 1
+    }
+   },
+   "size": {
+    "from": 6,
+    "to": 6
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2Fg1WADR20%2Fp-12.webp&w=300&x1r=0.022&x2r=0.49&y1r=0.756&y2r=0.998&s=3717a5ca90b8c9219f7e4c4ff457ddf1",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2Fg1WADR20%2Fp-12.webp&w=600&x1r=0.022&x2r=0.49&y1r=0.756&y2r=0.998&s=689aadfc82bb44fb8d1457b6b037a4ef",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2Fg1WADR20%2Fp-12.webp&w=1000&x1r=0.022&x2r=0.49&y1r=0.756&y2r=0.998&s=fa4c978560cc4c6846bbed68ffd4905f"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "F1MTEMTVAg8oG7rulgMb1",
+  "heading": "REMA 1000 Ribbenssteg eller nakkefilet",
+  "description": "PR. ½ KG Partivare. 49.90 pr. kg",
+  "catalog_page": 3,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 24.95,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "kg",
+    "si": {
+     "symbol": "kg",
+     "factor": 1
+    }
+   },
+   "size": {
+    "from": 0.5,
+    "to": 0.5
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=300&x1r=0.51&x2r=0.993&y1r=0.73&y2r=1&s=18691fceff3b6d050ba2f55e5f7a26a1",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=600&x1r=0.51&x2r=0.993&y1r=0.73&y2r=1&s=ca55ba3152a755197a949f9f7b8fd21b",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-3.webp&w=1000&x1r=0.51&x2r=0.993&y1r=0.73&y2r=1&s=bf02bc5baadc64beea06f78166d53221"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "aQ08lyjpKpNpXJ_x3LXj6",
+  "heading": "Tuborg eller Carlsberg øl",
+  "description": "Ved køb af flere end 72 stk. pr. variant pr. dag er prisen op til 7.30 pr. stk. 33 cl. Ex. pant Kasse med 24 stk. 96.00/12.12 pr. liter",
+  "catalog_page": 24,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 4,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "cl",
+    "si": {
+     "symbol": "l",
+     "factor": 0.01
+    }
+   },
+   "size": {
+    "from": 33,
+    "to": 33
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": 72
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=300&x1r=0.015&x2r=0.495&y1r=0.475&y2r=0.895&s=41dc8dabe55f446c6d63b73d6d3a6e84",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=600&x1r=0.015&x2r=0.495&y1r=0.475&y2r=0.895&s=030b6c1f8a6d616d829460dd5af6b924",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=1000&x1r=0.015&x2r=0.495&y1r=0.475&y2r=0.895&s=3074eef631b2594ab198e43d907febb3"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "VwUIuBj8LugfAtwp_feuJ",
+  "heading": "Dansk kylling",
+  "description": "Dybfrost 750-1300 g\nMax. 46.67 pr. kg",
+  "catalog_page": 4,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 35,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "g",
+    "si": {
+     "symbol": "kg",
+     "factor": 0.001
+    }
+   },
+   "size": {
+    "from": 750,
+    "to": 1300
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-4.webp&w=300&x1r=0.49&x2r=0.98&y1r=0.72&y2r=0.99&s=5be53c2b5960884c6366665f50cca16d",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-4.webp&w=600&x1r=0.49&x2r=0.98&y1r=0.72&y2r=0.99&s=499ef70cb111692c74996c24ed9ba9de",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-4.webp&w=1000&x1r=0.49&x2r=0.98&y1r=0.72&y2r=0.99&s=223d787553aac2a641f1f0150b0e3429"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "woXYIUYAxy2_0JZrOR5KF",
+  "heading": "Harboe sodavand",
+  "description": "1.5 liter. Ex. pant\n3.33 pr. liter",
+  "catalog_page": 10,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 5,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "l",
+    "si": {
+     "symbol": "l",
+     "factor": 1
+    }
+   },
+   "size": {
+    "from": 1.5,
+    "to": 1.5
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": null
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-10.webp&w=300&x1r=0.501&x2r=0.999&y1r=0.736&y2r=0.999&s=0b06fbcbcbff5ee2608828f5cf7cd955",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-10.webp&w=600&x1r=0.501&x2r=0.999&y1r=0.736&y2r=0.999&s=399b7d33f20034ac70479acf3811d141",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-10.webp&w=1000&x1r=0.501&x2r=0.999&y1r=0.736&y2r=0.999&s=9f6a70bf5bd5fb241b5e71993ab2201b"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "2HhiTcf_dg77uAyVjpfcl",
+  "heading": "Schulstad brød",
+  "description": "Ved køb af flere end 6 stk. pr. variant pr. dag er prisen op til 25.50 pr. stk.\n470-1086 g\nMax. 31.91 pr. kg",
+  "catalog_page": 14,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 15,
+   "pre_price": null,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "g",
+    "si": {
+     "symbol": "kg",
+     "factor": 0.001
+    }
+   },
+   "size": {
+    "from": 470,
+    "to": 1086
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": 6
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-14.webp&w=300&x1r=0.035&x2r=0.555&y1r=0.685&y2r=0.995&s=92f22aeae9ce38e9f4624eda17e26e4d",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-14.webp&w=600&x1r=0.035&x2r=0.555&y1r=0.685&y2r=0.995&s=2bcab19385757ca3f377ab4b1f11e360",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FrnfuOoGl%2Fp-14.webp&w=1000&x1r=0.035&x2r=0.555&y1r=0.685&y2r=0.995&s=8c5c02b7aa452e502e837385eed56c40"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "TLjDKT6C5fA3a10BcjM2z",
+  "heading": "Tulip Spareribs, pulled pork, pulled chicken taco eller 5-pak bacon i skiver",
+  "description": "450-500 g",
+  "catalog_page": 24,
+  "catalog_view_id": null,
+  "pricing": {
+   "price": 39,
+   "pre_price": 49.95,
+   "currency": "DKK"
+  },
+  "quantity": {
+   "unit": {
+    "symbol": "g",
+    "si": {
+     "symbol": "kg",
+     "factor": 0.001
+    }
+   },
+   "size": {
+    "from": 450,
+    "to": 500
+   },
+   "pieces": {
+    "from": 1,
+    "to": 1,
+    "min": null,
+    "max": 6
+   }
+  },
+  "images": {
+   "thumb": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=300&x1r=0.015&x2r=0.495&y1r=0.015&y2r=0.475&s=a14dd355de41f05f0c24585f1d0b6517",
+   "view": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=600&x1r=0.015&x2r=0.495&y1r=0.015&y2r=0.475&s=edefb6fbd91e8d4d01fd236933407624",
+   "zoom": "https://image-transformer-api.tjek.com/?u=s3%3A%2F%2Fsgn-prd-assets%2Fuploads%2FuZN19SCY%2Fp-24.webp&w=1000&x1r=0.015&x2r=0.495&y1r=0.015&y2r=0.475&s=25345405bc3b06ec179f01c136fd63d6"
+  },
+  "links": {
+   "webshop": null
+  },
+  "run_from": "2026-09-12T22:00:00+0000",
+  "run_till": "2026-09-19T21:59:59+0000",
+  "display_run_till": true,
+  "publish": "2026-09-09T10:00:00+0000",
+  "dealer_id": "11deC",
+  "dealer": {
+   "id": "11deC",
+   "name": "REMA 1000",
+   "markets": [
+    {
+     "slug": "REMA-1000",
+     "country_code": "DK"
+    }
+   ]
+  },
+  "store_id": null,
+  "catalog_id": "rnfuOoGl",
+  "category_ids": []
+ },
+ {
+  "id": "broken-1",
+  "title": "Mangler heading og pricing"
+ }
+]

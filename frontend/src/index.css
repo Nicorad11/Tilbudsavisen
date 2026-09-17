@@ -1,0 +1,246 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter-tight';
+
+@theme {
+  --font-sans: 'Inter Tight Variable', 'Neue Haas Grotesk Text', 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+
+  /* Flader – lyse, varme grå som i referencen */
+  --color-canvas: #e7e7e5;
+  --color-surface: #f2f2f1;
+  --color-surface-2: #f6f6f5;
+  --color-raised: #fbfbfa;
+  --color-sunken: #eaeae8;
+  --color-line: #dcdcda;
+
+  /* Tekst */
+  --color-ink: #1a1a1a;
+  --color-ink-2: #4f4f4f;
+  --color-muted: #969694;
+  --color-faint: #bdbdbb;
+
+  /* Accent + status */
+  --color-lime: #e2f33b;
+  --color-lime-deep: #bfd41a;
+  --color-real: #2f9e46;
+  --color-ok: #7fae2e;
+  --color-warn: #e08a2c;
+  --color-bad: #dd5140;
+  --color-pink: #ee437c;
+
+  --radius-card: 30px;
+  --radius-inner: 22px;
+
+  --shadow-soft: 0 1px 0 rgb(255 255 255 / 0.85) inset, 0 12px 32px -22px rgb(0 0 0 / 0.22);
+  --shadow-pill: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 18px -12px rgb(0 0 0 / 0.22);
+  --shadow-float: 0 18px 40px -18px rgb(0 0 0 / 0.28), 0 1px 0 rgb(255 255 255 / 0.9) inset;
+
+  --animate-dot-in: dot-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+
+  @keyframes dot-in {
+    from {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--color-canvas);
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 999px;
+  }
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Kort og piller                                                     */
+/* ------------------------------------------------------------------ */
+
+@utility card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility card-raised {
+  background: var(--color-raised);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-pill);
+}
+
+/* Glas-pillen der svæver over tidslinjen ("Health Improving") */
+@utility glass {
+  position: relative;
+  background: rgb(255 255 255 / 0.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid rgb(255 255 255 / 0.95);
+  box-shadow:
+    0 14px 34px -16px rgb(0 0 0 / 0.3),
+    0 1px 0 #fff inset,
+    0 -8px 18px -12px rgb(0 0 0 / 0.08) inset;
+  isolation: isolate;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto 22% -2px 44%;
+    height: 38%;
+    border-radius: 999px;
+    background: conic-gradient(from 90deg, #ff5f6d, #ffc371, #7ee081, #53a8ff, #b983ff, #ff5f6d);
+    filter: blur(7px);
+    opacity: 0.28;
+    mix-blend-mode: multiply;
+    z-index: -1;
+    pointer-events: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Gradientkort med korn – "Superpower Score" / "Biological age"      */
+/* ------------------------------------------------------------------ */
+
+@utility grad-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  isolation: isolate;
+  color: white;
+  box-shadow:
+    0 24px 40px -26px rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(255 255 255 / 0.35) inset;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -24px;
+    z-index: -2;
+    background: var(--grad);
+    filter: blur(14px) saturate(1.08);
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: soft-light;
+    opacity: 0.55;
+    box-shadow:
+      inset 0 0 40px 8px rgb(255 255 255 / 0.28),
+      inset 0 -30px 60px -30px rgb(255 255 255 / 0.5);
+    border-radius: inherit;
+  }
+}
+
+@utility grad-green {
+  --grad: radial-gradient(90% 60% at 50% 112%, rgb(255 255 255 / 0.7) 0%, transparent 55%),
+    radial-gradient(60% 50% at 105% 70%, rgb(210 240 200 / 0.8) 0%, transparent 60%),
+    linear-gradient(180deg, #f3c9a4 0%, #e4cf8c 18%, #a9cf5d 40%, #4db34a 62%, #248a37 86%, #2f7e3c 100%);
+}
+
+@utility grad-orange {
+  --grad: radial-gradient(48% 52% at 54% 62%, #f57314 0%, #f5923a 32%, rgb(246 164 102 / 0) 72%),
+    radial-gradient(70% 70% at 104% 104%, #ef8f78 0%, transparent 62%),
+    radial-gradient(60% 60% at 0% 0%, #c1ccd6 0%, transparent 70%),
+    linear-gradient(135deg, #c7d0d8 0%, #d9c8bf 48%, #eca186 100%);
+}
+
+@utility grad-pink {
+  --grad: radial-gradient(46% 42% at 50% 56%, #ec2f6c 0%, #f05d8e 34%, #f59ab6 64%, #f6c3d1 88%, #f3d2da 100%);
+}
+
+@utility grad-sky {
+  --grad: radial-gradient(55% 55% at 40% 60%, #6fb6ff 0%, #9fcbff 40%, transparent 72%),
+    radial-gradient(70% 70% at 100% 0%, #d6c9ff 0%, transparent 60%),
+    linear-gradient(160deg, #dfe6ee 0%, #c9d8ea 50%, #b5c9f0 100%);
+}
+
+@utility grad-lime {
+  --grad: radial-gradient(55% 55% at 50% 55%, #e2f33b 0%, #cfe85a 40%, #b7dc8f 70%, #d8ead0 100%);
+  color: var(--color-ink);
+}
+
+/* Skeleton-shimmer */
+@utility shimmer {
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.04) 0%, rgb(0 0 0 / 0.08) 40%, rgb(0 0 0 / 0.04) 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
