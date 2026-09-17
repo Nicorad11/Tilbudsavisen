@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Loader2, X } from 'lucide-react';
+import { Info, Loader2, X } from 'lucide-react';
 import {
   forwardRef,
   type ButtonHTMLAttributes,
@@ -228,6 +228,52 @@ export function Chip({
           <X className="size-3" />
         </button>
       )}
+    </span>
+  );
+}
+
+/**
+ * Lille "i" der forklarer et tal. Vises ved hover og ved fokus, så den også
+ * kan åbnes med tastatur og på touch. Teksten ligger i aria-label, fordi
+ * boblen er dekorativ for skærmlæsere.
+ */
+export function InfoTip({
+  label,
+  text,
+  tone = 'default',
+  className,
+  tipClassName = 'left-1/2 -translate-x-1/2',
+}: {
+  label: string;
+  text: string;
+  tone?: 'default' | 'onDark';
+  className?: string;
+  /** Placering af boblen, fx 'right-0' når ikonet står tæt på skærmkanten. */
+  tipClassName?: string;
+}) {
+  return (
+    <span className={clsx('group/tip relative inline-flex', className)}>
+      <button
+        type="button"
+        aria-label={`${label}: ${text}`}
+        className={clsx(
+          'grid size-4 place-items-center rounded-full transition focus-visible:outline-none',
+          tone === 'onDark' ? 'text-white/70 hover:text-white focus-visible:text-white' : 'text-faint hover:text-ink focus-visible:text-ink',
+        )}
+      >
+        <Info className="size-3.5" strokeWidth={1.8} />
+      </button>
+      <span
+        aria-hidden
+        className={clsx(
+          // whitespace-normal: pillerne omkring tallene sætter nowrap, som ellers arves hertil.
+          'pointer-events-none absolute bottom-full z-40 mb-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-ink px-3 py-2 text-left text-[11.5px] leading-snug font-normal whitespace-normal text-white/95 opacity-0 shadow-float transition group-focus-within/tip:opacity-100 group-hover/tip:opacity-100',
+          tipClassName,
+        )}
+      >
+        <span className="block font-medium text-white">{label}</span>
+        {text}
+      </span>
     </span>
   );
 }

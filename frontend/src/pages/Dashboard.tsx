@@ -1,14 +1,14 @@
 import type { OfferDTO, StatsDTO } from '@tilbudsradar/shared';
 import { categoryLabel } from '@tilbudsradar/shared';
 import clsx from 'clsx';
-import { ArrowUpRight, Newspaper, Plus, X } from 'lucide-react';
+import { ArrowUpRight, Newspaper, Plus, Search, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { DotTimeline } from '../components/DotTimeline';
 import { OfferCard, OfferCardSkeleton, useOpenOffer } from '../components/OfferCard';
 import { DotBars, PulseRow, RadarRings, RulerTicks, WaveSpark } from '../components/ui/charts';
 import { DotNumber } from '../components/ui/DotNumber';
-import { Button, Card, IconButton, Pill, SectionHeader, Skeleton } from '../components/ui/primitives';
+import { Button, Card, Chip, IconButton, InfoTip, Pill, SectionHeader, Skeleton, TextInput } from '../components/ui/primitives';
 import { greeting, int, kr, relativeTime, unitLabel } from '../lib/format';
 import { useLists, useSearch, useStats, useStores, useTopDeals } from '../lib/hooks';
 import { CategoryIcon } from '../lib/icons';
@@ -21,12 +21,25 @@ function weekNumber(d = new Date()): number {
   return Math.ceil(((t.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
 }
 
-function Stat({ value, label, tone = 'white' }: { value: number | undefined; label: string; tone?: 'lime' | 'white' }) {
+function Stat({
+  value,
+  label,
+  tip,
+  tipClassName,
+  tone = 'white',
+}: {
+  value: number | undefined;
+  label: string;
+  tip: string;
+  tipClassName?: string;
+  tone?: 'lime' | 'white';
+}) {
   return (
     <div className="flex items-start gap-2">
       {value === undefined ? <Skeleton className="h-9 w-20" /> : <DotNumber value={value} height={34} />}
-      <Pill tone={tone} className="-mt-1.5">
+      <Pill tone={tone} className="-mt-1.5 pr-1.5">
         {label}
+        <InfoTip label={label} text={tip} tipClassName={tipClassName} />
       </Pill>
     </div>
   );
@@ -34,30 +47,125 @@ function Stat({ value, label, tone = 'white' }: { value: number | undefined; lab
 
 export function Dashboard() {
   const stats = useStats();
-  const stores = useStores();
   const s = stats.data;
   const empty = s && s.totalOffers === 0;
 
   return (
-    <div className="space-y-5 pt-2 lg:pt-4">
-      {/* ------------------------------------------------ Hero */}
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_372px]">
-        <div className="flex min-w-0 flex-col">
-          <p className="text-sm text-muted">
-            {greeting()} · uge {weekNumber()}
-            {s?.lastScrapeAt && <> · opdateret {relativeTime(s.lastScrapeAt)}</>}
-          </p>
-          <h1 className="mt-1 text-[40px] leading-[1.05] tracking-[-0.045em] text-ink sm:text-[52px]">Ugens tilbud</h1>
+    <div className="pt-2 lg:pt-4">
+      <Hero stats={s} />
 
-          <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:flex sm:flex-wrap sm:items-start sm:justify-between sm:gap-8">
-            <Stat value={s?.totalOffers} label="Aktive" tone="lime" />
-            <Stat value={s?.realDeals} label="Reelle" />
-            <Stat value={s?.newToday} label="Nye i dag" />
-            <Stat value={s?.storeCount} label="Kæder" />
+      {empty && (
+        <div className="mt-6">
+          <FirstRunNotice />
+        </div>
+      )}
+
+      {/* Forsidens primære indhold: ugens bedste tilbud. Resten ligger under "Overblik". */}
+      <div className="mt-9">
+        <TopDeals />
+      </div>
+
+      <MoreDeals />
+
+      <Overview stats={s} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function Hero({ stats }: { stats?: StatsDTO }) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  const go = (term: string) => navigate(`/sog?q=${encodeURIComponent(term)}`);
+
+  return (
+    <section>
+      <p className="text-sm text-muted">
+        {greeting()} · uge {weekNumber()}
+        {stats?.lastScrapeAt && <> · opdateret {relativeTime(stats.lastScrapeAt)}</>}
+      </p>
+      <h1 className="mt-1 text-[40px] leading-[1.05] tracking-[-0.045em] text-ink sm:text-[52px]">Ugens tilbud</h1>
+      <p className="mt-3 max-w-[54ch] text-[15px] leading-snug text-muted">
+        Vi sammenligner prisen pr. kg, liter og stk. på tværs af {stats ? int(stats.storeCount) : 5} kæder – og måler tilbuddet mod varens
+        egen prishistorik, så du kan se om besparelsen er reel.
+      </p>
+
+      <form
+        className="mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (q.trim()) go(q.trim());
+        }}
+      >
+        <TextInput
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          icon={<Search className="size-[18px]" />}
+          placeholder="Søg fx letmælk, kaffe eller hakket oksekød"
+          aria-label="Søg i alle tilbud"
+          className="flex-1"
+        />
+        <Button type="submit" tone="dark" className="sm:w-auto">
+          Find billigste
+        </Button>
+      </form>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-[12.5px] text-faint">Populære:</span>
+        {['letmælk', 'kaffe', 'kylling', 'æg', 'smør'].map((term) => (
+          <Chip key={term} onClick={() => go(term)}>
+            {term}
+          </Chip>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Tallene, tidslinjen, gradientkortene og prisradaren – roligt samlet under forsidens primære indhold. */
+function Overview({ stats }: { stats?: StatsDTO }) {
+  const stores = useStores();
+  return (
+    <section className="mt-12 border-t border-black/[0.07] pt-7">
+      <SectionHeader title="Overblik" subtitle="Ugens tal, faste basisvarer og dine genveje" />
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_372px]">
+        <div className="flex min-w-0 flex-col">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:flex sm:flex-wrap sm:items-start sm:justify-between sm:gap-8">
+            {/* Boblen placeres væk fra skærmkanten: yderste tal peger indad. */}
+            <Stat
+              value={stats?.totalOffers}
+              label="Aktive"
+              tone="lime"
+              tip="Tilbud der gælder lige nu i de aviser vi har hentet."
+              tipClassName="left-0"
+            />
+            <Stat
+              value={stats?.realDeals}
+              label="Reelle"
+              tip="Tilbud hvor prisen pr. kg/liter/stk. er mindst 10 % under varens gennemsnit de sidste 90 dage."
+              tipClassName="right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2"
+            />
+            <Stat
+              value={stats?.newToday}
+              label="Nye i dag"
+              tip="Tilbud vi har set for første gang i dag."
+              tipClassName="left-0 sm:left-1/2 sm:-translate-x-1/2"
+            />
+            <Stat
+              value={stats?.storeCount}
+              label="Kæder"
+              tip="Antal kæder vi henter tilbudsaviser fra lige nu."
+              tipClassName="right-0"
+            />
           </div>
 
           <div className="mt-6">
-            {s && stores.data ? <DotTimeline stats={s} stores={stores.data} /> : <Skeleton className="h-[78px] rounded-full" />}
+            {stats && stores.data ? (
+              <DotTimeline stats={stats} stores={stores.data} />
+            ) : (
+              <Skeleton className="h-[78px] rounded-full" />
+            )}
           </div>
         </div>
 
@@ -65,40 +173,31 @@ export function Dashboard() {
           <ListCard />
           <AlarmCard />
         </div>
-      </section>
+      </div>
 
-      {empty && <FirstRunNotice />}
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.05fr]">
+        <ScoreCard stats={stats} />
+        <DiscountCard stats={stats} />
+        <NextCatalogCard stats={stats} />
+      </div>
 
-      {/* ------------------------------------------------ Gradientkort */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.05fr]">
-        <ScoreCard stats={s} />
-        <DiscountCard stats={s} />
-        <NextCatalogCard stats={s} />
-      </section>
-
-      {/* ------------------------------------------------ Prisradar + bedste tilbud */}
-      <section className="grid gap-6 pt-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.22fr)]">
-        <div className="min-w-0">
-          <SectionHeader
-            title="Prisradar"
-            subtitle="Laveste enhedspris lige nu på basisvarer"
-            action={
-              <Link to="/sog?q=letm%C3%A6lk">
-                <Button size="sm">Se alle</Button>
-              </Link>
-            }
-          />
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <StapleCard q="letmælk" viz="ruler" />
-            <StapleCard q="hakket oksekød" viz="wave" />
-            <StapleCard q="æg" viz="bars" />
-          </div>
+      <div className="mt-8">
+        <SectionHeader
+          title="Prisradar"
+          subtitle="Laveste pris pr. enhed lige nu på basisvarer"
+          action={
+            <Link to="/sog?q=letm%C3%A6lk">
+              <Button size="sm">Se alle</Button>
+            </Link>
+          }
+        />
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <StapleCard q="letmælk" viz="ruler" />
+          <StapleCard q="hakket oksekød" viz="wave" />
+          <StapleCard q="æg" viz="bars" />
         </div>
-        <TopDeals />
-      </section>
-
-      <MoreDeals />
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -201,7 +300,15 @@ function ScoreCard({ stats }: { stats?: StatsDTO }) {
   const todayIdx = stats?.timeline.findIndex((d) => d.date === new Date().toISOString().slice(0, 10));
   return (
     <div className="grad-card grad-green flex min-h-[258px] flex-col p-5">
-      <p className="text-right text-sm text-white/80">Sparescore</p>
+      <div className="flex items-center justify-end gap-1.5">
+        <p className="text-sm text-white/80">Sparescore</p>
+        <InfoTip
+          tone="onDark"
+          label="Sparescore"
+          text="Andel af ugens tilbud der er reelle besparelser. Under 12 % = stille uge, 12–30 % = god uge, over 30 % = stærk uge."
+          tipClassName="right-0"
+        />
+      </div>
       <div className="mt-2 flex flex-1 flex-col items-center justify-center">
         {share == null ? (
           <span className="text-4xl text-white/80">–</span>
@@ -209,7 +316,11 @@ function ScoreCard({ stats }: { stats?: StatsDTO }) {
           <DotNumber value={share} height={52} className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.12)]" />
         )}
         <p className="mt-2 text-sm text-white">{label}</p>
-        <p className="mt-0.5 text-[11px] text-white/70">andel af ugens tilbud der er reelle besparelser</p>
+        <p className="mt-0.5 max-w-[26ch] text-center text-[11px] leading-snug text-white/70">
+          {share == null
+            ? 'vi mangler prishistorik til at måle besparelserne'
+            : `${share} % af ugens tilbud er billigere end varens 90-dages gennemsnit`}
+        </p>
       </div>
       {values.length > 0 && (
         <DotBars values={values} highlight={todayIdx !== undefined && todayIdx >= 0 ? todayIdx : undefined} className="mt-4 h-10" />
@@ -222,7 +333,14 @@ function DiscountCard({ stats }: { stats?: StatsDTO }) {
   const avg = stats?.avgDiscountPct;
   return (
     <div className="grad-card grad-orange flex min-h-[258px] flex-col p-5">
-      <p className="text-center text-sm text-white/85">Gennemsnitlig rabat</p>
+      <div className="flex items-center justify-center gap-1.5">
+        <p className="text-sm text-white/85">Gennemsnitlig rabat</p>
+        <InfoTip
+          tone="onDark"
+          label="Gennemsnitlig rabat"
+          text="Rabatten kæderne selv oplyser – altså førpris mod tilbudspris. Den siger intet om, hvor billig varen normalt er."
+        />
+      </div>
       <div className="flex flex-1 flex-col items-center justify-center">
         {avg == null ? <span className="text-4xl text-white/80">–</span> : <DotNumber value={`${Math.round(avg)}%`} height={52} />}
         <p className="mt-2 text-sm text-white">
@@ -354,26 +472,28 @@ function StapleCard({ q, viz }: { q: string; viz: 'ruler' | 'wave' | 'bars' }) {
 }
 
 function TopDeals() {
-  const { data, isLoading } = useTopDeals(6);
+  const { data, isLoading } = useTopDeals(8);
   return (
     <div className="min-w-0">
       <SectionHeader
         title="Ugens bedste tilbud"
-        subtitle="Reelle besparelser målt mod 90-dages prishistorik"
+        subtitle="Billigst pr. kg/liter/stk. målt mod varens egen pris de sidste 90 dage"
         action={
           <Link to="/sog?sortering=discount&reelle=1">
-            <Button size="sm">Se alle</Button>
+            <Button size="sm" tone="dark">
+              Se alle
+            </Button>
           </Link>
         }
       />
-      <div className="no-scrollbar -mx-1 mt-4 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
+      <div className="no-scrollbar -mx-1 mt-4 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
         {isLoading
-          ? Array.from({ length: 3 }, (_, i) => <OfferCardSkeleton key={i} />)
-          : (data ?? []).slice(0, 3).map((o, i) => (
+          ? Array.from({ length: 4 }, (_, i) => <OfferCardSkeleton key={i} />)
+          : (data ?? []).slice(0, 4).map((o, i) => (
               <OfferCard key={o.id} offer={o} className="w-[210px] shrink-0 snap-start sm:w-auto" rank={i + 1} />
             ))}
         {!isLoading && !data?.length && (
-          <Card className="col-span-3 p-6 text-sm text-muted">
+          <Card className="col-span-full p-6 text-sm text-muted">
             Når der er prishistorik nok, viser vi de tilbud der er markant billigere end normalt. Kør evt.{' '}
             <code className="rounded bg-black/5 px-1">npm run db:seed-demo</code> for demo-historik.
           </Card>
@@ -384,16 +504,16 @@ function TopDeals() {
 }
 
 function MoreDeals() {
-  const { data, isLoading } = useTopDeals(15);
-  const rest: OfferDTO[] = (data ?? []).slice(3);
+  const { data, isLoading } = useTopDeals(16);
+  const rest: OfferDTO[] = (data ?? []).slice(4);
   if (!isLoading && !rest.length) return <BrowseTeaser />;
   return (
-    <section className="pt-4">
+    <section className="pt-8">
       <SectionHeader title="Flere reelle tilbud" subtitle="Madvarer – sorteret efter faktisk besparelse" />
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
         {isLoading
           ? Array.from({ length: 6 }, (_, i) => <OfferCardSkeleton key={i} />)
-          : rest.map((o, i) => <OfferCard key={o.id} offer={o} rank={i + 4} />)}
+          : rest.map((o, i) => <OfferCard key={o.id} offer={o} rank={i + 5} />)}
       </div>
     </section>
   );
@@ -403,7 +523,7 @@ function BrowseTeaser() {
   const { data } = useSearch({ q: '', sort: 'discount', limit: 12 });
   if (!data?.items.length) return null;
   return (
-    <section className="pt-4">
+    <section className="pt-8">
       <SectionHeader
         title="Største rabatter lige nu"
         subtitle={`${int(data.total)} aktive tilbud – sorteret efter rabat`}

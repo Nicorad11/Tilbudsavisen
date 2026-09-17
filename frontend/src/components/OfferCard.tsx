@@ -37,13 +37,14 @@ const CATEGORY_TINT: Record<string, [string, string]> = {
 export function CategoryOrb({ category, className }: { category: string; className?: string }) {
   const [light, dark] = CATEGORY_TINT[category] ?? CATEGORY_TINT.andet!;
   return (
-    <div className={clsx('relative grid place-items-center', className)}>
+    <div className={clsx('relative flex items-center justify-center', className)}>
       <div
         className="absolute bottom-[8%] h-[16%] w-[62%] rounded-[50%] blur-md"
         style={{ background: dark, opacity: 0.35 }}
       />
+      {/* Højden styrer størrelsen, så kuglen aldrig bliver højere end boksen. */}
       <div
-        className="relative grid aspect-square w-[62%] place-items-center rounded-full"
+        className="relative grid aspect-square h-[82%] max-w-[62%] place-items-center rounded-full"
         style={{
           background: `radial-gradient(circle at 34% 28%, #fff 0%, ${light} 34%, ${dark} 100%)`,
           boxShadow: `inset -6px -8px 16px ${dark}55, inset 6px 6px 14px #ffffff90, 0 10px 24px -12px ${dark}`,
@@ -69,8 +70,10 @@ export function ProductImage({
   const [failed, setFailed] = useState(false);
   if (!src || failed) return <CategoryOrb category={category} className={className} />;
   return (
-    <div className={clsx('relative grid place-items-center', className)}>
+    <div className={clsx('relative flex items-center justify-center', className)}>
       <div className="absolute inset-[12%] rounded-full bg-white/70 blur-xl" />
+      {/* max-h/max-w frem for h-full: et grid- eller flex-spor ville ellers
+          vokse til billedets egen højde, og høje avisbilleder løb ud af kortet. */}
       <img
         src={src}
         alt={alt}
@@ -78,7 +81,7 @@ export function ProductImage({
         decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
-        className="relative h-full w-full rounded-xl object-contain mix-blend-multiply"
+        className="relative max-h-full max-w-full rounded-xl object-contain mix-blend-multiply"
       />
     </div>
   );
