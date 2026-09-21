@@ -226,6 +226,17 @@
   animation: shimmer 1.4s linear infinite;
 }
 
+/* Scanlinjen over kvitteringen mens den læses. */
+@keyframes receipt-scan {
+  0%,
+  100% {
+    top: 6%;
+  }
+  50% {
+    top: 92%;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 200% 0;

@@ -2,13 +2,13 @@ import type {
   CategoryId,
   ListOptimizationDTO,
   ListSummaryDTO,
-  MealPlanDTO,
-  MealPlanRequest,
   NotificationDTO,
   OfferDetailResponse,
   OfferDTO,
   PriceHistoryResponse,
   ProductDTO,
+  ReceiptCheckDTO,
+  ReceiptOverviewDTO,
   ScrapeStatusDTO,
   SearchResponse,
   SearchSort,
@@ -141,7 +141,16 @@ export const useNotifications = (enabled = true) =>
     refetchInterval: 120_000,
   });
 
-export const useMealPlans = () => useQuery({ queryKey: ['mealplans'], queryFn: () => authed<MealPlanDTO[]>('/meal-plans') });
+/** Gemte kvitteringer – kun når der allerede er en session, så et besøg ikke opretter en gæst. */
+export const useReceipts = (enabled = true) =>
+  useQuery({ queryKey: ['receipts'], queryFn: () => authed<ReceiptOverviewDTO>('/receipts'), enabled });
+
+export const useReceipt = (id: number | null) =>
+  useQuery({
+    queryKey: ['receipt', id],
+    queryFn: () => authed<ReceiptCheckDTO>(`/receipts/${id}`),
+    enabled: id != null,
+  });
 
 export const useScrapeStatus = () =>
   useQuery({
@@ -193,10 +202,3 @@ export function useAddWatch() {
   });
 }
 
-export function useCreateMealPlan() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (req: MealPlanRequest) => authed<MealPlanDTO>('/meal-plans', { method: 'POST', body: req }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['mealplans'] }),
-  });
-}

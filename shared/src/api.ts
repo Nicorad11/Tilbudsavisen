@@ -242,51 +242,6 @@ export interface NotificationDTO {
 }
 
 /* ------------------------------------------------------------------ */
-/* Madplan                                                            */
-/* ------------------------------------------------------------------ */
-
-export interface MealIngredientDTO {
-  name: string;
-  amount: string;
-  offerId: number | null;
-  price: number | null;
-  storeName: string | null;
-}
-
-export interface RecipeDTO {
-  id: number;
-  day: number;
-  title: string;
-  description: string;
-  servings: number;
-  estimatedCost: number;
-  ingredients: MealIngredientDTO[];
-  steps: string[];
-}
-
-export interface MealPlanDTO {
-  id: number;
-  createdAt: string;
-  householdSize: number;
-  budget: number | null;
-  days: number;
-  preferences: string[];
-  generatedBy: 'ai' | 'regler';
-  summary: string;
-  totalCost: number;
-  recipes: RecipeDTO[];
-}
-
-export interface MealPlanRequest {
-  householdSize: number;
-  budget?: number | null;
-  days?: number;
-  preferences?: string[];
-  allergies?: string[];
-  storeIds?: string[];
-}
-
-/* ------------------------------------------------------------------ */
 /* Scraping / kilder                                                  */
 /* ------------------------------------------------------------------ */
 

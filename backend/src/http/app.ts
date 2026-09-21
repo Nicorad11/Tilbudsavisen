@@ -13,6 +13,7 @@ import { errorHandler, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { offerRoutes } from './routes/offers';
+import { receiptRoutes } from './routes/receipts';
 import { userRoutes } from './routes/user';
 
 export interface AppContext {
@@ -54,6 +55,7 @@ export function createApp(ctx: AppContext): express.Express {
   app.use('/api/admin', adminRoutes(ctx));
   app.use('/api', offerRoutes(ctx));
   app.use('/api', userRoutes(ctx));
+  app.use('/api', receiptRoutes(ctx));
   app.use('/api', notFoundHandler);
 
   // I produktion kan backend også servere den byggede frontend (én service på Render).

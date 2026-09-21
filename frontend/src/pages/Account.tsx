@@ -10,7 +10,6 @@ import { useMe, useStores } from '../lib/hooks';
 import { useAuth, useUi } from '../lib/store';
 import { storeColor } from '../lib/storeColors';
 
-const DIETS = ['Vegetar', 'Pescetar', 'Glutenfri', 'Laktosefri', 'Børnevenlig'];
 
 export function Account() {
   const token = useAuth((s) => s.accessToken);
@@ -31,7 +30,7 @@ export function Account() {
           <Card className="p-6 text-sm text-ink-2">
             <p className="text-lg tracking-tight text-ink">Hvorfor en konto?</p>
             <ul className="mt-3 list-disc space-y-1.5 pl-5">
-              <li>Dine lister, madplaner og alarmer på alle enheder</li>
+              <li>Dine lister, kvitteringer og alarmer på alle enheder</li>
               <li>E-mail når en fulgt vare kommer på tilbud</li>
               <li>Søgning og tilbud virker fint uden konto</li>
             </ul>
@@ -186,7 +185,7 @@ function PrivacyActions() {
           tone="danger"
           icon={<Trash2 className="size-3.5" />}
           loading={remove.isPending}
-          onClick={() => window.confirm('Slet konto, lister, madplaner og alarmer permanent?') && remove.mutate()}
+          onClick={() => window.confirm('Slet konto, lister, kvitteringer og alarmer permanent?') && remove.mutate()}
         >
           Slet konto og data
         </Button>
@@ -201,19 +200,17 @@ function PreferencesCard({ user }: { user: UserDTO }) {
   const toast = useUi((s) => s.showToast);
   const qc = useQueryClient();
   const [preferred, setPreferred] = useState(user.preferredStoreIds);
-  const [diet, setDiet] = useState(user.dietPreferences);
   const [zip, setZip] = useState(user.zipCode ?? '');
   const [radius, setRadius] = useState(user.radiusKm ?? 10);
   useEffect(() => {
     setPreferred(user.preferredStoreIds);
-    setDiet(user.dietPreferences);
   }, [user]);
 
   const save = useMutation({
     mutationFn: () =>
       api<UserDTO>('/auth/me', {
         method: 'PATCH',
-        body: { preferredStoreIds: preferred, dietPreferences: diet, zipCode: zip || null, radiusKm: radius },
+        body: { preferredStoreIds: preferred, zipCode: zip || null, radiusKm: radius },
       }),
     onSuccess: (u) => {
       setUser(u);
@@ -229,7 +226,7 @@ function PreferencesCard({ user }: { user: UserDTO }) {
     <Card className="space-y-5 p-5 sm:p-6">
       <div>
         <p className="text-lg tracking-tight">Præferencer</p>
-        <p className="text-xs text-muted">Bruges til indkøbslister og madplaner</p>
+        <p className="text-xs text-muted">Bruges til indkøbslister og søgning i nærheden</p>
       </div>
       <div>
         <p className="mb-2 text-sm text-ink-2">Foretrukne kæder {preferred.length === 0 && <span className="text-muted">(alle)</span>}</p>
@@ -237,16 +234,6 @@ function PreferencesCard({ user }: { user: UserDTO }) {
           {stores.data?.map((s) => (
             <Chip key={s.id} color={storeColor(s.id)} active={preferred.includes(s.id)} onClick={() => setPreferred(toggle(preferred, s.id))}>
               {s.name}
-            </Chip>
-          ))}
-        </div>
-      </div>
-      <div>
-        <p className="mb-2 text-sm text-ink-2">Kost</p>
-        <div className="flex flex-wrap gap-2">
-          {DIETS.map((d) => (
-            <Chip key={d} active={diet.includes(d)} onClick={() => setDiet(toggle(diet, d))}>
-              {d}
             </Chip>
           ))}
         </div>

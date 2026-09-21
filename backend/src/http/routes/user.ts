@@ -1,21 +1,16 @@
 import type { ListSummaryDTO } from '@tilbudsradar/shared';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { Router, type Request } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { query } from '../../db/client';
 import {
-  mealPlanRecipes,
-  mealPlans,
   notifications,
   shoppingListItems,
   shoppingLists,
   users,
   watchlist,
 } from '../../db/schema';
-import { env } from '../../env';
 import { getListDetail, optimizeList } from '../../services/lists';
-import { createMealPlan, toMealPlanDTO } from '../../services/mealplan';
 import { listNotifications, listWatches } from '../../services/watch';
 import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
@@ -28,10 +23,10 @@ const csv = z
   .optional()
   .transform((v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined));
 
-/** Indkøbslister, watchlist, notifikationer og madplaner – kræver login eller gæstesession. */
+/** Indkøbslister, watchlist og notifikationer – kræver login eller gæstesession. */
 export function userRoutes({ db }: AppContext): Router {
   const r = Router();
-  r.use(['/lists', '/watchlist', '/notifications', '/meal-plans'], requireAuth);
+  r.use(['/lists', '/watchlist', '/notifications'], requireAuth);
 
   async function ownList(req: Request, listId: number) {
     const [list] = await db
@@ -204,50 +199,6 @@ export function userRoutes({ db }: AppContext): Router {
       .update(notifications)
       .set({ readAt: new Date() })
       .where(ids?.length ? and(mine, inArray(notifications.id, ids)) : mine);
-    res.status(204).end();
-  });
-
-  /* ---------------- Madplaner ---------------- */
-
-  const mealLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    limit: env.isTest ? 1000 : 10,
-    keyGenerator: (req) => req.auth?.sub ?? 'anon',
-    message: { error: 'Du har lavet mange madplaner den seneste time – prøv igen senere' },
-  });
-
-  r.post('/meal-plans', mealLimiter, async (req, res) => {
-    const body = parse(
-      z.object({
-        householdSize: z.number().int().min(1).max(12),
-        budget: z.number().positive().max(20_000).nullable().optional(),
-        days: z.number().int().min(1).max(7).default(5),
-        preferences: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
-        allergies: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
-        storeIds: z.array(z.string().max(50)).max(20).optional(),
-      }),
-      req.body,
-    );
-    const storeIds = body.storeIds?.length ? body.storeIds : ((await preferredStores(req)) ?? []);
-    res.status(201).json(await createMealPlan(db, userId(req), { ...body, storeIds }));
-  });
-
-  r.get('/meal-plans', async (req, res) => {
-    const plans = await db
-      .select()
-      .from(mealPlans)
-      .where(eq(mealPlans.userId, userId(req)))
-      .orderBy(desc(mealPlans.createdAt))
-      .limit(20);
-    const recipes = plans.length
-      ? await db.select().from(mealPlanRecipes).where(inArray(mealPlanRecipes.mealPlanId, plans.map((p) => p.id)))
-      : [];
-    res.json(plans.map((p) => toMealPlanDTO(p, recipes.filter((r) => r.mealPlanId === p.id))));
-  });
-
-  r.delete('/meal-plans/:id', async (req, res) => {
-    const { id } = parse(idParam, req.params);
-    await db.delete(mealPlans).where(and(eq(mealPlans.id, id), eq(mealPlans.userId, userId(req))));
     res.status(204).end();
   });
 

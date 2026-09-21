@@ -3,11 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   Bell,
-  CalendarHeart,
   Home,
   ListChecks,
   Plus,
   Radar,
+  ReceiptText,
   Search,
   ShoppingCart,
   User,
@@ -28,7 +28,7 @@ const NAV = [
   { to: '/', label: 'Oversigt', icon: Home },
   { to: '/sog', label: 'Søg', icon: Search },
   { to: '/lister', label: 'Lister', icon: ListChecks },
-  { to: '/madplan', label: 'Madplan', icon: CalendarHeart },
+  { to: '/kvitteringer', label: 'Kvitteringer', short: 'Kvittering', icon: ReceiptText },
   { to: '/alarmer', label: 'Alarmer', icon: Bell },
   { to: '/kilder', label: 'Kilder', icon: Radar },
 ];
@@ -360,7 +360,7 @@ function MobileNav() {
               <span className={clsx('grid h-7 w-10 place-items-center rounded-full', isActive && 'bg-lime')}>
                 <n.icon className="size-[18px]" strokeWidth={1.6} />
               </span>
-              {n.label}
+              {n.short ?? n.label}
             </>
           )}
         </NavLink>

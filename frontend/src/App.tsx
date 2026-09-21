@@ -6,7 +6,7 @@ import { Account } from './pages/Account';
 import { Alerts } from './pages/Alerts';
 import { Dashboard } from './pages/Dashboard';
 import { Lists } from './pages/Lists';
-import { MealPlan } from './pages/MealPlan';
+import { Receipts } from './pages/Receipts';
 import { Search } from './pages/Search';
 import { Sources } from './pages/Sources';
 
@@ -17,7 +17,8 @@ export function App() {
         <Route index element={<Dashboard />} />
         <Route path="sog" element={<Search />} />
         <Route path="lister" element={<Lists />} />
-        <Route path="madplan" element={<MealPlan />} />
+        <Route path="kvitteringer" element={<Receipts />} />
+        <Route path="kvitteringer/:id" element={<Receipts />} />
         <Route path="alarmer" element={<Alerts />} />
         <Route path="kilder" element={<Sources />} />
         <Route path="konto" element={<Account />} />

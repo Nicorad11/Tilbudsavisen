@@ -51,6 +51,8 @@ export async function api<T>(
   path: string,
   opts: { method?: string; body?: unknown; query?: Query; auth?: boolean; signal?: AbortSignal } = {},
 ): Promise<T> {
+  // Billeder (kvitteringer) sendes som rå data med deres egen Content-Type.
+  const blob = opts.body instanceof Blob ? opts.body : null;
   const doFetch = () => {
     const token = useAuth.getState().accessToken;
     return fetch(buildUrl(path, opts.query), {
@@ -58,10 +60,11 @@ export async function api<T>(
       credentials: 'include',
       signal: opts.signal,
       headers: {
-        ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(blob ? { 'Content-Type': blob.type || 'application/octet-stream' } : {}),
+        ...(opts.body !== undefined && !blob ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: blob ?? (opts.body !== undefined ? JSON.stringify(opts.body) : undefined),
     });
   };
 

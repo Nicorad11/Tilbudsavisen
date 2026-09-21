@@ -1,3 +1,4 @@
+import type { ReceiptLine } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -355,6 +356,10 @@ export const notifications = pgTable(
   ],
 );
 
+/**
+ * Madplan-funktionen er fjernet fra appen for nu. Tabellerne bevares, så gemte
+ * planer ikke går tabt, og de er stadig med i GDPR-udtræk og -sletning.
+ */
 export const mealPlans = pgTable(
   'meal_plans',
   {
@@ -398,4 +403,34 @@ export const mealPlanRecipes = pgTable(
     steps: jsonb('steps').$type<string[]>().notNull(),
   },
   (t) => [index('meal_plan_recipes_plan_idx').on(t.mealPlanId)],
+);
+
+/* ------------------------------------------------------------------ */
+/* Kvitteringer                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Scannede kvitteringer. Billedet gemmes aldrig – kun linjerne, så tjekket kan
+ * genberegnes. Summerne er et øjebliksbillede til oversigten.
+ */
+export const receipts = pgTable(
+  'receipts',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    storeId: text('store_id').references(() => stores.id, { onDelete: 'set null' }),
+    purchasedAt: ts('purchased_at'),
+    source: text('source').notNull(),
+    total: doublePrecision('total').notNull(),
+    printedTotal: doublePrecision('printed_total'),
+    saved: doublePrecision('saved').notNull(),
+    itemCount: integer('item_count').notNull(),
+    possibleErrors: integer('possible_errors').notNull().default(0),
+    possibleRefund: doublePrecision('possible_refund').notNull().default(0),
+    lines: jsonb('lines').$type<ReceiptLine[]>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('receipts_user_idx').on(t.userId, t.createdAt)],
 );

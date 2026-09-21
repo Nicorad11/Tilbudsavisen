@@ -1,6 +1,6 @@
 # TilbudsRadar
 
-Smart søgning i danske tilbudsaviser. TilbudsRadar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en madplan bygget på ugens tilbud.
+Smart søgning i danske tilbudsaviser. TilbudsRadar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en kvitteringsscanner, der viser hvad du sparede og finder varer, der blev slået forkert ind.
 
 Webapp (mobil-first, responsiv) i TypeScript: React + Vite + Tailwind i frontenden, Express + Drizzle + Postgres i backenden og et separat scraping-modul.
 
@@ -44,17 +44,17 @@ npm run dev                 # API på :4000 og web på :5173
 
 ```
 ┌──────────────────────────── frontend (React + Vite) ────────────────────────────┐
-│  Oversigt · Søg · Lister · Madplan · Alarmer · Kilder · Konto                    │
+│  Oversigt · Søg · Lister · Kvitteringer · Alarmer · Kilder · Konto               │
 │  React Query (data) · Zustand (session/præferencer) · Recharts (prishistorik)    │
 └───────────────────────────────┬──────────────────────────────────────────────────┘
                                 │ /api  (JWT access token + httpOnly refresh-cookie)
 ┌───────────────────────────────▼────────────── backend (Express) ─────────────────┐
-│ routes/  auth · offers/search · lists · watchlist · meal-plans · admin           │
+│ routes/  auth · offers/search · lists · watchlist · admin · receipts             │
 │ services/                                                                        │
 │   offers   – søgning (fuldtekst + pg_trgm), pris pr. enhed, facetter            │
 │   trust    – "Er dette et reelt tilbud?" (90-dages gennemsnit)                  │
 │   lists    – billigste butikskombination (butiks-splitting)                     │
-│   mealplan – Claude (structured output) eller regelbaseret fallback             │
+│   receipts – kvitteringer: Claude eller tekstgenkendelse + tjek mod avisen      │
 │   matcher  – kanoniske varer: alias → eksakt → fuzzy → ny vare                  │
 │   ingest   – rå data → tilbud → prishistorik                                    │
 │   scrapeJobs – cron, feature-flags, kørselslog, fejlnotifikationer              │
@@ -67,7 +67,7 @@ npm run dev                 # API på :4000 og web på :5173
 │ price_history · users · refresh_tokens      │   │ html/     JSON-LD / CSS-selektorer (+Playwright)│
 │ shopping_lists(+items) · watchlist          │   │ http/     robots.txt · rate-limit pr. vært ·    │
 │ notifications · community_reports/votes     │   │           Cache-Control/ETag · retry/backoff    │
-│ meal_plans · meal_plan_recipes              │   │ normalize/ mængder · kr/enhed · navne ·         │
+│ receipts · meal_plans (ubrugt)              │   │ normalize/ mængder · kr/enhed · navne ·         │
 │ (PGlite lokalt, Postgres i produktion)      │   │           kategorier · fuzzy matching           │
 └─────────────────────────────────────────────┘   └──────────────────────────────────────────────────┘
                                                             │ HTTPS (tydelig User-Agent)
@@ -174,12 +174,19 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | CRUD | `/api/lists`, `/api/lists/:id/items`, `GET /api/lists/:id/optimize?maxStores=2` | Indkøbslister og butiks-splitting |
 | CRUD | `/api/watchlist`, `GET /api/notifications` | Prisalarmer |
 | POST | `/api/offers/:id/reports`, `/api/reports/:id/vote` | Community-verificering |
-| POST/GET | `/api/meal-plans` | Madplan |
+| POST | `/api/receipts/scan` (billede som `image/jpeg`/`png`), `/api/receipts/parse-text` | Aflæs en kvittering (gemmes ikke) |
+| POST/GET/DELETE | `/api/receipts`, `/api/receipts/:id` | Gem og tjek en kvittering mod aviserne; oversigt og sletning |
 | GET/PATCH/POST | `/api/admin/status`, `/api/admin/stores/:id`, `/api/admin/sources/:id`, `/api/admin/scrape` | Kilder og feature-flags |
 
-## AI-madplan
+## Kvitteringer
 
-Sæt `ANTHROPIC_API_KEY` i `.env`. Planen laves med `claude-opus-5` (`ANTHROPIC_MODEL`) via structured output (zod-skema), og ugens billigste madvarer gives med som kontekst. Serverside refusal-fallback (`fallbacks: "default"`) er slået til. Svarer modellen ikke brugbart, eller er der ingen nøgle, bruges en regelbaseret plan. Tilbuds-id'er, som modellen finder på, frasorteres.
+Under **Kvitteringer** kan man tage et billede af kvitteringen (eller indsætte teksten fra en e-kvittering). Flowet har tre trin:
+
+1. **Aflæsning.** Med `ANTHROPIC_API_KEY` læser Claude billedet via structured output (klarer krøllet papir og fingre over teksten). Uden nøgle bruges tekstgenkendelse (tesseract, dansk) på serveren; sprogdata (~3 MB) hentes første gang til `OCR_CACHE_DIR`. Parseren (`backend/src/services/receipts/parseText.ts`) kender Lidl-, Salling- og REMA-formater og retter typiske læsefejl ("B" læst som "8", `10,00 x 3  230,00`, vægtlinjer, rabatter uden fortegn).
+2. **Gennemsyn.** Linjerne vises redigerbart. Usikre linjer er markeret, og summen af linjerne sammenlignes med kvitteringens total.
+3. **Tjek** (`services/receipts/check.ts`). Hver vare matches mod kædens avis på købstidspunktet – forkortede navne ("Henriettelund Skrab" → "HENRIETTELUND Skrabeæg"), pakningsstørrelse, øko og "Maks. 3 pr. kunde" tages med. Resultatet er *stemmer*, *under avisprisen*, *mulig fejl*, *kræver app* (fx Lidl Plus-priser uden app-rabat) eller *tjek selv*. Samme vare billigere i en anden kæde samme dag vises også.
+
+Matchingen er bevidst forsigtig: kun sikre match kan give "mulig fejl". Tilbud fra dagen før eller efter (butikkerne starter tit næste uges priser en dag tidligt) må kun bekræfte en pris. Billedet gemmes aldrig – kun linjerne, så tjekket kan genberegnes.
 
 ## Deploy
 
@@ -189,9 +196,10 @@ Sæt `ANTHROPIC_API_KEY` i `.env`. Planen laves med `claude-opus-5` (`ANTHROPIC_
 
 ## Privatliv (GDPR)
 
-- Søgning kræver ingen konto. En anonym gæstesession oprettes først, når man bruger lister, madplan eller alarmer, og slettes efter 30 dages inaktivitet.
+- Søgning kræver ingen konto. En anonym gæstesession oprettes først, når man bruger lister, kvitteringer eller alarmer, og slettes efter 30 dages inaktivitet.
 - Der gemmes kun e-mail, en scrypt-hash af adgangskoden og de præferencer, brugeren selv angiver.
 - Brugeren kan hente alle sine data (JSON) og slette sin konto med alt tilknyttet (cascade) under **Konto**.
+- Kvitteringsbilleder behandles kun i hukommelsen og gemmes ikke. Med `ANTHROPIC_API_KEY` sendes billedet til Anthropic for at blive læst. Gemte kvitteringer (linjerne) kan slettes enkeltvis og indgår i dataudtrækket.
 
 ---
 
@@ -205,4 +213,5 @@ Sæt `ANTHROPIC_API_KEY` i `.env`. Planen laves med `claude-opus-5` (`ANTHROPIC_
 - **HTML-strategien** er implementeret og testet, men ingen kæde bruger den i dag. JS-renderede sider kræver `npm i -w scrapers playwright`.
 - **Notifikationer** vises i appen og sendes som e-mail (med SMTP). Push-notifikationer er ikke implementeret endnu.
 - **Den indlejrede database** understøtter kun én proces ad gangen (se ovenfor).
+- **Kvitteringer uden Claude-nøgle** læses med tekstgenkendelse, som klarer et lige, skarpt billede godt, men laver fejl ved krøllet papir eller skygger. Gennemsynet med sum-tjek fanger det meste, men enkelte linjer skal rettes i hånden. Kun tilbud i de aviser, vi har hentet, kan tjekkes – varer til normalpris kan ikke kontrolleres.
 - npm 11 kan advare om esbuilds install-scripts (`allowScripts`). Det påvirker ikke udvikling eller build.

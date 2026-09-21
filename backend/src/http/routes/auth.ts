@@ -8,6 +8,7 @@ import {
   mealPlanRecipes,
   mealPlans,
   notifications,
+  receipts,
   shoppingListItems,
   shoppingLists,
   users,
@@ -78,7 +79,7 @@ export function authRoutes({ db }: AppContext): Router {
     const passwordHash = await hashPassword(password);
     const role = roleForEmail(email);
 
-    // En gæst der opretter konto beholder sine lister, madplaner og overvågninger.
+    // En gæst der opretter konto beholder sine lister, kvitteringer og overvågninger.
     if (req.auth?.guest) {
       const [upgraded] = await db
         .update(users)
@@ -168,6 +169,7 @@ export function authRoutes({ db }: AppContext): Router {
       notifications: await db.select().from(notifications).where(eq(notifications.userId, id)),
       communityReports: await db.select().from(communityReports).where(eq(communityReports.userId, id)),
       mealPlans: plans.map((p) => ({ ...p, recipes: recipes.filter((r) => r.mealPlanId === p.id) })),
+      receipts: await db.select().from(receipts).where(eq(receipts.userId, id)),
     });
   });
 

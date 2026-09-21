@@ -1,7 +1,7 @@
 import type { OfferDTO, StatsDTO } from '@tilbudsradar/shared';
 import { categoryLabel } from '@tilbudsradar/shared';
 import clsx from 'clsx';
-import { ArrowUpRight, Newspaper, Plus, Search, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Newspaper, Plus, ReceiptText, Search, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { DotTimeline } from '../components/DotTimeline';
@@ -118,6 +118,14 @@ function Hero({ stats }: { stats?: StatsDTO }) {
           </Chip>
         ))}
       </div>
+      <Link
+        to="/kvitteringer"
+        className="group mt-5 inline-flex items-center gap-2 text-[13px] text-muted transition hover:text-ink"
+      >
+        <ReceiptText className="size-4" strokeWidth={1.6} />
+        Har du handlet? Scan kvitteringen og se hvad du sparede
+        <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
+      </Link>
     </section>
   );
 }

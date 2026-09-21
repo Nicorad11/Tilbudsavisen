@@ -15,6 +15,13 @@
       "when": 1789566935806,
       "tag": "0001_search",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789823117089,
+      "tag": "0002_receipts",
+      "breakpoints": true
     }
   ]
 }

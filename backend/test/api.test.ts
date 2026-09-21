@@ -5,6 +5,9 @@ import type {
   ListOptimizationDTO,
   OfferDetailResponse,
   PriceHistoryResponse,
+  ReceiptCheckDTO,
+  ReceiptLine,
+  ReceiptOverviewDTO,
   SearchResponse,
   ShoppingListDTO,
   StatsDTO,
@@ -236,21 +239,6 @@ describe('API', () => {
     expect(detail.reports[0]).toMatchObject({ upvotes: 1, myVote: 1, isMine: false, verdict: 'misleading' });
   });
 
-  it('madplan uden API-nøgle falder tilbage til regelbaseret plan', async () => {
-    const { token } = await guest();
-    const res = await request(app)
-      .post('/api/meal-plans')
-      .set({ Authorization: `Bearer ${token}` })
-      .send({ householdSize: 2, days: 3, budget: 300 })
-      .expect(201);
-    expect(res.body.generatedBy).toBe(process.env.ANTHROPIC_API_KEY ? 'ai' : 'regler');
-    expect(res.body.recipes).toHaveLength(3);
-    const linked = res.body.recipes.flatMap((r: { ingredients: { offerId: number | null }[] }) => r.ingredients).filter(
-      (i: { offerId: number | null }) => i.offerId !== null,
-    );
-    expect(linked.length).toBeGreaterThan(0);
-  });
-
   it('admin: slå en kæde fra skjuler dens tilbud', async () => {
     await request(app).patch('/api/admin/stores/netto').send({ enabled: false }).expect(200);
     const res = (await request(app).get('/api/search').query({ q: 'kylling' })).body as SearchResponse;
@@ -285,12 +273,175 @@ describe('API', () => {
     expect(stores.map((s) => s.id)).not.toContain('jemogfix');
   });
 
+  describe('kvitteringer', () => {
+    const item = (name: string, amount: number, quantity = 1): ReceiptLine => ({
+      kind: 'item',
+      name,
+      quantity,
+      unit: 'stk',
+      unitPrice: Math.round((amount / quantity) * 100) / 100,
+      amount,
+    });
+    const discount = (amount: number, name = 'Rabat'): ReceiptLine => ({
+      kind: 'discount',
+      name,
+      quantity: 1,
+      unit: 'stk',
+      unitPrice: null,
+      amount: -amount,
+    });
+    /** Et ekstra avistilbud, der starter om `fromHours` timer. */
+    const extraOffer = (storeId: string, id: string, title: string, price: number, description: string, fromHours: number) => {
+      const [base] = json<Record<string, unknown>[]>('tjek-offers.json');
+      return mapTjekOffer(
+        {
+          ...base,
+          id,
+          heading: title,
+          description,
+          pricing: { price, pre_price: null, currency: 'DKK' },
+          run_from: iso(new Date(Date.now() + fromHours * 3_600_000)),
+          run_till: iso(new Date(Date.now() + 7 * day)),
+        },
+        { storeId, sourceId: storeId, dealerSlug: storeId },
+      )!;
+    };
+
+    it('kræver login', async () => {
+      await request(app).get('/api/receipts').expect(401);
+    });
+
+    it('tjekker linjerne mod avisen, finder fejl og billigere kæder', async () => {
+      const { token } = await guest();
+      const auth = { Authorization: `Bearer ${token}` };
+      const lines: ReceiptLine[] = [
+        item('HARBOE SODAVAND 1,5 L', 10, 2),
+        item('SCHULSTAD BRØD', 18),
+        item('VALLØ SLOTSÆG', 25),
+        item('DANSK KYLLING', 35),
+        item('AGURK', 8),
+        item('TULIP BACON 5-PAK', 49.95),
+        discount(10.95),
+        { kind: 'deposit', name: 'PANT A', quantity: 1, unit: 'stk', unitPrice: null, amount: 1 },
+      ];
+      const body = { storeId: 'rema1000', purchasedAt: new Date().toISOString(), total: 136, lines, source: 'manual' };
+      const check = (await request(app).post('/api/receipts').set(auth).send(body).expect(201)).body as ReceiptCheckDTO;
+
+      expect(check.store?.id).toBe('rema1000');
+      expect(check.totalMatches).toBe(true);
+      expect(check.itemCount).toBe(6);
+      const line = (re: RegExp) => check.items.find((i) => re.test(i.name))!;
+      expect(line(/SODAVAND/).verdict).toBe('match');
+      expect(line(/SLOTSÆG/).verdict).toBe('match');
+      expect(line(/AGURK/).verdict).toBe('no_offer');
+      // Avisen siger 15 kr – 18 kr er en mulig fejl.
+      expect(line(/SCHULSTAD/)).toMatchObject({ verdict: 'overcharged', difference: 3 });
+      expect(check.possibleErrors).toBe(1);
+      expect(check.possibleRefund).toBe(3);
+      // Netto havde kyllingen 10 % billigere samme dag.
+      const kylling = line(/KYLLING/);
+      expect(kylling.verdict).toBe('match');
+      expect(kylling.cheaperElsewhere?.offer.store.id).toBe('netto');
+      expect(kylling.cheaperElsewhere?.saving).toBe(3.5);
+      expect(line(/BACON/).saved).toBe(10.95);
+      expect(check.saved).toBeGreaterThanOrEqual(10.95);
+
+      const overview = (await request(app).get('/api/receipts').set(auth).expect(200)).body as ReceiptOverviewDTO;
+      expect(overview.receipts).toHaveLength(1);
+      expect(overview.possibleRefund).toBe(3);
+      expect(overview.totalSaved).toBe(check.saved);
+
+      const again = (await request(app).get(`/api/receipts/${check.id}`).set(auth).expect(200)).body as ReceiptCheckDTO;
+      expect(again.items.map((i) => i.verdict)).toEqual(check.items.map((i) => i.verdict));
+
+      // Andre brugere kan ikke se kvitteringen.
+      const other = await guest();
+      await request(app).get(`/api/receipts/${check.id}`).set({ Authorization: `Bearer ${other.token}` }).expect(404);
+
+      await request(app).delete(`/api/receipts/${check.id}`).set(auth).expect(204);
+      await request(app).get(`/api/receipts/${check.id}`).set(auth).expect(404);
+    });
+
+    it('app-priser: uden Lidl Plus er det ikke en fejl', async () => {
+      await ingestOffers(database.db, [extraOffer('lidl', 'lidl-plus-1', 'Harboe sodavand', 5, '1,5 l. Pris med Lidl Plus', -24)]);
+      const { token } = await guest();
+      const auth = { Authorization: `Bearer ${token}` };
+      const send = (lines: ReceiptLine[]) =>
+        request(app)
+          .post('/api/receipts')
+          .set(auth)
+          .send({ storeId: 'lidl', purchasedAt: new Date().toISOString(), total: null, lines, source: 'manual' })
+          .expect(201)
+          .then((r) => r.body as ReceiptCheckDTO);
+
+      const without = await send([item('Harboe sodavand 1,5 l', 14, 2)]);
+      expect(without.items[0]).toMatchObject({ verdict: 'app_price', difference: 4 });
+      expect(without.possibleErrors).toBe(0);
+      expect(without.toCheck).toBe(1);
+
+      const withApp = await send([item('Harboe sodavand 1,5 l', 14, 2), discount(4, 'Lidl Plus-tilbud')]);
+      expect(withApp.items[0]).toMatchObject({ verdict: 'match', saved: 4 });
+    });
+
+    it('næste uges tilbud kan bekræfte en pris, men aldrig give en fejl', async () => {
+      // Butikkerne starter tit ugens priser dagen før avisen – her om 20 timer.
+      await ingestOffers(database.db, [extraOffer('rema1000', 'next-week-1', 'Vallø Slotsæg', 20, '6 stk.', 20)]);
+      const { token } = await guest();
+      const auth = { Authorization: `Bearer ${token}` };
+      const send = (amount: number) =>
+        request(app)
+          .post('/api/receipts')
+          .set(auth)
+          .send({
+            storeId: 'rema1000',
+            purchasedAt: new Date().toISOString(),
+            total: null,
+            lines: [item('VALLØ SLOTSÆG', amount)],
+            source: 'manual',
+          })
+          .expect(201)
+          .then((r) => r.body as ReceiptCheckDTO);
+
+      expect((await send(20)).items[0]!.verdict).toBe('match');
+      // 30 kr sammenlignes med den gældende pris (25), ikke med næste uges 20.
+      expect((await send(30)).items[0]).toMatchObject({ verdict: 'overcharged', difference: 5 });
+    });
+
+    it('tolker indsat tekst fra en e-kvittering og afviser andet end billeder', async () => {
+      const { token } = await guest();
+      const auth = { Authorization: `Bearer ${token}` };
+      const text = 'NETTO\nRUGBRØD      18,00\nRABAT         5,00-\nTOTAL        13,00';
+      const parsed = (await request(app).post('/api/receipts/parse-text').set(auth).send({ text }).expect(200)).body;
+      expect(parsed).toMatchObject({ storeId: 'netto', total: 13, source: 'text' });
+      expect(parsed.lines).toHaveLength(2);
+      await request(app).post('/api/receipts/parse-text').set(auth).send({ text: '' }).expect(400);
+      await request(app)
+        .post('/api/receipts/scan')
+        .set(auth)
+        .set('Content-Type', 'image/jpeg')
+        .send(Buffer.from('ikke et billede'))
+        .expect(415);
+    });
+  });
+
   it('GDPR: sletning af konto fjerner brugerens data', async () => {
     const { token } = await guest();
     const auth = { Authorization: `Bearer ${token}` };
     await request(app).post('/api/lists').set(auth).send({ name: 'Slet mig' }).expect(201);
+    await request(app)
+      .post('/api/receipts')
+      .set(auth)
+      .send({
+        storeId: null,
+        purchasedAt: null,
+        total: null,
+        lines: [{ kind: 'item', name: 'Agurk', quantity: 1, unit: 'stk', unitPrice: 8, amount: 8 }],
+        source: 'manual',
+      })
+      .expect(201);
     const exported = await request(app).get('/api/auth/me/export').set(auth).expect(200);
     expect(exported.body.shoppingLists).toHaveLength(1);
+    expect(exported.body.receipts).toHaveLength(1);
     await request(app).delete('/api/auth/me').set(auth).expect(204);
     await request(app).get('/api/auth/me').set(auth).expect(404);
   });

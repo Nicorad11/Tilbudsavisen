@@ -34,6 +34,8 @@ const schema = z.object({
     .enum(['low', 'medium', 'high', 'xhigh', 'max', ''])
     .default('')
     .transform((v) => (v === '' ? null : v)),
+  /** Sprogdata til tekstgenkendelse af kvitteringer hentes hertil første gang (~3 MB). */
+  OCR_CACHE_DIR: z.string().default(path.join(ROOT, 'backend', '.data', 'tessdata')),
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('TilbudsRadar <noreply@tilbudsradar.local>'),
   FRONTEND_DIST: z.string().default(path.join(ROOT, 'frontend', 'dist')),
