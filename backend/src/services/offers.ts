@@ -13,8 +13,10 @@ import type {
 import { categoryLabel, discountPct, FOOD_CATEGORIES } from '@tilbudsradar/shared';
 import { sql, type SQL } from 'drizzle-orm';
 import { query, queryOne, searchConfig, type Db } from '../db/client';
+import { cached } from './cache';
 import { haversineSql, type GeoPoint } from './geo';
 import { activeChainSql } from './scope';
+import { conceptOfferIds } from './suggest';
 import { loadCommunity, loadTrust } from './trust';
 
 /* ------------------------------------------------------------------ */
@@ -187,12 +189,15 @@ export async function textMatchSql(db: Db, q: string): Promise<TextMatch | null>
   const whole = sql`${haystack} ~ ${wholeWord(tokens)}`;
   // Stavefejls-tolerance: løs for ét ord, stram for flere (ellers matcher "hakket oksekød" en suppe).
   const fuzzy = tokens.length === 1 ? 0.55 : 0.75;
+  // Varetyper: "hakket grisekød" finder "Hakket okse- eller grise/kalvekød", "svin" finder grisekød.
+  const conceptIds = await conceptOfferIds(db, q);
+  const concept = conceptIds.length ? sql`o.id IN (${sql.join(conceptIds.map((id) => sql`${id}`), sql`, `)})` : sql`FALSE`;
   return {
-    match: sql`(o.search_vector @@ ${query} OR ${likeAll} OR word_similarity(${text}, o.normalized_name) >= ${fuzzy}::float8)`,
+    match: sql`(o.search_vector @@ ${query} OR ${likeAll} OR word_similarity(${text}, o.normalized_name) >= ${fuzzy}::float8 OR ${concept})`,
     rank: sql`(ts_rank('{0.02, 0.02, 0.4, 1.0}', o.search_vector, ${query}) * 2
       + word_similarity(${text}, lower(o.title))
       + CASE WHEN lower(o.title) LIKE ${`${tokens[0]}%`} THEN 0.3 ELSE 0 END)::float8`,
-    tier: sql`(CASE WHEN ${whole} THEN 1 WHEN ${likeAll} THEN 2 ELSE 3 END)`,
+    tier: sql`(CASE WHEN ${whole} OR ${concept} THEN 1 WHEN ${likeAll} THEN 2 ELSE 3 END)`,
   };
 }
 
@@ -219,6 +224,20 @@ async function baseConditions(db: Db, p: SearchParams): Promise<{ where: SQL; ra
     )`);
   }
   return { where: sql.join(conds, sql` AND `), rank, tier, distance };
+}
+
+/** Kategorier med træf for en søgning – samme betingelser som selve søgningen. */
+export async function searchCategoryCounts(db: Db, q: string): Promise<Facet[]> {
+  const { where } = await baseConditions(db, { q, sort: 'relevance', limit: 0, offset: 0 });
+  const rows = await query<{ category: string; n: number }>(
+    db,
+    sql`SELECT o.category, count(*)::int AS n
+        FROM offers o JOIN stores s ON s.id = o.store_id
+        WHERE ${where}
+        GROUP BY o.category
+        ORDER BY n DESC`,
+  );
+  return rows.map((r) => ({ id: r.category, label: categoryLabel(r.category), count: r.n }));
 }
 
 export async function searchOffers(db: Db, p: SearchParams): Promise<SearchResponse> {
@@ -504,20 +523,7 @@ export async function searchProducts(db: Db, q: string, limit = 8): Promise<(Pro
 /* "Ugens bedste tilbud" – caches til næste ingest                    */
 /* ------------------------------------------------------------------ */
 
-let dataVersion = 0;
-const cache = new Map<string, { version: number; at: number; value: unknown }>();
-
-export function bumpDataVersion(): void {
-  dataVersion++;
-}
-
-export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const hit = cache.get(key);
-  if (hit && hit.version === dataVersion && Date.now() - hit.at < ttlMs) return hit.value as T;
-  const value = await load();
-  cache.set(key, { version: dataVersion, at: Date.now(), value });
-  return value;
-}
+export { bumpDataVersion, cached } from './cache';
 
 export async function topDeals(db: Db, limit: number, storeIds?: string[]): Promise<OfferDTO[]> {
   const key = `top:${limit}:${storeIds?.join(',') ?? ''}`;

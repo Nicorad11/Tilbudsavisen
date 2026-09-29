@@ -1,11 +1,12 @@
 import type { SearchSort } from '@tilbudsradar/shared';
 import { VISIBLE_CATEGORIES, categoryLabel, unitPriceLabel } from '@tilbudsradar/shared';
 import clsx from 'clsx';
-import { LayoutGrid, List, Search as SearchIcon, SearchX, X } from 'lucide-react';
+import { LayoutGrid, List, SearchX } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { LocationPicker } from '../components/LocationPicker';
 import { OfferCard, OfferCardSkeleton, OfferRow } from '../components/OfferCard';
+import { SearchBox } from '../components/SearchBox';
 import { Button, Chip, EmptyState, IconButton, Segmented, Toggle } from '../components/ui/primitives';
 import { ApiError } from '../lib/api';
 import { int } from '../lib/format';
@@ -86,33 +87,18 @@ export function Search() {
         <h1 className="mt-1 truncate text-[36px] leading-[1.05] tracking-[-0.045em] sm:text-[48px]">{title}</h1>
       </div>
 
-      <form
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          update({ q: draft.trim() || null });
+      <SearchBox
+        variant="page"
+        value={draft}
+        onValueChange={setDraft}
+        onSearch={(term, opts) => {
+          setDraft(term);
+          update({ q: term, ...(opts?.category ? { kategori: opts.category } : {}) });
         }}
-        className="flex h-14 items-center gap-3 rounded-full bg-raised pr-2 pl-5 shadow-float ring-ink/80 focus-within:ring-2"
-      >
-        <SearchIcon className="size-5 text-muted" strokeWidth={1.6} />
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Søg efter en vare – fx hakket oksekød, kaffe eller bleer"
-          aria-label="Søg"
-          className="h-full min-w-0 flex-1 bg-transparent text-[17px] tracking-tight outline-none placeholder:text-faint"
-          autoFocus={!q}
-          enterKeyHint="search"
-        />
-        {draft && (
-          <IconButton label="Ryd" size="sm" tone="ghost" onClick={() => setDraft('')}>
-            <X className="size-4" />
-          </IconButton>
-        )}
-        <Button type="submit" tone="dark" className="max-sm:hidden">
-          Søg
-        </Button>
-      </form>
+        placeholder="Søg efter en vare – fx hakket oksekød, kaffe eller bleer"
+        submitLabel="Søg"
+        autoFocus={!q}
+      />
 
       {!q && !categories.length && (
         <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">

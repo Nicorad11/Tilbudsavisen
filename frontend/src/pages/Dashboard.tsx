@@ -1,14 +1,15 @@
 import type { OfferDTO, StatsDTO } from '@tilbudsradar/shared';
 import { categoryLabel } from '@tilbudsradar/shared';
 import clsx from 'clsx';
-import { ArrowRight, ArrowUpRight, Newspaper, Plus, ReceiptText, Search, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Newspaper, Plus, ReceiptText, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { DotTimeline } from '../components/DotTimeline';
 import { OfferCard, OfferCardSkeleton, useOpenOffer } from '../components/OfferCard';
+import { SearchBox } from '../components/SearchBox';
 import { DotBars, PulseRow, RadarRings, RulerTicks, WaveSpark } from '../components/ui/charts';
 import { DotNumber } from '../components/ui/DotNumber';
-import { Button, Card, Chip, IconButton, InfoTip, Pill, SectionHeader, Skeleton, TextInput } from '../components/ui/primitives';
+import { Button, Card, Chip, IconButton, InfoTip, Pill, SectionHeader, Skeleton } from '../components/ui/primitives';
 import { greeting, int, kr, relativeTime, unitLabel } from '../lib/format';
 import { useLists, useSearch, useStats, useStores, useTopDeals } from '../lib/hooks';
 import { CategoryIcon } from '../lib/icons';
@@ -77,7 +78,8 @@ export function Dashboard() {
 function Hero({ stats }: { stats?: StatsDTO }) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
-  const go = (term: string) => navigate(`/sog?q=${encodeURIComponent(term)}`);
+  const go = (term: string, category?: string) =>
+    navigate(`/sog?q=${encodeURIComponent(term)}${category ? `&kategori=${encodeURIComponent(category)}` : ''}`);
 
   return (
     <section>
@@ -91,25 +93,15 @@ function Hero({ stats }: { stats?: StatsDTO }) {
         egen prishistorik, så du kan se om besparelsen er reel.
       </p>
 
-      <form
-        className="mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (q.trim()) go(q.trim());
-        }}
-      >
-        <TextInput
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          icon={<Search className="size-[18px]" />}
-          placeholder="Søg fx letmælk, kaffe eller hakket oksekød"
-          aria-label="Søg i alle tilbud"
-          className="flex-1"
-        />
-        <Button type="submit" tone="dark" className="sm:w-auto">
-          Find billigste
-        </Button>
-      </form>
+      <SearchBox
+        variant="hero"
+        className="mt-6 max-w-2xl"
+        value={q}
+        onValueChange={setQ}
+        onSearch={(term, opts) => go(term, opts?.category)}
+        placeholder="Søg fx okse, kaffe eller kyllingebryst"
+        submitLabel="Find billigste"
+      />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-[12.5px] text-faint">Populære:</span>
         {['letmælk', 'kaffe', 'kylling', 'æg', 'smør'].map((term) => (

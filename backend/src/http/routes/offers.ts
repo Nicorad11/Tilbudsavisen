@@ -1,3 +1,4 @@
+import type { SuggestResponse } from '@tilbudsradar/shared';
 import { VISIBLE_CATEGORIES } from '@tilbudsradar/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { Router } from 'express';
@@ -9,11 +10,13 @@ import {
   getOfferDetail,
   getPriceHistory,
   listStores,
+  searchCategoryCounts,
   searchOffers,
   searchProducts,
   topDeals,
 } from '../../services/offers';
 import { getStats } from '../../services/stats';
+import { suggestConcepts } from '../../services/suggest';
 import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
@@ -80,6 +83,23 @@ export function offerRoutes({ db }: AppContext): Router {
         offset: q.offset,
       }),
     );
+  });
+
+  /** Forslag mens man skriver: varetyper ("okse" → "hakket oksekød") og kategorier. */
+  r.get('/search/suggest', async (req, res) => {
+    const { q } = parse(z.object({ q: z.string().max(60).default('') }), req.query);
+    const term = q.trim();
+    if (term.length < 2) {
+      res.json({ query: term, suggestions: [], categories: [] } satisfies SuggestResponse);
+      return;
+    }
+    const [suggestions, categories] = await Promise.all([suggestConcepts(db, term), searchCategoryCounts(db, term)]);
+    res.json({
+      query: term,
+      suggestions,
+      // Kun kategorier med mere end ét træf; "Andet" er ikke en nyttig genvej.
+      categories: categories.filter((c) => c.count >= 2 && c.id !== 'andet').slice(0, 2),
+    } satisfies SuggestResponse);
   });
 
   r.get('/offers/top', async (req, res) => {

@@ -88,6 +88,25 @@ export interface SearchResponse {
 
 export type SearchSort = 'unit' | 'price' | 'discount' | 'relevance';
 
+/** En varetype som forslag mens man skriver: "okse" → "hakket oksekød". */
+export interface SearchSuggestionDTO {
+  /** Varetypen – bruges direkte som søgning. */
+  term: string;
+  category: string;
+  offerCount: number;
+  storeCount: number;
+  /** Laveste pris pr. kg/l/stk blandt tilbuddene. */
+  fromUnitPrice: number | null;
+  unit: BaseUnit | null;
+}
+
+export interface SuggestResponse {
+  query: string;
+  suggestions: SearchSuggestionDTO[];
+  /** Kategorier med flest træf for søgningen, fx "okse" i Kød & fisk. */
+  categories: Facet[];
+}
+
 export interface ProductDTO {
   id: number;
   name: string;

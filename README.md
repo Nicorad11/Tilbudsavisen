@@ -152,6 +152,17 @@ Sådan slås de til igen:
 - **Kategorier:** danske nøgleord med ordgrænser, overrides og "hovedordet før *med*".
 - **Søgning:** Postgres fuldtekst (dansk stemming) + delstrenge (sammensatte ord) + pg_trgm (stavefejl), rangeret i tre niveauer. Resultater sorteres efter pris pr. enhed inden for den dominerende enhed.
 
+### Varetyper og søgeforslag
+
+Hver avistitel pakkes ud i de generiske varer, den dækker (`backend/src/services/concepts.ts`): *"Hakket okse- eller grise/kalvekød"* bliver til hakket oksekød, hakket grisekød og hakket kalvekød, og *"Kyllingebrystfilet eller -inderfilet"* til kyllingebrystfilet og kyllingeinderfilet. Mærker, mængder og fyldord ("danske", "økologisk") fjernes, og ental/flertal slås sammen.
+
+Indekset bygges i hukommelsen efter hver scraping (`services/suggest.ts`) og bruges to steder:
+
+- **Forslag mens man skriver.** "okse" giver *Hakket oksekød* (12 tilbud i 4 kæder fra 61,76 kr/kg) og *Oksekød*. Tallene viser, hvad et klik giver.
+- **Søgningen.** Tilbud hvis varetype matcher søgningen præcist, rangeres øverst. Derfor finder "hakket grisekød" også *"Hakket okse- eller grise/kalvekød"*, og "svin" finder grisekød.
+
+Matchreglerne undgår falske venner: ord matcher på ordstart, og kun hovedord som æg, mælk og ost må stå sidst i et sammensat ord. Derfor giver "æg" skrabeæg men ikke pålæg, "ost" giver hytteost men ikke leverpostej, og "is" giver ikke gris. Stavefejl bruges kun som sidste udvej ("kafe" → kaffe).
+
 ### "Er dette et reelt tilbud?"
 
 Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget er i prioriteret rækkefølge: normalpris i samme kæde, normalpriser på tværs af kæder, og til sidst tidligere kampagner (svagt grundlag, kan aldrig give "reelt").
@@ -166,6 +177,7 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | Metode | Endpoint | |
 |---|---|---|
 | GET | `/api/search?q=&stores=&categories=&sort=unit\|price\|discount\|relevance&zip=&lat=&lng=&radius=` | Søgning på tværs af kæder |
+| GET | `/api/search/suggest?q=okse` | Forslag mens man skriver: varetyper med antal tilbud, kæder og laveste pris pr. enhed, plus kategorier |
 | GET | `/api/offers/top`, `/api/offers/:id` | Bedste tilbud; detalje med alternativer og community |
 | GET | `/api/products/:id/history?days=180` | Prishistorik |
 | GET | `/api/stats`, `/api/stores`, `/api/stores/nearby`, `/api/categories` | Oversigt |

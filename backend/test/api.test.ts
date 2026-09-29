@@ -10,6 +10,7 @@ import type {
   ReceiptOverviewDTO,
   SearchResponse,
   ShoppingListDTO,
+  SuggestResponse,
   StatsDTO,
   WatchDTO,
 } from '@tilbudsradar/shared';
@@ -112,6 +113,30 @@ describe('API', () => {
     expect(compound.items.some((i) => /oksekød|kalvekød/i.test(i.title))).toBe(true);
     const typo = (await request(app).get('/api/search').query({ q: 'sodavamd' })).body as SearchResponse;
     expect(typo.items.some((i) => /sodavand/i.test(i.title))).toBe(true);
+  });
+
+  it('foreslår varetyper mens man skriver, med pris og antal kæder', async () => {
+    const res = (await request(app).get('/api/search/suggest').query({ q: 'kyl' }).expect(200)).body as SuggestResponse;
+    const kylling = res.suggestions.find((s) => s.term === 'kylling')!;
+    expect(kylling).toMatchObject({ category: 'kod-fisk', storeCount: 2, unit: 'kg' });
+    // Netto er 10 % billigere i testdata: 34,15 kr/kg × 0,9.
+    expect(kylling.fromUnitPrice).toBeCloseTo(30.74, 1);
+    expect(res.categories[0]).toMatchObject({ id: 'kod-fisk' });
+
+    const hakket = (await request(app).get('/api/search/suggest').query({ q: 'hakket' })).body as SuggestResponse;
+    expect(hakket.suggestions.map((s) => s.term)).toEqual(expect.arrayContaining(['hakket oksekød', 'hakket grisekød']));
+
+    const empty = (await request(app).get('/api/search/suggest').query({ q: 'k' })).body as SuggestResponse;
+    expect(empty.suggestions).toEqual([]);
+  });
+
+  it('et forslag finder de tilbud det kom fra', async () => {
+    // "Hakket dansk oksekød med grønt, grise- og kalvekød …" indeholder ikke ordet "grisekød".
+    const res = (await request(app).get('/api/search').query({ q: 'hakket grisekød' }).expect(200)).body as SearchResponse;
+    expect(res.items.some((i) => /grise- og kalvekød/.test(i.title))).toBe(true);
+    // Kæderne skriver "gris", folk søger "svin".
+    const svin = (await request(app).get('/api/search').query({ q: 'svin' }).expect(200)).body as SearchResponse;
+    expect(svin.items.some((i) => /grise/i.test(i.title))).toBe(true);
   });
 
   it('filtrerer på kæde og kategori', async () => {
