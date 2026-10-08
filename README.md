@@ -1,8 +1,12 @@
-# TilbudsRadar
+# Tilbudsradar
 
-Smart søgning i danske tilbudsaviser. TilbudsRadar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en kvitteringsscanner, der viser hvad du sparede og finder varer, der blev slået forkert ind.
+Smart søgning i danske tilbudsaviser – <https://tilbudsradar.dk>. Tilbudsradar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en kvitteringsscanner, der viser hvad du sparede og finder varer, der blev slået forkert ind.
 
-Webapp (mobil-first, responsiv) i TypeScript: React + Vite + Tailwind i frontenden, Express + Drizzle + Postgres i backenden og et separat scraping-modul.
+Webapp (mobil-first, responsiv, installerbar som PWA) i TypeScript: React + Vite + Tailwind i frontenden, Express + Drizzle + Postgres i backenden og et separat scraping-modul.
+
+**Forretningsmodel:** søgning, ugens tilbud, pris pr. kg og "reelt tilbud"-vurderingen er gratis uden konto. Indkøbslister, prisalarmer, kvitteringsscanner, prishistorik og community-vurderinger kræver abonnement: **49 kr/md inkl. moms**, månedlig, ingen binding, betaling via Stripe. Nye konti får **14 dages gratis prøveperiode** uden kort, som ikke bliver til et abonnement af sig selv (én pr. e-mail). Se [Abonnement og adgang](#abonnement-og-adgang).
+
+> **Før lancering:** følg [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md). Alle juridiske tekster er udkast, som skal gennemgås af en jurist.
 
 ---
 
@@ -21,6 +25,9 @@ npm run dev                 # API på :4000 og web på :5173
 - **Ingen databaseinstallation nødvendig.** Uden `DATABASE_URL` kører en rigtig Postgres 17 (PGlite/WASM) inde i API-processen, og data gemmes i `backend/.data/pglite`.
 - **Første opstart scraper automatisk.** Det tager 3–4 minutter, fordi der holdes pauser mellem hver forespørgsel. Følg med under **Kilder**. Butikslokationer (til geolokation) hentes bagefter.
 - Derefter scrapes der automatisk kl. 06:15 og 18:15 (`SCRAPE_CRON`).
+- **Uden SMTP skrives e-mails i API-konsollen** – også links til at bekræfte e-mail og nulstille adgangskode.
+- **Uden Stripe-nøgle er betaling slået fra.** Konti og prøveperioder virker; "Start abonnement" svarer, at betaling åbner snart. Med testnøgler: se [Stripe lokalt](#stripe-lokalt).
+- Sæt din egen e-mail i `ADMIN_EMAILS` for at få fuld adgang og admin-funktionerne under **Kilder**.
 
 ### Scripts
 
@@ -34,6 +41,7 @@ npm run dev                 # API på :4000 og web på :5173
 | `npm run reprocess` | Kør alle gemte rå data igennem den nuværende normalisering igen |
 | `npm run db:seed-demo` | **Demo-data:** 180 dages syntetisk prishistorik (markeret i UI'et). Fjern med `npm run db:seed-demo -- --clear` |
 | `npm run db:generate` | Generér en ny migration efter ændringer i `backend/src/db/schema.ts` |
+| `npm run stripe:setup` | Opretter produkt, pris (49 kr/md), kundeportal og webhook i Stripe – idempotent. `-- --tax` opretter også en 25 % momssats |
 | `npm run build` / `npm start` | Produktionsbuild; backend serverer også den byggede frontend |
 
 > Med den indlejrede database kan kun én proces åbne den ad gangen. Stop `npm run dev`, før du kører `ingest`, `reprocess` eller `db:seed-demo`. Med en rigtig Postgres (`DATABASE_URL`) gælder det ikke.
@@ -44,12 +52,14 @@ npm run dev                 # API på :4000 og web på :5173
 
 ```
 ┌──────────────────────────── frontend (React + Vite) ────────────────────────────┐
-│  Oversigt · Søg · Lister · Kvitteringer · Alarmer · Kilder · Konto               │
+│  /  /priser  /om  /handelsbetingelser  /privatlivspolitik  /cookies  /fortryd   │
+│  /app: Oversigt · Søg · Lister · Kvitteringer · Alarmer · Kilder · Konto         │
 │  React Query (data) · Zustand (session/præferencer) · Recharts (prishistorik)    │
 └───────────────────────────────┬──────────────────────────────────────────────────┘
                                 │ /api  (JWT access token + httpOnly refresh-cookie)
 ┌───────────────────────────────▼────────────── backend (Express) ─────────────────┐
-│ routes/  auth · offers/search · lists · watchlist · admin · receipts             │
+│ routes/  auth · billing (+ Stripe-webhook) · offers/search · lists · watchlist  │
+│          admin · receipts     plan.ts: betalingsmur (402)   site.ts: SEO og PWA  │
 │ services/                                                                        │
 │   offers   – søgning (fuldtekst + pg_trgm), pris pr. enhed, facetter            │
 │   trust    – "Er dette et reelt tilbud?" (90-dages gennemsnit)                  │
@@ -58,6 +68,8 @@ npm run dev                 # API på :4000 og web på :5173
 │   matcher  – kanoniske varer: alias → eksakt → fuzzy → ny vare                  │
 │   ingest   – rå data → tilbud → prishistorik                                    │
 │   scrapeJobs – cron, feature-flags, kørselslog, fejlnotifikationer              │
+│   access   – adgangsstatus (prøve, aktiv, betaling fejlet, opsagt, udløbet)     │
+│   billing  – Stripe Checkout/Portal, webhooks, fortrydelse; billingCron: mails  │
 └───────┬───────────────────────────────────────────────────────────┬──────────────┘
         │ Drizzle ORM                                               │ runScraper()
 ┌───────▼──────────────── Postgres ───────────┐   ┌─────────────────▼── scrapers ───────────────────┐
@@ -68,8 +80,10 @@ npm run dev                 # API på :4000 og web på :5173
 │ shopping_lists(+items) · watchlist          │   │ http/     robots.txt · rate-limit pr. vært ·    │
 │ notifications · community_reports/votes     │   │           Cache-Control/ETag · retry/backoff    │
 │ receipts · meal_plans (ubrugt)              │   │ normalize/ mængder · kr/enhed · navne ·         │
-│ (PGlite lokalt, Postgres i produktion)      │   │           kategorier · fuzzy matching           │
-└─────────────────────────────────────────────┘   └──────────────────────────────────────────────────┘
+│ trial_claims · stripe_events · email_tokens │   │           kategorier · fuzzy matching           │
+│ receipt_scans · withdrawals                 │   └──────────────────────────────────────────────────┘
+│ (PGlite lokalt, Postgres i produktion)      │
+└─────────────────────────────────────────────┘
                                                             │ HTTPS (tydelig User-Agent)
                                           squid-api.tjek.com · cphapp.rema1000.dk
 shared/  fælles typer (ScrapedOffer, API-DTO'er, kategorier)
@@ -181,7 +195,10 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | GET | `/api/offers/top`, `/api/offers/:id` | Bedste tilbud; detalje med alternativer og community |
 | GET | `/api/products/:id/history?days=180` | Prishistorik |
 | GET | `/api/stats`, `/api/stores`, `/api/stores/nearby`, `/api/categories` | Oversigt |
-| POST | `/api/auth/guest\|register\|login\|refresh\|logout` | JWT + roterende refresh-cookie |
+| POST | `/api/auth/register`, `/login`, `/refresh`, `/logout` | JWT + roterende refresh-cookie. `register` kræver `acceptTerms: true` og starter prøveperioden |
+| POST | `/api/auth/forgot-password`, `/reset-password`, `/verify-email`, `/verify-email/resend`, `/change-password`, `/change-email` | Konto via e-mail (engangslinks, gemt som hash) |
+| GET/POST | `/api/billing/status`, `/checkout`, `/portal`, `/withdraw` | Abonnement: status, Stripe Checkout, kundeportal, fortrydelse |
+| POST | `/api/billing/webhook` | Stripe-webhook (signaturen verificeres) |
 | GET/PATCH/DELETE | `/api/auth/me`, `GET /api/auth/me/export` | Præferencer, GDPR-indsigt og -sletning |
 | CRUD | `/api/lists`, `/api/lists/:id/items`, `GET /api/lists/:id/optimize?maxStores=2` | Indkøbslister og butiks-splitting |
 | CRUD | `/api/watchlist`, `GET /api/notifications` | Prisalarmer |
@@ -190,11 +207,45 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | POST/GET/DELETE | `/api/receipts`, `/api/receipts/:id` | Gem og tjek en kvittering mod aviserne; oversigt og sletning |
 | GET/PATCH/POST | `/api/admin/status`, `/api/admin/stores/:id`, `/api/admin/sources/:id`, `/api/admin/scrape` | Kilder og feature-flags |
 
+## Abonnement og adgang
+
+| | Uden konto | Prøveperiode (14 dage) | Abonnement | Udløbet / opsagt |
+|---|---|---|---|---|
+| Søgning, ugens tilbud, pris pr. kg, "reelt tilbud" | ✓ | ✓ | ✓ | ✓ |
+| Indkøbslister, prisalarmer, kvitteringsscanner, prishistorik, community | – | ✓ | ✓ | se og slet egne data |
+
+- **Adgang beregnes ét sted:** `computeAccess()` i `backend/src/services/access.ts`. Status er `trial`, `active`, `past_due` (betaling fejlet – adgang i `PAST_DUE_GRACE_DAYS`), `canceled` (opsagt, adgang til periodens udløb), `expired` eller `free`. Administratorer (`ADMIN_EMAILS`) har altid adgang.
+- **Betalingsmuren** (`requirePlan` i `backend/src/http/plan.ts`) svarer `402` med `code: "ACCOUNT_REQUIRED"` eller `"PLAN_REQUIRED"`. Læsning og sletning af egne data er altid tilladt (GDPR). Frontenden viser en betalingsmur i stedet for en fejl.
+- **Prøveperioden** starter ved oprettelse uden kort og stopper af sig selv. Den kan kun bruges én gang pr. e-mail – også efter sletning af kontoen (`trial_claims` gemmer kun en SHA-256 af den normaliserede e-mail). Mails: påmindelse 3 dage før og ved udløb (`BILLING_CRON`).
+- **Tilmelding:** e-mailen skal være bekræftet, og betingelserne accepteret. Tegner man under prøveperioden, trækkes første betaling først, når prøveperioden slutter. Stripe Checkout (kun kort, inkl. Apple Pay/Google Pay) → webhooks opdaterer kontoen. Webhooks er idempotente (`stripe_events`), og gamle hændelser ignoreres.
+- **Opsigelse og kort** håndteres i Stripes kundeportal (Konto → Administrér eller opsig). Opsigelse gælder fra periodens udløb.
+- **Fortrydelsesret:** `/fortryd` (også uden login) annullerer abonnementet straks og refunderer hele beløbet inden for 14 dage. Kvittering sendes på e-mail.
+- **Kvitteringsscanninger** er begrænset til `RECEIPT_SCANS_PER_MONTH` pr. bruger pr. måned (429 `SCAN_QUOTA`), og tokenforbruget logges i `receipt_scans`.
+
+### Stripe lokalt
+
+```bash
+# .env: STRIPE_SECRET_KEY=sk_test_…
+npm run stripe:setup                      # skriver STRIPE_PRICE_ID og STRIPE_PORTAL_CONFIG_ID ud
+stripe listen --forward-to localhost:4000/api/billing/webhook   # giver STRIPE_WEBHOOK_SECRET
+npm run dev
+```
+
+Testkort: `4242 4242 4242 4242`, en fremtidig udløbsdato og en vilkårlig CVC. `4000 0000 0000 0341` giver en fejlet betaling efter tilmelding.
+
+## Offentlige sider, SEO og PWA
+
+- Landingsside, priser, om, juridiske sider og `/fortryd` ligger på roden. Selve appen ligger under `/app`, og de gamle adresser (`/sog`, `/konto` …) omdirigeres med 301.
+- Serveren indsætter titel, beskrivelse, canonical og Open Graph pr. side (`shared/src/seo.ts`), så delte links virker uden JavaScript. Ukendte adresser svarer 404, og private sider har `noindex`. `robots.txt` og `sitemap.xml` genereres ud fra `APP_URL`.
+- Serveren giver også frontenden firmaoplysninger, Instagram, Plausible og Sentry ved hver sidevisning (`<script id="tr-config" type="application/json">`), så de styres af miljøvariabler uden et nyt build.
+- PWA: `frontend/public/manifest.webmanifest`, ikoner i `frontend/public/icons/` og en service worker (`sw.js`), der kun cacher statiske filer – aldrig API-svar eller login.
+- Forsiden indlæses først; appens sider og grafbiblioteket hentes, når de bruges.
+
 ## Kvitteringer
 
 Under **Kvitteringer** kan man tage et billede af kvitteringen (eller indsætte teksten fra en e-kvittering). Flowet har tre trin:
 
-1. **Aflæsning.** Med `ANTHROPIC_API_KEY` læser Claude billedet via structured output (klarer krøllet papir og fingre over teksten). Uden nøgle bruges tekstgenkendelse (tesseract, dansk) på serveren; sprogdata (~3 MB) hentes første gang til `OCR_CACHE_DIR`. Parseren (`backend/src/services/receipts/parseText.ts`) kender Lidl-, Salling- og REMA-formater og retter typiske læsefejl ("B" læst som "8", `10,00 x 3  230,00`, vægtlinjer, rabatter uden fortegn).
+1. **Aflæsning.** Med `ANTHROPIC_API_KEY` læser Claude (`ANTHROPIC_MODEL`, standard `claude-sonnet-5-5`) billedet via structured output (klarer krøllet papir og fingre over teksten). Uden nøgle bruges tekstgenkendelse (tesseract, dansk) på serveren; sprogdata (~3 MB) hentes første gang til `OCR_CACHE_DIR`. Parseren (`backend/src/services/receipts/parseText.ts`) kender Lidl-, Salling- og REMA-formater og retter typiske læsefejl ("B" læst som "8", `10,00 x 3  230,00`, vægtlinjer, rabatter uden fortegn).
 2. **Gennemsyn.** Linjerne vises redigerbart. Usikre linjer er markeret, og summen af linjerne sammenlignes med kvitteringens total.
 3. **Tjek** (`services/receipts/check.ts`). Hver vare matches mod kædens avis på købstidspunktet – forkortede navne ("Henriettelund Skrab" → "HENRIETTELUND Skrabeæg"), pakningsstørrelse, øko og "Maks. 3 pr. kunde" tages med. Resultatet er *stemmer*, *under avisprisen*, *mulig fejl*, *kræver app* (fx Lidl Plus-priser uden app-rabat) eller *tjek selv*. Samme vare billigere i en anden kæde samme dag vises også.
 
@@ -202,15 +253,21 @@ Matchingen er bevidst forsigtig: kun sikre match kan give "mulig fejl". Tilbud f
 
 ## Deploy
 
-- **Én service (fx Render):** build `npm install && npm run build`, start `npm start`. Sæt `DATABASE_URL` (Supabase/Neon/Render Postgres), `JWT_SECRET` (mindst 32 tegn), `ADMIN_EMAILS` og `NODE_ENV=production`. Migrationer kører automatisk ved opstart.
-- **Delt frontend (fx Vercel):** byg `frontend` med `VITE_API_URL=https://din-api…` og sæt `CORS_ORIGINS` på API'et. Refresh-cookien sendes med `SameSite=None; Secure` i produktion.
-- Kører der flere API-instanser, bør kun én køre cron-scraping (sæt `SCRAPE_CRON=` på de andre).
+Trin for trin står i [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md).
+
+- **Render (anbefalet):** `render.yaml` er et blueprint med én webservice (Docker) og en Postgres-database, begge i Frankfurt. Hemmeligheder udfyldes i Render og står aldrig i Git. Migrationer kører automatisk ved opstart.
+- **Docker andre steder:** `docker build -t tilbudsradar .` og `docker run -p 4000:4000 --env-file .env tilbudsradar`. Healthcheck: `GET /api/health`.
+- **Produktionstjek:** med `NODE_ENV=production` stopper serveren med en tydelig fejl, hvis `DATABASE_URL`, `APP_URL` (https), `SMTP_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, `ADMIN_EMAILS` eller en rigtig `JWT_SECRET` mangler.
+- **Drift:** JSON-logs i produktion (`LOG_FORMAT`), Sentry med `SENTRY_DSN`/`VITE_SENTRY_DSN` (uden persondata), HSTS og CSP via helmet.
+- **Delt frontend (fx Vercel):** byg `frontend` med `VITE_API_URL=https://din-api…`, og sæt `CORS_ORIGINS` og `COOKIE_SAMESITE=none` på API'et.
+- Kører der flere API-instanser, bør kun én køre cron-jobs (sæt `SCRAPE_CRON=` og `BILLING_CRON=` på de andre).
 
 ## Privatliv (GDPR)
 
-- Søgning kræver ingen konto. En anonym gæstesession oprettes først, når man bruger lister, kvitteringer eller alarmer, og slettes efter 30 dages inaktivitet.
-- Der gemmes kun e-mail, en scrypt-hash af adgangskoden og de præferencer, brugeren selv angiver.
-- Brugeren kan hente alle sine data (JSON) og slette sin konto med alt tilknyttet (cascade) under **Konto**.
+- Søgning kræver ingen konto. Frontenden opretter ikke længere anonyme gæster; eksisterende gæstesessioner slettes efter 30 dages inaktivitet.
+- Der gemmes kun e-mail, en scrypt-hash af adgangskoden, de præferencer brugeren selv angiver, og abonnementsstatus (Stripe-id'er – aldrig kortoplysninger).
+- Brugeren kan hente alle sine data (JSON) og slette sin konto med alt tilknyttet (cascade) under **Konto**. Et løbende abonnement opsiges i Stripe først.
+- Kun strengt nødvendig lagring (login-cookie og præferencer), så der er intet cookie-banner. Plausible er cookiefri. Se `/privatlivspolitik` og `/cookies` (udkast).
 - Kvitteringsbilleder behandles kun i hukommelsen og gemmes ikke. Med `ANTHROPIC_API_KEY` sendes billedet til Anthropic for at blive læst. Gemte kvitteringer (linjerne) kan slettes enkeltvis og indgår i dataudtrækket.
 
 ---
@@ -223,7 +280,8 @@ Matchingen er bevidst forsigtig: kun sikre match kan give "mulig fejl". Tilbud f
 - **Fritekst på indkøbslister** er grov ved korte, tvetydige ord. Vælg en vare fra forslagslisten for præcis matching.
 - **Geolokation** bruger kædernes kendte butikker. Postnummer omsættes til midtpunktet af butikkerne i postnummeret. Kæder uden kendte butikker vises altid.
 - **HTML-strategien** er implementeret og testet, men ingen kæde bruger den i dag. JS-renderede sider kræver `npm i -w scrapers playwright`.
-- **Notifikationer** vises i appen og sendes som e-mail (med SMTP). Push-notifikationer er ikke implementeret endnu.
+- **Notifikationer** vises i appen og sendes som e-mail (med SMTP). Push-notifikationer og en native app er ikke implementeret.
+- **Moms:** priserne er inkl. moms. Fakturaerne viser først momsen, når virksomheden er momsregistreret og `STRIPE_TAX_RATE_ID` er sat.
 - **Den indlejrede database** understøtter kun én proces ad gangen (se ovenfor).
 - **Kvitteringer uden Claude-nøgle** læses med tekstgenkendelse, som klarer et lige, skarpt billede godt, men laver fejl ved krøllet papir eller skygger. Gennemsynet med sum-tjek fanger det meste, men enkelte linjer skal rettes i hånden. Kun tilbud i de aviser, vi har hentet, kan tjekkes – varer til normalpris kan ikke kontrolleres.
 - npm 11 kan advare om esbuilds install-scripts (`allowScripts`). Det påvirker ikke udvikling eller build.

@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.data
+**/.cache
+**/coverage
+**/*.log
+.env
+.env.*
+!.env.example
+.git
+.claude
+promo
+scrapers/out

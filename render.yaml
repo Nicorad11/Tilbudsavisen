@@ -1,0 +1,93 @@
+# Render Blueprint – én webservice (API, cron-jobs og frontend) og en Postgres-database,
+# begge i Frankfurt (EU). Opret med "New → Blueprint" på dashboard.render.com.
+# Værdier med "sync: false" udfyldes i Render, når blueprintet oprettes – de står
+# aldrig i Git. Se LAUNCH_CHECKLIST.md for rækkefølgen.
+
+databases:
+  - name: tilbudsradar-db
+    region: frankfurt
+    plan: basic-256mb
+    databaseName: tilbudsradar
+    user: tilbudsradar
+    postgresMajorVersion: "17"
+    ipAllowList: [] # kun adgang fra Render-tjenester
+
+services:
+  - type: web
+    name: tilbudsradar
+    runtime: docker
+    region: frankfurt
+    # Mindst "starter": gratis-instanser sover, og så kører cron-jobs (scraping,
+    # mails om prøveperioden) ikke.
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    # Render tilføjer selv www.tilbudsradar.dk med omdirigering til domænet.
+    domains:
+      - tilbudsradar.dk
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        value: https://tilbudsradar.dk
+      - key: CORS_ORIGINS
+        value: https://tilbudsradar.dk
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tilbudsradar-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAILS
+        sync: false
+
+      # Stripe (npm run stripe:setup skriver værdierne ud)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_PORTAL_CONFIG_ID
+        sync: false
+      - key: STRIPE_TAX_RATE_ID
+        sync: false
+
+      # E-mail
+      - key: SMTP_URL
+        sync: false
+      - key: MAIL_FROM
+        value: Tilbudsradar <noreply@tilbudsradar.dk>
+
+      # Virksomheden – vises i footer, på /om, i betingelserne og i e-mails
+      - key: COMPANY_NAME
+        sync: false
+      - key: COMPANY_CVR
+        sync: false
+      - key: COMPANY_ADDRESS
+        sync: false
+      - key: CONTACT_EMAIL
+        value: kontakt@tilbudsradar.dk
+      - key: VITE_INSTAGRAM_URL
+        sync: false
+
+      # Kvitteringer
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5
+      - key: RECEIPT_SCANS_PER_MONTH
+        value: "20"
+
+      # Drift (valgfrit)
+      - key: SENTRY_DSN
+        sync: false
+      - key: VITE_SENTRY_DSN
+        sync: false
+      - key: VITE_PLAUSIBLE_DOMAIN
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: ALERT_EMAIL_TO
+        sync: false
