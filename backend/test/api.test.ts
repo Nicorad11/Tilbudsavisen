@@ -40,7 +40,7 @@ beforeAll(async () => {
   await database.migrate();
   const scrape = new ScrapeManager(database.db, silentLogger);
   await scrape.syncRegistry();
-  app = createApp({ db: database.db, scrape });
+  app = createApp({ db: database.db, scrape, stripe: null });
 
   // Avistilbud fra fixtures, flyttet så de er aktive nu – for REMA og (kopieret) Netto.
   const now = Date.now();
@@ -87,6 +87,14 @@ afterAll(async () => {
 
 async function guest() {
   const res = await request(app).post('/api/auth/guest').expect(201);
+  const body = res.body as AuthResponse;
+  return { token: body.accessToken, user: body.user, cookie: res.headers['set-cookie'] as unknown as string[] };
+}
+
+let memberSeq = 0;
+/** En ny konto – får automatisk 14 dages prøveperiode. */
+async function member(email = `medlem${++memberSeq}@example.dk`) {
+  const res = await request(app).post('/api/auth/register').send({ email, password: 'hemmelig123', acceptTerms: true }).expect(201);
   const body = res.body as AuthResponse;
   return { token: body.accessToken, user: body.user, cookie: res.headers['set-cookie'] as unknown as string[] };
 }
@@ -155,8 +163,12 @@ describe('API', () => {
     const detail = (await request(app).get(`/api/offers/${offer.id}`).expect(200)).body as OfferDetailResponse;
     expect(detail.alternatives.some((a) => a.store.id === 'netto')).toBe(true);
 
-    const history = (await request(app).get(`/api/products/${offer.productId}/history`).expect(200))
-      .body as PriceHistoryResponse;
+    // Prishistorik er en betalt funktion – anonyme afvises, prøveperiode giver adgang.
+    await request(app).get(`/api/products/${offer.productId}/history`).expect(401);
+    const { token } = await member();
+    const history = (
+      await request(app).get(`/api/products/${offer.productId}/history`).set({ Authorization: `Bearer ${token}` }).expect(200)
+    ).body as PriceHistoryResponse;
     expect(history.points.length).toBeGreaterThanOrEqual(9);
     expect(history.avgUnitPrice90d).toBe(45);
   });
@@ -175,7 +187,7 @@ describe('API', () => {
   });
 
   it('indkøbsliste med butiks-splitting', async () => {
-    const { token } = await guest();
+    const { token } = await member();
     const auth = { Authorization: `Bearer ${token}` };
     const list = (await request(app).post('/api/lists').set(auth).send({ name: 'Weekend' }).expect(201)).body as { id: number };
     for (const text of ['kylling', 'sodavand', 'skyr']) {
@@ -192,22 +204,33 @@ describe('API', () => {
     // Netto er billigst på alt – en ekstra butik giver ingen besparelse.
     expect(plan.bestSplit).toBeNull();
 
-    // En anden gæst kan ikke se listen.
-    const other = await guest();
+    // En anden bruger kan ikke se listen.
+    const other = await member();
     await request(app).get(`/api/lists/${list.id}`).set({ Authorization: `Bearer ${other.token}` }).expect(404);
   });
 
   it('gæst kan opgradere til konto og beholde data; refresh roterer token', async () => {
     const g = await guest();
     const auth = { Authorization: `Bearer ${g.token}` };
-    await request(app).post('/api/lists').set(auth).send({ name: 'Gæsteliste' }).expect(201);
-    const reg = await request(app)
+    // Gæster får ingen prøveperiode – de skal oprette en konto.
+    const denied = await request(app).post('/api/lists').set(auth).send({ name: 'Gæsteliste' }).expect(402);
+    expect(denied.body.code).toBe('ACCOUNT_REQUIRED');
+    // Data fra før betalingsmuren (gæstelister) bevares ved oprettelse af konto.
+    await database.db.execute(sql`INSERT INTO shopping_lists (user_id, name) VALUES (${g.user.id}::uuid, 'Gæsteliste')`);
+    await request(app)
       .post('/api/auth/register')
       .set(auth)
       .send({ email: 'Test@Example.dk', password: 'hemmelig123' })
+      .expect(400); // betingelserne skal accepteres
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .set(auth)
+      .send({ email: 'Test@Example.dk', password: 'hemmelig123', acceptTerms: true })
       .expect(201);
     const body = reg.body as AuthResponse;
-    expect(body.user).toMatchObject({ id: g.user.id, email: 'test@example.dk', isGuest: false });
+    expect(body.user).toMatchObject({ id: g.user.id, email: 'test@example.dk', isGuest: false, emailVerified: false });
+    expect(body.user.access).toMatchObject({ status: 'trial', hasAccess: true, trialDaysLeft: 14 });
+    expect(body.user.termsVersion).toBeTruthy();
     const lists = await request(app).get('/api/lists').set({ Authorization: `Bearer ${body.accessToken}` }).expect(200);
     expect(lists.body).toHaveLength(1);
 
@@ -223,10 +246,12 @@ describe('API', () => {
     await request(app).post('/api/auth/refresh').set('Cookie', cookie).expect(401);
     const newest = refreshed.headers['set-cookie'] as unknown as string[];
     await request(app).post('/api/auth/refresh').set('Cookie', newest).expect(401);
+    // Uden cookie: ingen session, men heller ingen fejl.
+    await request(app).post('/api/auth/refresh').expect(204);
   });
 
   it('watchlist giver notifikation når prisen er under grænsen', async () => {
-    const { token } = await guest();
+    const { token } = await member();
     const auth = { Authorization: `Bearer ${token}` };
     await request(app).post('/api/watchlist').set(auth).send({ query: 'harboe sodavand', targetPrice: 5 }).expect(201);
     await request(app).post('/api/watchlist').set(auth).send({ query: 'laksefilet', targetPrice: 1 }).expect(201);
@@ -246,8 +271,8 @@ describe('API', () => {
   it('community-vurderinger og stemmer', async () => {
     const search = (await request(app).get('/api/search').query({ q: 'skyr' })).body as SearchResponse;
     const offerId = search.items[0]!.id;
-    const a = await guest();
-    const b = await guest();
+    const a = await member();
+    const b = await member();
     const report = (
       await request(app)
         .post(`/api/offers/${offerId}/reports`)
@@ -337,7 +362,7 @@ describe('API', () => {
     });
 
     it('tjekker linjerne mod avisen, finder fejl og billigere kæder', async () => {
-      const { token } = await guest();
+      const { token } = await member();
       const auth = { Authorization: `Bearer ${token}` };
       const lines: ReceiptLine[] = [
         item('HARBOE SODAVAND 1,5 L', 10, 2),
@@ -380,7 +405,7 @@ describe('API', () => {
       expect(again.items.map((i) => i.verdict)).toEqual(check.items.map((i) => i.verdict));
 
       // Andre brugere kan ikke se kvitteringen.
-      const other = await guest();
+      const other = await member();
       await request(app).get(`/api/receipts/${check.id}`).set({ Authorization: `Bearer ${other.token}` }).expect(404);
 
       await request(app).delete(`/api/receipts/${check.id}`).set(auth).expect(204);
@@ -389,7 +414,7 @@ describe('API', () => {
 
     it('app-priser: uden Lidl Plus er det ikke en fejl', async () => {
       await ingestOffers(database.db, [extraOffer('lidl', 'lidl-plus-1', 'Harboe sodavand', 5, '1,5 l. Pris med Lidl Plus', -24)]);
-      const { token } = await guest();
+      const { token } = await member();
       const auth = { Authorization: `Bearer ${token}` };
       const send = (lines: ReceiptLine[]) =>
         request(app)
@@ -411,7 +436,7 @@ describe('API', () => {
     it('næste uges tilbud kan bekræfte en pris, men aldrig give en fejl', async () => {
       // Butikkerne starter tit ugens priser dagen før avisen – her om 20 timer.
       await ingestOffers(database.db, [extraOffer('rema1000', 'next-week-1', 'Vallø Slotsæg', 20, '6 stk.', 20)]);
-      const { token } = await guest();
+      const { token } = await member();
       const auth = { Authorization: `Bearer ${token}` };
       const send = (amount: number) =>
         request(app)
@@ -433,7 +458,7 @@ describe('API', () => {
     });
 
     it('tolker indsat tekst fra en e-kvittering og afviser andet end billeder', async () => {
-      const { token } = await guest();
+      const { token } = await member();
       const auth = { Authorization: `Bearer ${token}` };
       const text = 'NETTO\nRUGBRØD      18,00\nRABAT         5,00-\nTOTAL        13,00';
       const parsed = (await request(app).post('/api/receipts/parse-text').set(auth).send({ text }).expect(200)).body;
@@ -450,7 +475,7 @@ describe('API', () => {
   });
 
   it('GDPR: sletning af konto fjerner brugerens data', async () => {
-    const { token } = await guest();
+    const { token } = await member();
     const auth = { Authorization: `Bearer ${token}` };
     await request(app).post('/api/lists').set(auth).send({ name: 'Slet mig' }).expect(201);
     await request(app)

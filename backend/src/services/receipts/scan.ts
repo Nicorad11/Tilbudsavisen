@@ -11,13 +11,22 @@ import { HttpError } from '../../http/errors';
 import { ACTIVE_CHAIN_IDS } from '../scope';
 import { finalizeReceipt, localDateTimeToIso, parseReceiptText } from './parseText';
 
+/** Hvad en aflæsning kostede – gemmes pr. scanning, så omkostningen kan følges. */
+export interface ScanUsage {
+  method: 'claude' | 'ocr';
+  model: string | null;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /**
  * Aflæser et foto af en kvittering. Med ANTHROPIC_API_KEY læser Claude billedet
  * (klarer krøllet papir, skygger og fingre over teksten); ellers bruges
  * tekstgenkendelse (tesseract) på serveren efterfulgt af tekst-parseren.
- * Billedet behandles kun i hukommelsen og gemmes aldrig.
+ * Billedet behandles kun i hukommelsen og gemmes aldrig. `onUsage` kaldes for
+ * hver læser der faktisk kørte – også hvis den ikke fandt en kvittering.
  */
-export async function scanReceiptImage(buffer: Buffer): Promise<ParsedReceipt> {
+export async function scanReceiptImage(buffer: Buffer, onUsage: (u: ScanUsage) => void = () => undefined): Promise<ParsedReceipt> {
   let oriented: { data: Buffer; info: OutputInfo };
   try {
     // rotate() uden argument retter telefonens EXIF-orientering.
@@ -28,13 +37,14 @@ export async function scanReceiptImage(buffer: Buffer): Promise<ParsedReceipt> {
 
   if (env.ANTHROPIC_API_KEY) {
     try {
-      const parsed = await readWithClaude(oriented.data);
+      const parsed = await readWithClaude(oriented.data, onUsage);
       if (parsed) return parsed;
     } catch (err) {
       if (err instanceof HttpError) throw err;
       log.warn(`Claude kunne ikke læse kvitteringen – bruger tekstgenkendelse: ${(err as Error).message}`);
     }
   }
+  onUsage({ method: 'ocr', model: null, inputTokens: 0, outputTokens: 0 });
   return readWithOcr(oriented.data, oriented.info.width);
 }
 
@@ -82,8 +92,8 @@ Linjer:
 - total er beløbet ud for SUM/TOTAL/I ALT, ellers null.
 - isReceipt er false, hvis billedet ikke viser en kvittering.`;
 
-async function readWithClaude(image: Buffer): Promise<ParsedReceipt | null> {
-  // Opus 5 læser op til 2576 px på den lange led – nok til en hel bon i ét billede.
+async function readWithClaude(image: Buffer, onUsage: (u: ScanUsage) => void): Promise<ParsedReceipt | null> {
+  // Sonnet 5.5 (og Opus) læser op til 2576 px på den lange led – nok til en hel bon i ét billede.
   const jpeg = await sharp(image)
     .resize({ width: 2576, height: 2576, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 88 })
@@ -113,6 +123,16 @@ async function readWithClaude(image: Buffer): Promise<ParsedReceipt | null> {
     },
     { timeout: 180_000 },
   );
+
+  // Tokenforbrug logges (ingen indhold) og gemmes pr. scanning, så omkostningen kan følges.
+  const usage = {
+    method: 'claude' as const,
+    model: response.model,
+    inputTokens: response.usage.input_tokens + (response.usage.cache_read_input_tokens ?? 0),
+    outputTokens: response.usage.output_tokens,
+  };
+  onUsage(usage);
+  log.info('Kvittering aflæst af Claude', { ...usage, stopReason: response.stop_reason });
 
   if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') {
     log.warn(`Kvitteringen blev ikke aflæst af Claude (${response.stop_reason})`);

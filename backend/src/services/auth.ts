@@ -6,6 +6,8 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { Db } from '../db/client';
 import { refreshTokens, users } from '../db/schema';
 import { env } from '../env';
+import { computeAccess } from './access';
+import { cleanupEmailTokens } from './tokens';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: { N: number; r: number; p: number }) => Promise<Buffer>;
 const SCRYPT = { N: 16384, r: 8, p: 1 };
@@ -120,11 +122,19 @@ export function toUserDTO(u: typeof users.$inferSelect): UserDTO {
     zipCode: u.zipCode,
     radiusKm: u.radiusKm,
     createdAt: u.createdAt.toISOString(),
+    emailVerified: Boolean(u.emailVerifiedAt),
+    termsVersion: u.termsVersion,
+    access: accessFor(u),
   };
+}
+
+export function accessFor(u: typeof users.$inferSelect | null, now?: Date) {
+  return computeAccess(u, { now, graceDays: env.PAST_DUE_GRACE_DAYS });
 }
 
 /** GDPR-dataminimering: ryd udløbne tokens og gæster uden aktivitet i 30 dage. */
 export async function cleanupAuth(db: Db): Promise<{ guests: number }> {
+  await cleanupEmailTokens(db);
   await db
     .delete(refreshTokens)
     .where(or(lt(refreshTokens.expiresAt, new Date()), lt(refreshTokens.revokedAt, sql`now() - interval '7 days'`)));

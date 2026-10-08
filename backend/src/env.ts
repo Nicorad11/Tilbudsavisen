@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { createLogger, loadScraperConfig } from '@tilbudsradar/scrapers';
+import { loadScraperConfig, type Logger } from '@tilbudsradar/scrapers';
 import { z } from 'zod';
+import { createAppLogger } from './log';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
@@ -11,35 +12,120 @@ try {
 }
 
 const DEV_SECRET = 'udviklings-hemmelighed-skift-mig-i-produktion-0123456789';
+const DEFAULT_CONTACT = 'kontakt@tilbudsradar.dk';
+
+const optional = z
+  .string()
+  .optional()
+  .transform((v) => (v && v.trim() ? v.trim() : null));
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
-  DATABASE_URL: z.string().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  /** Den offentlige adresse – bruges i links i e-mails, Stripe-redirects og canonical-URL'er. */
+  APP_URL: z
+    .string()
+    .default('http://localhost:5173')
+    .transform((v) => v.trim().replace(/\/+$/, '')),
+  DATABASE_URL: optional,
   PGLITE_DIR: z.string().default(path.join(ROOT, 'backend', '.data', 'pglite')),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   JWT_SECRET: z.string().default(DEV_SECRET),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
+  /** Frontend og API på samme domæne → Lax. Kun "none" hvis de ligger på hver sit domæne. */
+  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   ADMIN_EMAILS: z.string().default(''),
   SCRAPE_CRON: z.string().default('15 6,18 * * *'),
   STORES_CRON: z.string().default('30 3 * * 1'),
+  /** Daglige mails om prøveperioden (Europe/Copenhagen). */
+  BILLING_CRON: z.string().default('0 9 * * *'),
   SCRAPE_ON_STARTUP: z
     .string()
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
+
+  // Stripe
+  STRIPE_SECRET_KEY: optional,
+  STRIPE_WEBHOOK_SECRET: optional,
+  STRIPE_PRICE_ID: optional,
+  STRIPE_PORTAL_CONFIG_ID: optional,
+  /** Valgfri 25 % moms-sats (inklusiv), så fakturaerne viser momsen. Oprettes af npm run stripe:setup. */
+  STRIPE_TAX_RATE_ID: optional,
+  /** Dage med adgang efter en fejlet betaling, mens Stripe prøver igen. */
+  PAST_DUE_GRACE_DAYS: z.coerce.number().int().min(0).max(30).default(5),
+
+  // Kvitteringer
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-opus-5'),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
   ANTHROPIC_EFFORT: z
     .enum(['low', 'medium', 'high', 'xhigh', 'max', ''])
     .default('')
     .transform((v) => (v === '' ? null : v)),
+  RECEIPT_SCANS_PER_MONTH: z.coerce.number().int().min(0).default(20),
   /** Sprogdata til tekstgenkendelse af kvitteringer hentes hertil første gang (~3 MB). */
   OCR_CACHE_DIR: z.string().default(path.join(ROOT, 'backend', '.data', 'tessdata')),
-  SMTP_URL: z.string().optional(),
-  MAIL_FROM: z.string().default('TilbudsRadar <noreply@tilbudsradar.local>'),
+
+  // E-mail
+  SMTP_URL: optional,
+  MAIL_FROM: z.string().default('Tilbudsradar <noreply@tilbudsradar.dk>'),
+
+  // Virksomheden (vises i e-mails – samme værdier som VITE_COMPANY_* i frontenden)
+  COMPANY_NAME: z.string().default('[UDFYLD: firmanavn]'),
+  COMPANY_CVR: z.string().default('[UDFYLD: CVR]'),
+  COMPANY_ADDRESS: z.string().default('[UDFYLD: adresse]'),
+  CONTACT_EMAIL: z.string().default(DEFAULT_CONTACT),
+  /** Link til Instagram-profilen i footer og på /om. Tom eller pladsholder = linket vises ikke. */
+  VITE_INSTAGRAM_URL: optional.transform((v) => (v && /^https:\/\//.test(v) ? v : null)),
+
+  // Drift
+  SENTRY_DSN: optional,
+  SENTRY_ENVIRONMENT: optional,
+  /** Frontendens Sentry og Plausible – serveren giver dem til frontenden ved hver sidevisning, og CSP'en åbner kun for det, der bruges. */
+  VITE_SENTRY_DSN: optional,
+  VITE_PLAUSIBLE_DOMAIN: optional,
+  VITE_PLAUSIBLE_SRC: z.string().default('https://plausible.io/js/script.js'),
+  LOG_FORMAT: z.enum(['text', 'json', '']).default(''),
   FRONTEND_DIST: z.string().default(path.join(ROOT, 'frontend', 'dist')),
 });
+
+export type RawEnv = z.infer<typeof schema>;
+
+/** Nøgler der skal være sat i produktion – opstarten stopper ellers med en tydelig besked. */
+export const REQUIRED_IN_PRODUCTION = [
+  'DATABASE_URL',
+  'APP_URL',
+  'SMTP_URL',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_PRICE_ID',
+  'ADMIN_EMAILS',
+] as const;
+
+/** Problemer der stopper opstarten i produktion (tom liste = alt i orden). */
+export function productionProblems(raw: RawEnv, source: NodeJS.ProcessEnv = process.env): string[] {
+  if (raw.NODE_ENV !== 'production') return [];
+  const problems: string[] = [];
+  for (const key of REQUIRED_IN_PRODUCTION) {
+    const value = source[key];
+    if (!value || !value.trim()) problems.push(`${key} mangler`);
+  }
+  if (raw.JWT_SECRET === DEV_SECRET || raw.JWT_SECRET.length < 32) {
+    problems.push('JWT_SECRET skal være en tilfældig streng på mindst 32 tegn');
+  }
+  if (source.APP_URL && !raw.APP_URL.startsWith('https://')) problems.push('APP_URL skal starte med https://');
+  if (raw.STRIPE_SECRET_KEY && !/^(sk|rk)_(live|test)_/.test(raw.STRIPE_SECRET_KEY)) {
+    problems.push('STRIPE_SECRET_KEY ligner ikke en Stripe-nøgle (sk_live_… eller rk_live_…)');
+  }
+  if (raw.STRIPE_WEBHOOK_SECRET && !raw.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')) {
+    problems.push('STRIPE_WEBHOOK_SECRET skal starte med whsec_');
+  }
+  if (raw.STRIPE_PRICE_ID && !raw.STRIPE_PRICE_ID.startsWith('price_')) problems.push('STRIPE_PRICE_ID skal starte med price_');
+  if (raw.COOKIE_SAMESITE === 'none' && !raw.APP_URL.startsWith('https://')) {
+    problems.push('COOKIE_SAMESITE=none kræver https');
+  }
+  return problems;
+}
 
 const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
@@ -49,10 +135,22 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 
-if (raw.NODE_ENV === 'production' && (raw.JWT_SECRET === DEV_SECRET || raw.JWT_SECRET.length < 32)) {
-  console.error('JWT_SECRET skal sættes til en tilfældig streng på mindst 32 tegn i produktion.');
+const problems = productionProblems(raw);
+if (problems.length) {
+  console.error(
+    `Produktionsopstart stoppet – konfigurationen er ikke klar:\n${problems.map((p) => `  • ${p}`).join('\n')}\n` +
+      'Se .env.example og LAUNCH_CHECKLIST.md.',
+  );
   process.exit(1);
 }
+
+// Scraperne læser deres User-Agent fra miljøet. Uden en eksplicit værdi bruges
+// det rigtige domæne og kontakt-e-mailen, så kæderne kan henvende sig.
+// (En tom linje i .env tæller som "ikke sat".)
+if (!process.env.SCRAPER_USER_AGENT?.trim()) {
+  process.env.SCRAPER_USER_AGENT = `Tilbudsradar/1.0 (+${raw.APP_URL}; kontakt: ${raw.CONTACT_EMAIL})`;
+}
+if (!process.env.MAIL_FROM?.trim()) process.env.MAIL_FROM = raw.MAIL_FROM;
 
 export const env = {
   ...raw,
@@ -60,7 +158,16 @@ export const env = {
   isTest: raw.NODE_ENV === 'test',
   corsOrigins: raw.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   adminEmails: raw.ADMIN_EMAILS.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
+  billingEnabled: Boolean(raw.STRIPE_SECRET_KEY && raw.STRIPE_PRICE_ID),
   scraper: loadScraperConfig(),
 };
 
-export const log = createLogger('api', env.isTest ? 'error' : 'info');
+export const log: Logger = createAppLogger('api', {
+  json: raw.LOG_FORMAT ? raw.LOG_FORMAT === 'json' : raw.NODE_ENV === 'production',
+  level: env.isTest ? 'error' : 'info',
+});
+
+if (env.isProd && [raw.COMPANY_NAME, raw.COMPANY_CVR, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
+  log.warn('Firmaoplysningerne (COMPANY_NAME, COMPANY_CVR, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
+}
+if (env.isProd && !raw.VITE_INSTAGRAM_URL) log.warn('VITE_INSTAGRAM_URL er ikke sat (eller er ikke https://) – Instagram-linket vises ikke.');

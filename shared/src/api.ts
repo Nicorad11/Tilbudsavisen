@@ -1,3 +1,4 @@
+import type { AccessDTO } from './billing';
 import type { BaseUnit } from './scraping';
 
 /* ------------------------------------------------------------------ */
@@ -184,6 +185,10 @@ export interface UserDTO {
   zipCode: string | null;
   radiusKm: number | null;
   createdAt: string;
+  emailVerified: boolean;
+  /** Version af handelsbetingelserne brugeren senest har accepteret. */
+  termsVersion: string | null;
+  access: AccessDTO;
 }
 
 export interface AuthResponse {

@@ -3,3 +3,6 @@ export * from './categories';
 export * from './scraping';
 export * from './units';
 export * from './receipts';
+export * from './billing';
+export * from './legal';
+export * from './seo';

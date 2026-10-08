@@ -20,6 +20,7 @@ import { suggestConcepts } from '../../services/suggest';
 import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
+import { planGuard } from '../plan';
 
 const csv = z
   .string()
@@ -52,6 +53,7 @@ const idParam = z.object({ id: z.coerce.number().int().positive() });
 
 export function offerRoutes({ db }: AppContext): Router {
   const r = Router();
+  const requirePlan = planGuard(db);
 
   async function resolvePoint(q: { lat?: number; lng?: number; zip?: string }): Promise<GeoPoint | null> {
     if (q.lat !== undefined && q.lng !== undefined) return { lat: q.lat, lng: q.lng };
@@ -119,7 +121,7 @@ export function offerRoutes({ db }: AppContext): Router {
     res.json(await searchProducts(db, q.q));
   });
 
-  r.get('/products/:id/history', async (req, res) => {
+  r.get('/products/:id/history', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     const { days } = parse(z.object({ days: z.coerce.number().int().min(7).max(365).default(180) }), req.query);
     const history = await getPriceHistory(db, id, days);
@@ -158,7 +160,7 @@ export function offerRoutes({ db }: AppContext): Router {
       .transform((v) => (v ? v : null)),
   });
 
-  r.post('/offers/:id/reports', requireAuth, async (req, res) => {
+  r.post('/offers/:id/reports', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     const body = parse(reportSchema, req.body);
     const exists = await queryOne<{ id: number }>(db, sql`SELECT id FROM offers WHERE id = ${id}`);
@@ -180,7 +182,7 @@ export function offerRoutes({ db }: AppContext): Router {
     res.status(204).end();
   });
 
-  r.post('/reports/:id/vote', requireAuth, async (req, res) => {
+  r.post('/reports/:id/vote', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     const { value } = parse(z.object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) }), req.body);
     const uid = userId(req);

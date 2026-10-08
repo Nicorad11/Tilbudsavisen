@@ -15,6 +15,7 @@ import { listNotifications, listWatches } from '../../services/watch';
 import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
+import { planGuard } from '../plan';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const itemParams = z.object({ id: z.coerce.number().int().positive(), itemId: z.coerce.number().int().positive() });
@@ -23,9 +24,14 @@ const csv = z
   .optional()
   .transform((v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined));
 
-/** Indkøbslister, watchlist og notifikationer – kræver login eller gæstesession. */
+/**
+ * Indkøbslister, prisalarmer og notifikationer. Læsning og sletning af egne
+ * data kræver kun login (data er skrivebeskyttede uden adgang); alt der
+ * opretter, ændrer eller beregner kræver prøveperiode eller abonnement.
+ */
 export function userRoutes({ db }: AppContext): Router {
   const r = Router();
+  const requirePlan = planGuard(db);
   r.use(['/lists', '/watchlist', '/notifications'], requireAuth);
 
   async function ownList(req: Request, listId: number) {
@@ -69,7 +75,7 @@ export function userRoutes({ db }: AppContext): Router {
     );
   });
 
-  r.post('/lists', async (req, res) => {
+  r.post('/lists', requirePlan, async (req, res) => {
     const { name } = parse(z.object({ name: z.string().trim().min(1).max(80).default('Min indkøbsliste') }), req.body ?? {});
     const [list] = await db.insert(shoppingLists).values({ userId: userId(req), name }).returning();
     res.status(201).json({ id: list!.id, name: list!.name, itemCount: 0, updatedAt: list!.updatedAt.toISOString() });
@@ -82,7 +88,7 @@ export function userRoutes({ db }: AppContext): Router {
     res.json(await getListDetail(db, id, await preferredStores(req, stores)));
   });
 
-  r.patch('/lists/:id', async (req, res) => {
+  r.patch('/lists/:id', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     await ownList(req, id);
     const { name } = parse(z.object({ name: z.string().trim().min(1).max(80) }), req.body);
@@ -97,7 +103,7 @@ export function userRoutes({ db }: AppContext): Router {
     res.status(204).end();
   });
 
-  r.post('/lists/:id/items', async (req, res) => {
+  r.post('/lists/:id/items', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     await ownList(req, id);
     const body = parse(
@@ -116,7 +122,7 @@ export function userRoutes({ db }: AppContext): Router {
     res.status(201).json(item);
   });
 
-  r.patch('/lists/:id/items/:itemId', async (req, res) => {
+  r.patch('/lists/:id/items/:itemId', requirePlan, async (req, res) => {
     const { id, itemId } = parse(itemParams, req.params);
     await ownList(req, id);
     const body = parse(
@@ -144,7 +150,7 @@ export function userRoutes({ db }: AppContext): Router {
   });
 
   /** Butiks-splitting: billigste kombination af kæder for listen. */
-  r.get('/lists/:id/optimize', async (req, res) => {
+  r.get('/lists/:id/optimize', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     await ownList(req, id);
     const q = parse(z.object({ stores: csv, maxStores: z.coerce.number().int().min(1).max(4).default(2) }), req.query);
@@ -157,7 +163,7 @@ export function userRoutes({ db }: AppContext): Router {
     res.json(await listWatches(db, userId(req)));
   });
 
-  r.post('/watchlist', async (req, res) => {
+  r.post('/watchlist', requirePlan, async (req, res) => {
     const body = parse(
       z.object({
         query: z.string().trim().min(2).max(80),
@@ -175,7 +181,7 @@ export function userRoutes({ db }: AppContext): Router {
     res.status(201).json(w);
   });
 
-  r.patch('/watchlist/:id', async (req, res) => {
+  r.patch('/watchlist/:id', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     const { targetPrice } = parse(z.object({ targetPrice: z.number().positive().max(100_000) }), req.body);
     await db.update(watchlist).set({ targetPrice }).where(and(eq(watchlist.id, id), eq(watchlist.userId, userId(req))));

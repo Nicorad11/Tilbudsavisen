@@ -239,6 +239,96 @@ export const users = pgTable('users', {
   radiusKm: integer('radius_km'),
   createdAt: createdAt(),
   lastSeenAt: ts('last_seen_at').notNull().defaultNow(),
+
+  // Konto
+  emailVerifiedAt: ts('email_verified_at'),
+  termsAcceptedAt: ts('terms_accepted_at'),
+  termsVersion: text('terms_version'),
+
+  // Prøveperiode og abonnement (Stripe er kilden; felterne er en kopi fra webhooks)
+  trialEndsAt: ts('trial_ends_at'),
+  trialReminderSentAt: ts('trial_reminder_sent_at'),
+  trialEndedSentAt: ts('trial_ended_sent_at'),
+  stripeCustomerId: text('stripe_customer_id').unique(),
+  subscriptionId: text('subscription_id'),
+  /** Stripes status: active, trialing, past_due, canceled, unpaid, incomplete, incomplete_expired, paused. */
+  subscriptionStatus: text('subscription_status'),
+  currentPeriodEnd: ts('current_period_end'),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+  /** Hvornår det nuværende abonnement blev tegnet – starter fortrydelsesfristen. */
+  subscriptionStartedAt: ts('subscription_started_at'),
+  /** Første fejlede betaling i den nuværende rykkerrunde – starter henstanden. */
+  paymentFailedAt: ts('payment_failed_at'),
+  /** `created` på den seneste Stripe-hændelse der er anvendt – så ældre hændelser ikke overskriver nyere. */
+  subscriptionEventAt: ts('subscription_event_at'),
+});
+
+/**
+ * Én prøveperiode pr. e-mail: SHA-256 af den normaliserede e-mail. Tabellen er
+ * bevidst ikke knyttet til brugeren, så den overlever kontosletning
+ * (beskrevet i privatlivspolitikken).
+ */
+export const trialClaims = pgTable('trial_claims', {
+  emailHash: text('email_hash').primaryKey(),
+  claimedAt: ts('claimed_at').notNull().defaultNow(),
+});
+
+/** Behandlede Stripe-hændelser – webhooks kan komme flere gange. */
+export const stripeEvents = pgTable('stripe_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  processedAt: ts('processed_at').notNull().defaultNow(),
+});
+
+/** Engangslinks i e-mails (bekræft e-mail, nulstil adgangskode). Kun hash af tokenet gemmes. */
+export const emailTokens = pgTable(
+  'email_tokens',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    purpose: text('purpose').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    /** E-mailen linket blev sendt til (ved skift af e-mail: den nye adresse). */
+    email: text('email').notNull(),
+    expiresAt: ts('expires_at').notNull(),
+    usedAt: ts('used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('email_tokens_user_idx').on(t.userId, t.purpose)],
+);
+
+/** Aflæste kvitteringer – til månedsloftet og opfølgning på omkostningen ved Claude. */
+export const receiptScans = pgTable(
+  'receipt_scans',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    method: text('method').notNull(),
+    model: text('model'),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index('receipt_scans_user_idx').on(t.userId, t.createdAt)],
+);
+
+/**
+ * Fortrydelser via "Fortryd aftale" (forbrugeraftaleloven § 20 a). Gemmes som
+ * dokumentation, også hvis kontoen senere slettes.
+ */
+export const withdrawals = pgTable('withdrawals', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  subscriptionId: text('subscription_id'),
+  status: text('status').notNull(),
+  refundDkk: doublePrecision('refund_dkk').notNull().default(0),
+  submittedAt: ts('submitted_at').notNull().defaultNow(),
 });
 
 export const refreshTokens = pgTable(

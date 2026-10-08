@@ -1,7 +1,10 @@
 import type { NotificationDTO, WatchDTO } from '@tilbudsradar/shared';
 import type { Logger } from '@tilbudsradar/scrapers';
-import { sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { query, type Db } from '../db/client';
+import { users } from '../db/schema';
+import { accessFor } from './auth';
+import { priceAlertMail } from './emails';
 import { sendMail } from './mailer';
 import { OFFER_SELECT, toOfferDTOs, tokenize, type OfferRow } from './offers';
 
@@ -56,9 +59,10 @@ export async function listWatches(db: Db, userId: string): Promise<WatchDTO[]> {
 /**
  * Køres efter hver scraping: opretter én notifikation pr. (overvågning, tilbud)
  * når prisen er under brugerens grænse, og sender e-mail til registrerede brugere.
+ * Prisalarmer er en betalt funktion – brugere uden prøveperiode eller abonnement springes over.
  */
 export async function checkWatchlists(db: Db, log: Logger): Promise<number> {
-  const watches = await query<{
+  const all = await query<{
     id: number;
     user_id: string;
     query: string;
@@ -71,6 +75,10 @@ export async function checkWatchlists(db: Db, log: Logger): Promise<number> {
     sql`SELECT w.id, w.user_id, w.query, w.product_id, w.target_price, u.email, u.is_guest
         FROM watchlist w JOIN users u ON u.id = w.user_id`,
   );
+  if (!all.length) return 0;
+  const owners = await db.select().from(users).where(inArray(users.id, [...new Set(all.map((w) => w.user_id))]));
+  const allowed = new Set(owners.filter((u) => accessFor(u).hasAccess).map((u) => u.id));
+  const watches = all.filter((w) => allowed.has(w.user_id));
   if (!watches.length) return 0;
   const best = await bestOffersFor(db, watches);
   let created = 0;
@@ -90,9 +98,7 @@ export async function checkWatchlists(db: Db, log: Logger): Promise<number> {
     created++;
     if (w.email && !w.is_guest) {
       const sent = await sendMail(
-        w.email,
-        `Prisalarm: ${w.query} til ${price} kr`,
-        `${message}.\n\nGyldig til ${new Date(offer.valid_to).toLocaleDateString('da-DK')}.\nSe tilbuddet: ${offer.source_url}\n\nDu får denne mail, fordi du følger "${w.query}" i TilbudsRadar.`,
+        priceAlertMail(w.email, { query: w.query, message, price, validTo: new Date(offer.valid_to), sourceUrl: offer.source_url }),
       );
       if (sent) await db.execute(sql`UPDATE notifications SET emailed_at = now() WHERE id = ${inserted[0]!.id}`);
     }

@@ -22,6 +22,13 @@
       "when": 1789823117089,
       "tag": "0002_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791454636552,
+      "tag": "0003_billing",
+      "breakpoints": true
     }
   ]
 }

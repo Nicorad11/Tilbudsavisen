@@ -2,7 +2,7 @@
   "name": "tilbudsradar",
   "version": "0.1.0",
   "private": true,
-  "description": "TilbudsRadar – smart søgning i danske tilbudsaviser",
+  "description": "Tilbudsradar – smart søgning i danske tilbudsaviser",
   "type": "module",
   "workspaces": [
     "shared",
@@ -24,7 +24,8 @@
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed-demo": "npm run db:seed-demo -w backend --",
     "ingest": "npm run ingest -w backend --",
-    "reprocess": "npm run reprocess -w backend"
+    "reprocess": "npm run reprocess -w backend",
+    "stripe:setup": "npm run stripe:setup -w backend --"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

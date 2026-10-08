@@ -4,15 +4,19 @@ import express, { Router, type Request } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { query } from '../../db/client';
-import { receipts } from '../../db/schema';
+import { receipts, receiptScans } from '../../db/schema';
 import { env } from '../../env';
+import { receiptScansThisMonth } from '../../services/billing';
 import { checkReceipt } from '../../services/receipts/check';
 import { finalizeReceipt, parseReceiptText } from '../../services/receipts/parseText';
-import { scanReceiptImage } from '../../services/receipts/scan';
+import { scanReceiptImage, type ScanUsage } from '../../services/receipts/scan';
 import { ACTIVE_CHAIN_IDS } from '../../services/scope';
 import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
+import { planGuard } from '../plan';
+
+const monthName = new Intl.DateTimeFormat('da-DK', { month: 'long', timeZone: 'Europe/Copenhagen' });
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
@@ -40,10 +44,31 @@ const ReceiptInput = z.object({
   source: z.enum(['claude', 'ocr', 'text', 'manual']),
 });
 
-/** Kvitteringer: scan, tjek mod ugens aviser og gem oversigten. Kræver login eller gæstesession. */
+/**
+ * Kvitteringer: scan, tjek mod ugens aviser og gem oversigten. Scanning og
+ * gemning kræver prøveperiode eller abonnement; gemte kvitteringer kan altid
+ * ses og slettes af ejeren.
+ */
 export function receiptRoutes({ db }: AppContext): Router {
   const r = Router();
+  const requirePlan = planGuard(db);
   r.use('/receipts', requireAuth);
+
+  /** Månedsloft pr. bruger (RECEIPT_SCANS_PER_MONTH) – administratorer er undtaget. */
+  async function checkQuota(req: Request) {
+    if (req.access?.isAdmin) return;
+    const used = await receiptScansThisMonth(db, userId(req));
+    if (used < env.RECEIPT_SCANS_PER_MONTH) return;
+    const next = new Date();
+    next.setMonth(next.getMonth() + 1, 1);
+    throw new HttpError(
+      429,
+      `Du har brugt dine ${env.RECEIPT_SCANS_PER_MONTH} kvitteringsscanninger i ${monthName.format(new Date())}. ` +
+        `Der åbnes for nye den 1. ${monthName.format(next)}. Indtil da kan du indsætte teksten fra en e-kvittering.`,
+      { used, limit: env.RECEIPT_SCANS_PER_MONTH },
+      'SCAN_QUOTA',
+    );
+  }
 
   // Aflæsning koster CPU (tekstgenkendelse) eller et Claude-kald – begræns pr. bruger.
   const scanLimit = rateLimit({
@@ -57,23 +82,39 @@ export function receiptRoutes({ db }: AppContext): Router {
 
   r.post(
     '/receipts/scan',
+    requirePlan,
     scanLimit,
     express.raw({ type: ['image/*', 'application/octet-stream'], limit: '15mb' }),
     async (req, res) => {
       if (!Buffer.isBuffer(req.body) || !req.body.length) {
         throw new HttpError(400, 'Send billedet af kvitteringen som JPEG eller PNG.');
       }
-      res.json(await scanReceiptImage(req.body));
+      await checkQuota(req);
+      const usages: ScanUsage[] = [];
+      try {
+        res.json(await scanReceiptImage(req.body, (u) => usages.push(u)));
+      } finally {
+        // Én række pr. scanning (også hvis billedet ikke var en kvittering) – tæller mod loftet og viser omkostningen.
+        if (usages.length) {
+          await db.insert(receiptScans).values({
+            userId: userId(req),
+            method: usages.map((u) => u.method).join('+'),
+            model: usages.find((u) => u.model)?.model ?? null,
+            inputTokens: usages.reduce((n, u) => n + u.inputTokens, 0),
+            outputTokens: usages.reduce((n, u) => n + u.outputTokens, 0),
+          });
+        }
+      }
     },
   );
 
   /** E-kvitteringer (fx fra kædens app) kan indsættes som tekst. */
-  r.post('/receipts/parse-text', async (req, res) => {
+  r.post('/receipts/parse-text', requirePlan, async (req, res) => {
     const { text } = parse(z.object({ text: z.string().min(1).max(20_000) }), req.body);
     res.json(parseReceiptText(text, { chains: ACTIVE_CHAIN_IDS, source: 'text' }));
   });
 
-  r.post('/receipts', async (req, res) => {
+  r.post('/receipts', requirePlan, async (req, res) => {
     const input = parse(ReceiptInput, req.body);
     // Sum-tjek og advarsler beregnes igen på de (evt. rettede) linjer.
     const cleaned = finalizeReceipt({ ...input, warnings: [] });
