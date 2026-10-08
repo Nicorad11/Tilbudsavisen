@@ -1,4 +1,4 @@
-import type { AuthResponse } from '@tilbudsradar/shared';
+import type { ApiErrorCode, AuthResponse } from '@tilbudsradar/shared';
 import { useAuth } from './store';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
@@ -8,10 +8,16 @@ export class ApiError extends Error {
     readonly status: number,
     message: string,
     readonly details?: unknown,
+    /** Fx PLAN_REQUIRED – så betalingsmuren kan vises. */
+    readonly code?: ApiErrorCode,
   ) {
     super(message);
   }
 }
+
+/** Fejl der betyder "kræver konto eller abonnement" – vis betalingsmuren i stedet for en fejl. */
+export const isPaywallError = (err: unknown): err is ApiError =>
+  err instanceof ApiError && (err.code === 'PLAN_REQUIRED' || err.code === 'ACCOUNT_REQUIRED');
 
 type Query = Record<string, string | number | boolean | undefined | null | string[]>;
 
@@ -31,7 +37,7 @@ export function refreshSession(): Promise<boolean> {
   refreshing ??= (async () => {
     try {
       const res = await fetch(buildUrl('/auth/refresh'), { method: 'POST', credentials: 'include' });
-      if (!res.ok) {
+      if (!res.ok || res.status === 204) {
         useAuth.getState().clear();
         return false;
       }
@@ -41,6 +47,7 @@ export function refreshSession(): Promise<boolean> {
     } catch {
       return false;
     } finally {
+      useAuth.getState().markChecked();
       setTimeout(() => (refreshing = null), 0);
     }
   })();
@@ -76,31 +83,21 @@ export async function api<T>(
   const text = await res.text();
   const data = text ? (JSON.parse(text) as unknown) : undefined;
   if (!res.ok) {
-    const err = data as { error?: string; details?: unknown } | undefined;
-    throw new ApiError(res.status, err?.error ?? `Fejl ${res.status}`, err?.details);
+    const err = data as { error?: string; details?: unknown; code?: ApiErrorCode } | undefined;
+    throw new ApiError(res.status, err?.error ?? `Fejl ${res.status}`, err?.details, err?.code);
   }
   return data as T;
 }
 
 /**
- * Sørger for en session før brugerdata hentes: først forsøges refresh-cookien,
- * ellers oprettes en gæst (ingen personlige data).
+ * Sørger for en session før brugerdata hentes: refresh-cookien forsøges.
+ * Der oprettes ikke længere gæster – betalte funktioner kræver en konto,
+ * så uden session vises betalingsmuren (ACCOUNT_REQUIRED).
  */
-let ensuring: Promise<void> | null = null;
-
-export function ensureSession(): Promise<void> {
-  if (useAuth.getState().accessToken) return Promise.resolve();
-  // Samtidige kald (fx React StrictMode) må ikke oprette flere gæster.
-  ensuring ??= (async () => {
-    try {
-      if (await refreshSession()) return;
-      const body = await api<AuthResponse>('/auth/guest', { method: 'POST', auth: false });
-      useAuth.getState().setAuth(body.accessToken, body.user);
-    } finally {
-      ensuring = null;
-    }
-  })();
-  return ensuring;
+export async function ensureSession(): Promise<void> {
+  if (useAuth.getState().accessToken) return;
+  if (await refreshSession()) return;
+  throw new ApiError(401, 'Opret en gratis konto eller log ind for at bruge denne funktion.', undefined, 'ACCOUNT_REQUIRED');
 }
 
 export async function authed<T>(path: string, opts: Parameters<typeof api>[1] = {}): Promise<T> {

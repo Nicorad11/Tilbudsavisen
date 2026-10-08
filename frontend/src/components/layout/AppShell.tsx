@@ -13,37 +13,31 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useAccess } from '../../lib/access';
 import { authed } from '../../lib/api';
 import { relativeTime } from '../../lib/format';
 import { useCategoryCounts, useLists, useNotifications, useWatches } from '../../lib/hooks';
 import { CATEGORY_ICONS } from '../../lib/icons';
+import { useSeo } from '../../lib/seo';
 import { useAuth, usePrefs, useUi } from '../../lib/store';
+import { AccessBanner } from '../billing/AccessBanner';
+import { PaywallDialog } from '../billing/Paywall';
 import { OfferDrawer } from '../OfferDrawer';
 import { DotNumber } from '../ui/DotNumber';
 import { Button, IconButton, Pill } from '../ui/primitives';
+import { Footer } from './Footer';
+import { Wordmark } from './Wordmark';
 
 const NAV = [
-  { to: '/', label: 'Oversigt', icon: Home },
-  { to: '/sog', label: 'Søg', icon: Search },
-  { to: '/lister', label: 'Lister', icon: ListChecks },
-  { to: '/kvitteringer', label: 'Kvitteringer', short: 'Kvittering', icon: ReceiptText },
-  { to: '/alarmer', label: 'Alarmer', icon: Bell },
-  { to: '/kilder', label: 'Kilder', icon: Radar },
+  { to: '/app', label: 'Oversigt', icon: Home },
+  { to: '/app/sog', label: 'Søg', icon: Search },
+  { to: '/app/lister', label: 'Lister', icon: ListChecks },
+  { to: '/app/kvitteringer', label: 'Kvitteringer', short: 'Kvittering', icon: ReceiptText },
+  { to: '/app/alarmer', label: 'Alarmer', icon: Bell },
+  { to: '/app/kilder', label: 'Kilder', icon: Radar },
 ];
-
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <Link to="/" className={clsx('inline-flex items-center gap-2 text-[17px] font-semibold tracking-[-0.04em] text-ink', className)}>
-      <span className="relative grid size-6 place-items-center rounded-[8px] bg-ink">
-        <span className="absolute size-3.5 rounded-full border border-white/50" />
-        <span className="size-1.5 rounded-full bg-lime" />
-      </span>
-      tilbudsradar
-    </Link>
-  );
-}
 
 function SidebarItem({
   active,
@@ -94,7 +88,9 @@ function Sidebar() {
   const token = useAuth((s) => s.accessToken);
   const lists = useLists(Boolean(token));
   const { activeListId, setActiveList } = usePrefs();
-  const activeCategory = location.pathname === '/sog' ? params.get('kategori') : null;
+  const { access } = useAccess();
+  const openPaywall = useUi((s) => s.openPaywall);
+  const activeCategory = location.pathname === '/app/sog' ? params.get('kategori') : null;
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   const [promoHidden, setPromoHidden] = useState(() => {
     try {
@@ -105,14 +101,14 @@ function Sidebar() {
   });
 
   useEffect(() => {
-    if (location.pathname.startsWith('/lister')) setTab('lister');
+    if (location.pathname.startsWith('/app/lister')) setTab('lister');
   }, [location.pathname]);
 
   const categories = VISIBLE_CATEGORIES.filter((c) => (counts.get(c.id) ?? 0) > 0 || counts.size === 0);
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-[292px] shrink-0 flex-col px-5 pt-7 pb-5 lg:flex">
-      <Wordmark className="px-2" />
+      <Wordmark className="px-2" to="/app" />
       <div className="mt-9 flex items-baseline gap-5 px-2" role="tablist">
         {(['tilbud', 'lister'] as const).map((t) => (
           <button
@@ -138,8 +134,8 @@ function Sidebar() {
               })()}
               label="Alle tilbud"
               count={total ? total.toLocaleString('da-DK') : undefined}
-              onClick={() => navigate('/sog')}
-              onClear={activeCategory ? () => navigate('/sog') : undefined}
+              onClick={() => navigate('/app/sog')}
+              onClear={activeCategory ? () => navigate('/app/sog') : undefined}
             />
             {categories.map((c) => {
               const Icon = CATEGORY_ICONS[c.id];
@@ -150,33 +146,33 @@ function Sidebar() {
                   icon={<Icon className="size-[18px]" strokeWidth={1.5} />}
                   label={c.label}
                   count={counts.get(c.id)?.toLocaleString('da-DK')}
-                  onClick={() => navigate(`/sog?kategori=${c.id}`)}
+                  onClick={() => navigate(`/app/sog?kategori=${c.id}`)}
                 />
               );
             })}
           </>
         ) : (
           <>
-            {!token && (
-              <p className="px-3 py-2 text-sm text-muted">Dine indkøbslister gemmes, så snart du opretter den første.</p>
+            {!access.hasAccess && (
+              <p className="px-3 py-2 text-sm text-muted">Indkøbslister er med i prøveperioden og abonnementet.</p>
             )}
             {lists.data?.map((l) => (
               <SidebarItem
                 key={l.id}
-                active={location.pathname.startsWith('/lister') && activeListId === l.id}
+                active={location.pathname.startsWith('/app/lister') && activeListId === l.id}
                 icon={<ShoppingCart className="size-[18px]" strokeWidth={1.5} />}
                 label={l.name}
                 count={`${l.itemCount} varer`}
                 onClick={() => {
                   setActiveList(l.id);
-                  navigate('/lister');
+                  navigate('/app/lister');
                 }}
               />
             ))}
             <SidebarItem
               icon={<Plus className="size-[18px]" strokeWidth={1.5} />}
               label="Ny liste"
-              onClick={() => navigate('/lister?ny=1')}
+              onClick={() => (access.hasAccess ? navigate('/app/lister?ny=1') : openPaywall('lists'))}
             />
           </>
         )}
@@ -211,7 +207,7 @@ function PromoCard({ onHide }: { onHide: () => void }) {
           <DotNumber value={count} height={26} animate={false} />
           <span className="text-[11px] text-muted">følger</span>
         </div>
-        <Link to="/alarmer">
+        <Link to="/app/alarmer">
           <Button size="sm">Prøv det</Button>
         </Link>
       </div>
@@ -296,13 +292,13 @@ function TopBar() {
   const itemCount = token ? (lists.data?.reduce((s, l) => s + l.itemCount, 0) ?? 0) : 0;
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 bg-canvas/80 px-4 py-3 backdrop-blur-md sm:px-6 lg:-mx-3 lg:px-3 lg:pt-5 lg:pb-3">
-      <Wordmark className="lg:hidden" />
+      <Wordmark className="lg:hidden" to="/app" />
       <nav className="mx-auto hidden rounded-full bg-black/[0.045] p-1 md:flex" aria-label="Hovedmenu">
         {NAV.map((n) => (
           <NavLink
             key={n.to}
             to={n.to}
-            end={n.to === '/'}
+            end={n.to === '/app'}
             className={({ isActive }) =>
               clsx(
                 'flex h-8 items-center rounded-full px-3.5 text-[13px] font-medium transition',
@@ -316,7 +312,7 @@ function TopBar() {
       </nav>
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <NotificationsButton />
-        <Link to="/lister" aria-label="Indkøbslister" className="relative">
+        <Link to="/app/lister" aria-label="Indkøbslister" className="relative">
           <IconButton label="Indkøbslister" tabIndex={-1}>
             <ShoppingCart className="size-[18px]" strokeWidth={1.6} />
           </IconButton>
@@ -326,7 +322,7 @@ function TopBar() {
             </span>
           )}
         </Link>
-        <Link to="/konto" aria-label="Konto">
+        <Link to="/app/konto" aria-label="Konto">
           <IconButton label="Konto" tabIndex={-1}>
             <User className="size-[18px]" strokeWidth={1.6} />
           </IconButton>
@@ -347,7 +343,7 @@ function MobileNav() {
         <NavLink
           key={n.to}
           to={n.to}
-          end={n.to === '/'}
+          end={n.to === '/app'}
           className={({ isActive }) =>
             clsx(
               'flex w-14 flex-col items-center gap-0.5 rounded-full py-1 text-[10px] transition',
@@ -390,6 +386,7 @@ function Toast() {
 
 export function AppShell() {
   const { pathname } = useLocation();
+  useSeo();
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pathname]);
@@ -399,12 +396,17 @@ export function AppShell() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col lg:pr-6">
         <TopBar />
-        <main className="flex-1 px-4 pb-28 sm:px-6 md:pb-12 lg:px-0">
-          <Outlet />
+        <main className="flex-1 px-4 sm:px-6 lg:px-0">
+          <AccessBanner />
+          <Suspense fallback={<div className="min-h-[70vh]" />}>
+            <Outlet />
+          </Suspense>
+          <Footer className="mt-16" appNav />
         </main>
       </div>
       <MobileNav />
       <OfferDrawer />
+      <PaywallDialog />
       <Toast />
     </div>
   );

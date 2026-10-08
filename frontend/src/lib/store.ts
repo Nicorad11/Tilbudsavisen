@@ -1,4 +1,4 @@
-import type { UserDTO } from '@tilbudsradar/shared';
+import type { PaidFeature, UserDTO } from '@tilbudsradar/shared';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -6,17 +6,22 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 interface AuthState {
   accessToken: string | null;
   user: UserDTO | null;
+  /** Sessionen er forsøgt gendannet ved opstart. */
+  checked: boolean;
   setAuth: (token: string, user: UserDTO) => void;
   setUser: (user: UserDTO) => void;
   clear: () => void;
+  markChecked: () => void;
 }
 
 export const useAuth = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
-  setAuth: (accessToken, user) => set({ accessToken, user }),
+  checked: false,
+  setAuth: (accessToken, user) => set({ accessToken, user, checked: true }),
   setUser: (user) => set({ user }),
   clear: () => set({ accessToken: null, user: null }),
+  markChecked: () => set({ checked: true }),
 }));
 
 /* Brugerens lokale præferencer (kun bekvemmelighed – kan altid mangle). */
@@ -70,9 +75,16 @@ export function locationParams(l: LocationPref): Record<string, string> {
 interface UiState {
   toast: { id: number; text: string; tone: 'ok' | 'error' } | null;
   showToast: (text: string, tone?: 'ok' | 'error') => void;
+  /** Betalingsmuren som dialog – `null` = lukket, 'any' = uden en bestemt funktion. */
+  paywall: PaidFeature | 'any' | null;
+  openPaywall: (feature?: PaidFeature) => void;
+  closePaywall: () => void;
 }
 
 export const useUi = create<UiState>((set) => ({
+  paywall: null,
+  openPaywall: (feature) => set({ paywall: feature ?? 'any' }),
+  closePaywall: () => set({ paywall: null }),
   toast: null,
   showToast: (text, tone = 'ok') => {
     const id = Date.now();

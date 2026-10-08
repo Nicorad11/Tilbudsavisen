@@ -19,7 +19,7 @@ import type {
   WatchDTO,
 } from '@tilbudsradar/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, authed } from './api';
+import { api, authed, isPaywallError } from './api';
 import { locationParams, useAuth, usePrefs, useUi } from './store';
 
 export interface SearchInput {
@@ -184,7 +184,8 @@ export function useAddToList() {
       void qc.invalidateQueries({ queryKey: ['optimize'] });
       toast(`“${vars.text}” er tilføjet til ${name}`);
     },
-    onError: (err) => toast(err instanceof Error ? err.message : 'Kunne ikke tilføje', 'error'),
+    // Betalingsmuren vises af sig selv ved PLAN_REQUIRED/ACCOUNT_REQUIRED.
+    onError: (err) => !isPaywallError(err) && toast(err instanceof Error ? err.message : 'Kunne ikke tilføje', 'error'),
   });
 }
 
@@ -198,7 +199,7 @@ export function useAddWatch() {
       void qc.invalidateQueries({ queryKey: ['watches'] });
       toast(`Du får besked, når “${vars.query}” koster under ${vars.targetPrice} kr`);
     },
-    onError: (err) => toast(err instanceof Error ? err.message : 'Kunne ikke oprette prisalarm', 'error'),
+    onError: (err) => !isPaywallError(err) && toast(err instanceof Error ? err.message : 'Kunne ikke oprette prisalarm', 'error'),
   });
 }
 

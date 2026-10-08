@@ -79,7 +79,7 @@ function Hero({ stats }: { stats?: StatsDTO }) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const go = (term: string, category?: string) =>
-    navigate(`/sog?q=${encodeURIComponent(term)}${category ? `&kategori=${encodeURIComponent(category)}` : ''}`);
+    navigate(`/app/sog?q=${encodeURIComponent(term)}${category ? `&kategori=${encodeURIComponent(category)}` : ''}`);
 
   return (
     <section>
@@ -111,7 +111,7 @@ function Hero({ stats }: { stats?: StatsDTO }) {
         ))}
       </div>
       <Link
-        to="/kvitteringer"
+        to="/app/kvitteringer"
         className="group mt-5 inline-flex items-center gap-2 text-[13px] text-muted transition hover:text-ink"
       >
         <ReceiptText className="size-4" strokeWidth={1.6} />
@@ -186,7 +186,7 @@ function Overview({ stats }: { stats?: StatsDTO }) {
           title="Prisradar"
           subtitle="Laveste pris pr. enhed lige nu på basisvarer"
           action={
-            <Link to="/sog?q=letm%C3%A6lk">
+            <Link to="/app/sog?q=letm%C3%A6lk">
               <Button size="sm">Se alle</Button>
             </Link>
           }
@@ -216,7 +216,7 @@ function ListCard() {
           <br />
           indkøbsliste
         </p>
-        <IconButton label="Ny indkøbsliste" size="sm" onClick={() => navigate('/lister?ny=1')}>
+        <IconButton label="Ny indkøbsliste" size="sm" onClick={() => navigate('/app/lister?ny=1')}>
           <Plus className="size-4" />
         </IconButton>
       </div>
@@ -225,7 +225,7 @@ function ListCard() {
         <Paper className="absolute right-3 bottom-10 w-[58%] rotate-[8deg]" title="LISTE" />
         <Paper className="absolute bottom-8 left-2 w-[52%] -rotate-[6deg] opacity-90" title="LISTE" />
         <Link
-          to="/lister"
+          to="/app/lister"
           className="card-raised absolute inset-x-0 bottom-0 block px-3.5 py-2.5 transition hover:bg-white"
         >
           <p className="text-[13px] text-ink">Mine lister</p>
@@ -257,7 +257,7 @@ function Paper({ className, title }: { className?: string; title: string }) {
 
 function AlarmCard() {
   return (
-    <Link to="/alarmer" className="grad-card grad-pink flex min-h-[236px] flex-col p-4 transition hover:brightness-[1.03]">
+    <Link to="/app/alarmer" className="grad-card grad-pink flex min-h-[236px] flex-col p-4 transition hover:brightness-[1.03]">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[15px] leading-tight tracking-tight text-white/85">
           Aktivér
@@ -286,7 +286,7 @@ function FirstRunNotice() {
           Første scraping tager et par minutter, fordi vi holder pæne pauser mellem hver forespørgsel. Følg med under Kilder.
         </p>
       </div>
-      <Link to="/kilder">
+      <Link to="/app/kilder">
         <Button size="sm">Se status</Button>
       </Link>
     </Card>
@@ -479,7 +479,7 @@ function TopDeals() {
         title="Ugens bedste tilbud"
         subtitle="Billigst pr. kg/liter/stk. målt mod varens egen pris de sidste 90 dage"
         action={
-          <Link to="/sog?sortering=discount&reelle=1">
+          <Link to="/app/sog?sortering=discount&reelle=1">
             <Button size="sm" tone="dark">
               Se alle
             </Button>
@@ -528,7 +528,7 @@ function BrowseTeaser() {
         title="Største rabatter lige nu"
         subtitle={`${int(data.total)} aktive tilbud – sorteret efter rabat`}
         action={
-          <Link to="/sog">
+          <Link to="/app/sog">
             <Button size="sm">Se alle</Button>
           </Link>
         }

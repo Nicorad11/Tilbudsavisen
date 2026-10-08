@@ -31,10 +31,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { Paywall } from '../components/billing/Paywall';
 import { ProductImage, useOpenOffer } from '../components/OfferCard';
 import { DotNumber } from '../components/ui/DotNumber';
 import { Button, Card, EmptyState, IconButton, Pill, SectionHeader, Skeleton, StoreDot } from '../components/ui/primitives';
-import { authed } from '../lib/api';
+import { useAccess } from '../lib/access';
+import { authed, isPaywallError } from '../lib/api';
 import { formatDay, formatTime, kr, validityLabel } from '../lib/format';
 import { useReceipt, useReceipts, useStores } from '../lib/hooks';
 import { useAuth, useUi } from '../lib/store';
@@ -112,13 +114,15 @@ async function prepareImage(file: File): Promise<Blob> {
 function ReceiptHome() {
   const [stage, setStage] = useState<Stage>({ kind: 'capture' });
   const toast = useUi((s) => s.showToast);
+  const { access } = useAccess();
   const preview = stage.kind === 'capture' ? null : stage.preview;
 
   // Frigiv forhåndsvisningen når den ikke bruges mere.
   useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
 
   const fail = (e: unknown) => {
-    toast(e instanceof Error ? e.message : 'Kvitteringen kunne ikke læses', 'error');
+    // Betalingsmuren vises af sig selv – ingen fejlbesked oveni.
+    if (!isPaywallError(e)) toast(e instanceof Error ? e.message : 'Kvitteringen kunne ikke læses', 'error');
     setStage({ kind: 'capture' });
   };
 
@@ -154,7 +158,8 @@ function ReceiptHome() {
         <h1 className="mt-1 text-[36px] leading-[1.05] tracking-[-0.045em] sm:text-[48px]">Kvitteringer</h1>
       </div>
 
-      {stage.kind === 'capture' && <Capture onFile={onFile} onText={onText} onManual={onManual} />}
+      {stage.kind === 'capture' &&
+        (access.hasAccess ? <Capture onFile={onFile} onText={onText} onManual={onManual} /> : <Paywall feature="receipts" />)}
       {stage.kind === 'reading' && <Reading preview={stage.preview} />}
       {stage.kind === 'review' && (
         <Review
@@ -460,7 +465,7 @@ function Review({ initial, preview, onCancel }: { initial: Draft; preview: strin
     onSuccess: (check) => {
       qc.setQueryData(['receipt', check.id], check);
       void qc.invalidateQueries({ queryKey: ['receipts'] });
-      navigate(`/kvitteringer/${check.id}`);
+      navigate(`/app/kvitteringer/${check.id}`);
     },
     onError: (e) => toast(e instanceof Error ? e.message : 'Kvitteringen kunne ikke gemmes', 'error'),
   });
@@ -687,12 +692,12 @@ function ReceiptResult({ id }: { id: number }) {
       qc.removeQueries({ queryKey: ['receipt', id] });
       void qc.invalidateQueries({ queryKey: ['receipts'] });
       toast('Kvitteringen er slettet');
-      navigate('/kvitteringer');
+      navigate('/app/kvitteringer');
     },
   });
 
   const back = (
-    <Link to="/kvitteringer" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
+    <Link to="/app/kvitteringer" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
       <ArrowLeft className="size-4" /> Kvitteringer
     </Link>
   );
@@ -854,7 +859,7 @@ function ReceiptResult({ id }: { id: number }) {
       </section>
 
       <div className="flex flex-wrap gap-2">
-        <Link to="/kvitteringer">
+        <Link to="/app/kvitteringer">
           <Button tone="dark" icon={<Camera className="size-4" />}>
             Scan en ny
           </Button>
@@ -1001,7 +1006,7 @@ function History() {
         {isLoading
           ? [0, 1].map((i) => <Skeleton key={i} className="m-2 h-12" />)
           : data!.receipts.map((r) => (
-              <Link key={r.id} to={`/kvitteringer/${r.id}`} className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-black/[0.03]">
+              <Link key={r.id} to={`/app/kvitteringer/${r.id}`} className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-black/[0.03]">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-raised shadow-pill">
                   <ReceiptText className="size-[18px]" strokeWidth={1.6} />
                 </span>

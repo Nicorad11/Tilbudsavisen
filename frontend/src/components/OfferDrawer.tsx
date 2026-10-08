@@ -1,5 +1,5 @@
 import type { CommunityReportDTO, OfferDTO } from '@tilbudsradar/shared';
-import { categoryLabel } from '@tilbudsradar/shared';
+import { categoryLabel, PAID_FEATURES } from '@tilbudsradar/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -12,17 +12,20 @@ import {
   ThumbsUp,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { authed } from '../lib/api';
+import { useAccess, usePlanAction } from '../lib/access';
+import { authed, isPaywallError } from '../lib/api';
 import { formatDay, kr, packageSize, pct, unitLabel, validityLabel } from '../lib/format';
 import { useAddToList, useAddWatch, useOffer, usePriceHistory } from '../lib/hooks';
 import { useUi } from '../lib/store';
 import { storeColor } from '../lib/storeColors';
 import { OfferRow, Price, ProductImage, TrustBadge } from './OfferCard';
-import { PriceHistoryChart } from './PriceHistoryChart';
 import { RulerTicks } from './ui/charts';
 import { Button, IconButton, Pill, Skeleton, StoreDot, TextInput } from './ui/primitives';
+
+// Grafbiblioteket er stort – hent det først, når en prishistorik vises.
+const PriceHistoryChart = lazy(() => import('./PriceHistoryChart').then((m) => ({ default: m.PriceHistoryChart })));
 
 /** Detaljepanel for et tilbud – åbnes fra alle sider via ?tilbud=<id>. */
 export function OfferDrawer() {
@@ -67,7 +70,10 @@ export function OfferDrawer() {
 function DrawerBody({ id, onClose }: { id: number; onClose: () => void }) {
   const { data, isLoading, error } = useOffer(id);
   const offer = data?.offer;
-  const history = usePriceHistory(offer?.productId ?? null);
+  const { access } = useAccess();
+  const openPaywall = useUi((s) => s.openPaywall);
+  // Prishistorikken er en betalt funktion – hentes kun med adgang.
+  const history = usePriceHistory(access.hasAccess ? (offer?.productId ?? null) : null);
 
   return (
     <>
@@ -139,10 +145,19 @@ function DrawerBody({ id, onClose }: { id: number; onClose: () => void }) {
             <p className="mb-4 text-xs text-muted">Enhedspris for den kanoniske vare på tværs af kæder, 180 dage</p>
             {offer.productId === null ? (
               <p className="text-sm text-muted">Varen er ikke koblet til en kanonisk vare endnu.</p>
+            ) : !access.hasAccess ? (
+              <div className="flex flex-col items-start gap-3 rounded-[22px] bg-black/[0.03] p-4">
+                <p className="text-[14px] text-ink-2">{PAID_FEATURES.history.description}</p>
+                <Button size="sm" tone="dark" onClick={() => openPaywall('history')}>
+                  Se prishistorikken
+                </Button>
+              </div>
             ) : history.isLoading ? (
               <Skeleton className="h-60" />
             ) : history.data ? (
-              <PriceHistoryChart history={history.data} currentUnitPrice={offer.unitPrice} highlightStore={offer.store.id} />
+              <Suspense fallback={<Skeleton className="h-60" />}>
+                <PriceHistoryChart history={history.data} currentUnitPrice={offer.unitPrice} highlightStore={offer.store.id} />
+              </Suspense>
             ) : null}
           </section>
 
@@ -190,6 +205,8 @@ function ValidityPill({ offer }: { offer: OfferDTO }) {
 function Actions({ offer }: { offer: OfferDTO }) {
   const add = useAddToList();
   const watch = useAddWatch();
+  const withLists = usePlanAction('lists');
+  const withAlerts = usePlanAction('alerts');
   const [watchOpen, setWatchOpen] = useState(false);
   const [target, setTarget] = useState(() => String(Math.floor(offer.offerPrice)));
   const query = offer.title.length > 60 ? offer.title.slice(0, 60) : offer.title;
@@ -201,11 +218,11 @@ function Actions({ offer }: { offer: OfferDTO }) {
           tone="dark"
           icon={<Plus className="size-4" />}
           loading={add.isPending}
-          onClick={() => add.mutate({ text: offer.title, productId: offer.productId })}
+          onClick={() => withLists(() => add.mutate({ text: offer.title, productId: offer.productId }))}
         >
           Tilføj til liste
         </Button>
-        <Button icon={<BellPlus className="size-4" />} onClick={() => setWatchOpen((v) => !v)}>
+        <Button icon={<BellPlus className="size-4" />} onClick={() => withAlerts(() => setWatchOpen((v) => !v))}>
           Prisalarm
         </Button>
       </div>
@@ -288,6 +305,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityReportDTO[] }) {
   const qc = useQueryClient();
   const toast = useUi((s) => s.showToast);
+  const withCommunity = usePlanAction('community');
   const [verdict, setVerdict] = useState<'real' | 'misleading' | null>(null);
   const [comment, setComment] = useState('');
   const mine = reports.find((r) => r.isMine);
@@ -304,13 +322,13 @@ function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityRepo
       setVerdict(null);
       refresh();
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Fejl', 'error'),
+    onError: (e) => !isPaywallError(e) && toast(e instanceof Error ? e.message : 'Fejl', 'error'),
   });
   const vote = useMutation({
     mutationFn: ({ reportId, value }: { reportId: number; value: number }) =>
       authed(`/reports/${reportId}/vote`, { method: 'POST', body: { value } }),
     onSuccess: refresh,
-    onError: (e) => toast(e instanceof Error ? e.message : 'Fejl', 'error'),
+    onError: (e) => !isPaywallError(e) && toast(e instanceof Error ? e.message : 'Fejl', 'error'),
   });
 
   const total = offer.community.real + offer.community.misleading;
@@ -345,7 +363,7 @@ function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityRepo
             size="sm"
             tone={verdict === 'real' ? 'lime' : 'white'}
             icon={<ThumbsUp className="size-3.5" />}
-            onClick={() => setVerdict('real')}
+            onClick={() => withCommunity(() => setVerdict('real'))}
           >
             Reelt tilbud
           </Button>
@@ -353,7 +371,7 @@ function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityRepo
             size="sm"
             tone={verdict === 'misleading' ? 'danger' : 'white'}
             icon={<MessageSquareWarning className="size-3.5" />}
-            onClick={() => setVerdict('misleading')}
+            onClick={() => withCommunity(() => setVerdict('misleading'))}
           >
             Misvisende
           </Button>
@@ -399,7 +417,7 @@ function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityRepo
                     size="sm"
                     tone={r.myVote === 1 ? 'dark' : 'ghost'}
                     label="Hjælpsom"
-                    onClick={() => vote.mutate({ reportId: r.id, value: r.myVote === 1 ? 0 : 1 })}
+                    onClick={() => withCommunity(() => vote.mutate({ reportId: r.id, value: r.myVote === 1 ? 0 : 1 }))}
                   >
                     <ThumbsUp className="size-3.5" />
                   </IconButton>
@@ -408,7 +426,7 @@ function Community({ offer, reports }: { offer: OfferDTO; reports: CommunityRepo
                     size="sm"
                     tone={r.myVote === -1 ? 'dark' : 'ghost'}
                     label="Ikke hjælpsom"
-                    onClick={() => vote.mutate({ reportId: r.id, value: r.myVote === -1 ? 0 : -1 })}
+                    onClick={() => withCommunity(() => vote.mutate({ reportId: r.id, value: r.myVote === -1 ? 0 : -1 }))}
                   >
                     <ThumbsDown className="size-3.5" />
                   </IconButton>

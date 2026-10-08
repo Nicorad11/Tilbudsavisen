@@ -1,14 +1,59 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Paywall } from '../components/billing/Paywall';
 import { OfferRow } from '../components/OfferCard';
 import { PulseRow, RadarRings } from '../components/ui/charts';
 import { Button, Card, EmptyState, IconButton, Pill, SectionHeader, Skeleton, TextInput } from '../components/ui/primitives';
+import { useAccess } from '../lib/access';
 import { authed } from '../lib/api';
 import { kr, relativeTime } from '../lib/format';
 import { useAddWatch, useNotifications, useWatches } from '../lib/hooks';
+import { useAuth } from '../lib/store';
 
 export function Alerts() {
+  const { access } = useAccess();
+  return access.hasAccess ? <AlertsPage /> : <LockedAlerts />;
+}
+
+/** Uden adgang: betalingsmuren og eventuelle gemte alarmer (kan stadig slettes). */
+function LockedAlerts() {
+  const token = useAuth((s) => s.accessToken);
+  const watches = useWatches(Boolean(token));
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: number) => authed(`/watchlist/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['watches'] }),
+  });
+  return (
+    <div className="space-y-5 pt-2 lg:pt-4">
+      <div>
+        <p className="text-sm text-muted">Vi holder øje med alle aviser for dig</p>
+        <h1 className="mt-1 text-[36px] leading-[1.05] tracking-[-0.045em] sm:text-[48px]">Prisalarmer</h1>
+      </div>
+      <Paywall feature="alerts" />
+      {watches.data && watches.data.length > 0 && (
+        <Card className="p-5">
+          <p className="text-[13px] text-muted">Dine gemte alarmer er sat på pause, indtil du abonnerer</p>
+          <ul className="mt-3 divide-y divide-black/[0.05]">
+            {watches.data.map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="text-[15px] text-ink">
+                  {w.query} <span className="text-[13px] text-muted">under {kr(w.targetPrice)} kr</span>
+                </span>
+                <IconButton label="Slet alarm" size="sm" onClick={() => remove.mutate(w.id)}>
+                  <Trash2 className="size-4" />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AlertsPage() {
   const watches = useWatches();
   const notes = useNotifications();
   const add = useAddWatch();

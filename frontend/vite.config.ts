@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Én .env i rodmappen til både backend og frontend (kun VITE_* når frontenden).
+  envDir: '..',
   server: {
     port: 5173,
     proxy: {

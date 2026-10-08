@@ -4,18 +4,66 @@ import clsx from 'clsx';
 import { Check, Minus, Pencil, Plus, ShoppingBasket, Sparkles, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { Paywall } from '../components/billing/Paywall';
 import { Price, useOpenOffer } from '../components/OfferCard';
 import { DotNumber } from '../components/ui/DotNumber';
 import { Button, Card, Chip, EmptyState, IconButton, Pill, Segmented, Skeleton, StoreDot, TextInput } from '../components/ui/primitives';
+import { useAccess } from '../lib/access';
 import { authed } from '../lib/api';
 import { kr } from '../lib/format';
 import { useList, useLists, useOptimize, useProductSearch, useStores } from '../lib/hooks';
-import { usePrefs, useUi } from '../lib/store';
+import { useAuth, usePrefs, useUi } from '../lib/store';
 import { storeColor } from '../lib/storeColors';
 
 const QUICK = ['mælk', 'æg', 'smør', 'hakket oksekød', 'kyllingebryst', 'kartofler', 'bananer', 'kaffe', 'rugbrød', 'pasta'];
 
 export function Lists() {
+  const { access } = useAccess();
+  return access.hasAccess ? <ListsPage /> : <LockedLists />;
+}
+
+/** Uden adgang: betalingsmuren og – hvis der er gemte lister – dem som skrivebeskyttede. */
+function LockedLists() {
+  const token = useAuth((s) => s.accessToken);
+  const lists = useLists(Boolean(token));
+  return (
+    <div className="space-y-5 pt-2 lg:pt-4">
+      <div>
+        <p className="text-sm text-muted">Find den billigste tur – også på tværs af butikker</p>
+        <h1 className="mt-1 text-[36px] leading-[1.05] tracking-[-0.045em] sm:text-[48px]">Indkøbslister</h1>
+      </div>
+      <Paywall feature="lists" />
+      {lists.data && lists.data.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[13px] text-muted">Dine gemte lister – skrivebeskyttet, indtil du abonnerer</p>
+          {lists.data.map((l) => (
+            <ReadOnlyList key={l.id} id={l.id} name={l.name} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReadOnlyList({ id, name }: { id: number; name: string }) {
+  const { data } = useList(id);
+  return (
+    <Card className="p-5">
+      <p className="text-lg tracking-tight text-ink">{name}</p>
+      <ul className="mt-2 space-y-1 text-[14px] text-ink-2">
+        {data?.items.map((i) => (
+          <li key={i.id} className={clsx(i.checked && 'text-faint line-through')}>
+            {i.quantity > 1 ? `${i.quantity} × ` : ''}
+            {i.text}
+          </li>
+        ))}
+        {data && !data.items.length && <li className="text-muted">Tom liste</li>}
+      </ul>
+    </Card>
+  );
+}
+
+function ListsPage() {
   const lists = useLists();
   const { activeListId, setActiveList } = usePrefs();
   const [params, setParams] = useSearchParams();
