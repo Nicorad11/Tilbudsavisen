@@ -1,6 +1,6 @@
 # Tilbudsradar
 
-Smart søgning i danske tilbudsaviser – <https://tilbudsradar.dk>. Tilbudsradar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en kvitteringsscanner, der viser hvad du sparede og finder varer, der blev slået forkert ind.
+Smart søgning i danske tilbudsaviser – <https://tilbudsradaren.dk>. Tilbudsradar henter tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl, sammenligner prisen **pr. kg/liter/stk** på tværs af kæderne og vurderer, om et tilbud er en reel besparelse. Oveni kommer indkøbslister med butiks-splitting, prisalarmer, community-vurderinger og en kvitteringsscanner, der viser hvad du sparede og finder varer, der blev slået forkert ind.
 
 Webapp (mobil-first, responsiv, installerbar som PWA) i TypeScript: React + Vite + Tailwind i frontenden, Express + Drizzle + Postgres i backenden og et separat scraping-modul.
 
@@ -257,7 +257,7 @@ Trin for trin står i [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md).
 
 - **Render (anbefalet):** `render.yaml` er et blueprint med én webservice (Docker) og en Postgres-database, begge i Frankfurt. Hemmeligheder udfyldes i Render og står aldrig i Git. Migrationer kører automatisk ved opstart.
 - **Docker andre steder:** `docker build -t tilbudsradar .` og `docker run -p 4000:4000 --env-file .env tilbudsradar`. Healthcheck: `GET /api/health`.
-- **Produktionstjek:** med `NODE_ENV=production` stopper serveren med en tydelig fejl, hvis `DATABASE_URL`, `APP_URL` (https), `SMTP_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, `ADMIN_EMAILS` eller en rigtig `JWT_SECRET` mangler.
+- **Produktionstjek:** med `NODE_ENV=production` stopper serveren med en tydelig fejl, hvis `DATABASE_URL`, `APP_URL` (https), `ADMIN_EMAILS` eller en rigtig `JWT_SECRET` mangler, eller hvis kun nogle af Stripe-nøglerne (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`) er sat. Uden Stripe og SMTP starter siden med advarsler i loggen: prøveperioder kører, men abonnementer kan ikke tegnes, og e-mails sendes ikke.
 - **Drift:** JSON-logs i produktion (`LOG_FORMAT`), Sentry med `SENTRY_DSN`/`VITE_SENTRY_DSN` (uden persondata), HSTS og CSP via helmet.
 - **Delt frontend (fx Vercel):** byg `frontend` med `VITE_API_URL=https://din-api…`, og sæt `CORS_ORIGINS` og `COOKIE_SAMESITE=none` på API'et.
 - Kører der flere API-instanser, bør kun én køre cron-jobs (sæt `SCRAPE_CRON=` og `BILLING_CRON=` på de andre).

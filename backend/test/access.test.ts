@@ -89,19 +89,27 @@ describe('én prøveperiode pr. e-mail', () => {
 });
 
 describe('produktionstjek', () => {
-  const raw = { NODE_ENV: 'production', APP_URL: 'https://tilbudsradar.dk', JWT_SECRET: 'x'.repeat(40), COOKIE_SAMESITE: 'lax' } as RawEnv;
+  const raw = { NODE_ENV: 'production', APP_URL: 'https://tilbudsradaren.dk', JWT_SECRET: 'x'.repeat(40), COOKIE_SAMESITE: 'lax' } as RawEnv;
 
   it('stopper opstarten, når nøgler mangler', () => {
-    const problems = productionProblems(raw, { APP_URL: 'https://tilbudsradar.dk' });
-    for (const key of ['DATABASE_URL', 'SMTP_URL', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_ID', 'ADMIN_EMAILS']) {
-      expect(problems).toContain(`${key} mangler`);
-    }
+    const problems = productionProblems(raw, { APP_URL: 'https://tilbudsradaren.dk' });
+    for (const key of ['DATABASE_URL', 'ADMIN_EMAILS']) expect(problems).toContain(`${key} mangler`);
+    // Betaling og e-mail kan komme senere.
+    expect(problems.join()).not.toMatch(/STRIPE|SMTP/);
+  });
+
+  it('kræver Stripe-nøglerne samlet', () => {
+    const base = { DATABASE_URL: 'postgres://x', APP_URL: 'https://tilbudsradaren.dk', ADMIN_EMAILS: 'a@b.dk' };
+    const problems = productionProblems({ ...raw, STRIPE_SECRET_KEY: 'sk_live_x' }, { ...base, STRIPE_SECRET_KEY: 'sk_live_x' });
+    expect(problems).toContain('STRIPE_WEBHOOK_SECRET mangler (de tre Stripe-nøgler skal sættes samlet)');
+    expect(problems).toContain('STRIPE_PRICE_ID mangler (de tre Stripe-nøgler skal sættes samlet)');
+    expect(productionProblems(raw, base)).toEqual([]);
   });
 
   it('godkender en komplet konfiguration og ignorerer udvikling', () => {
     const full = {
       DATABASE_URL: 'postgres://x',
-      APP_URL: 'https://tilbudsradar.dk',
+      APP_URL: 'https://tilbudsradaren.dk',
       SMTP_URL: 'smtps://x',
       STRIPE_SECRET_KEY: 'sk_live_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',

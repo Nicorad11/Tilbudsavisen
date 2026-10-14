@@ -12,12 +12,18 @@ try {
 }
 
 const DEV_SECRET = 'udviklings-hemmelighed-skift-mig-i-produktion-0123456789';
-const DEFAULT_CONTACT = 'kontakt@tilbudsradar.dk';
+const DEFAULT_CONTACT = 'kontakt@tilbudsradaren.dk';
 
 const optional = z
   .string()
   .optional()
   .transform((v) => (v && v.trim() ? v.trim() : null));
+/** Tekst med pladsholder – også når variablen findes, men er tom (fx i Render). */
+const withPlaceholder = (placeholder: string) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || placeholder);
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -68,13 +74,13 @@ const schema = z.object({
 
   // E-mail
   SMTP_URL: optional,
-  MAIL_FROM: z.string().default('Tilbudsradar <noreply@tilbudsradar.dk>'),
+  MAIL_FROM: z.string().default('Tilbudsradar <noreply@tilbudsradaren.dk>'),
 
   // Virksomheden (vises i e-mails – samme værdier som VITE_COMPANY_* i frontenden)
-  COMPANY_NAME: z.string().default('[UDFYLD: firmanavn]'),
-  COMPANY_CVR: z.string().default('[UDFYLD: CVR]'),
-  COMPANY_ADDRESS: z.string().default('[UDFYLD: adresse]'),
-  CONTACT_EMAIL: z.string().default(DEFAULT_CONTACT),
+  COMPANY_NAME: withPlaceholder('[UDFYLD: firmanavn]'),
+  COMPANY_CVR: withPlaceholder('[UDFYLD: CVR]'),
+  COMPANY_ADDRESS: withPlaceholder('[UDFYLD: adresse]'),
+  CONTACT_EMAIL: withPlaceholder(DEFAULT_CONTACT),
   /** Link til Instagram-profilen i footer og på /om. Tom eller pladsholder = linket vises ikke. */
   VITE_INSTAGRAM_URL: optional.transform((v) => (v && /^https:\/\//.test(v) ? v : null)),
 
@@ -92,15 +98,13 @@ const schema = z.object({
 export type RawEnv = z.infer<typeof schema>;
 
 /** Nøgler der skal være sat i produktion – opstarten stopper ellers med en tydelig besked. */
-export const REQUIRED_IN_PRODUCTION = [
-  'DATABASE_URL',
-  'APP_URL',
-  'SMTP_URL',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_PRICE_ID',
-  'ADMIN_EMAILS',
-] as const;
+export const REQUIRED_IN_PRODUCTION = ['DATABASE_URL', 'APP_URL', 'ADMIN_EMAILS'] as const;
+
+/**
+ * Betaling kan slås til senere. Er én af nøglerne sat, skal alle tre være det –
+ * ellers ville betalinger kunne gå igennem uden at kontoen bliver opdateret.
+ */
+export const STRIPE_KEYS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_ID'] as const;
 
 /** Problemer der stopper opstarten i produktion (tom liste = alt i orden). */
 export function productionProblems(raw: RawEnv, source: NodeJS.ProcessEnv = process.env): string[] {
@@ -109,6 +113,10 @@ export function productionProblems(raw: RawEnv, source: NodeJS.ProcessEnv = proc
   for (const key of REQUIRED_IN_PRODUCTION) {
     const value = source[key];
     if (!value || !value.trim()) problems.push(`${key} mangler`);
+  }
+  const stripeSet = STRIPE_KEYS.filter((key) => source[key]?.trim());
+  if (stripeSet.length && stripeSet.length < STRIPE_KEYS.length) {
+    for (const key of STRIPE_KEYS) if (!stripeSet.includes(key)) problems.push(`${key} mangler (de tre Stripe-nøgler skal sættes samlet)`);
   }
   if (raw.JWT_SECRET === DEV_SECRET || raw.JWT_SECRET.length < 32) {
     problems.push('JWT_SECRET skal være en tilfældig streng på mindst 32 tegn');
@@ -171,3 +179,9 @@ if (env.isProd && [raw.COMPANY_NAME, raw.COMPANY_CVR, raw.COMPANY_ADDRESS].some(
   log.warn('Firmaoplysningerne (COMPANY_NAME, COMPANY_CVR, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
 }
 if (env.isProd && !raw.VITE_INSTAGRAM_URL) log.warn('VITE_INSTAGRAM_URL er ikke sat (eller er ikke https://) – Instagram-linket vises ikke.');
+if (env.isProd && !env.billingEnabled) {
+  log.warn('Stripe er ikke sat op – prøveperioder kører, men abonnementer kan ikke tegnes endnu (se LAUNCH_CHECKLIST.md).');
+}
+if (env.isProd && !raw.SMTP_URL) {
+  log.warn('SMTP_URL er ikke sat – e-mails (bekræftelse, nulstilling af adgangskode, prisalarmer) sendes ikke.');
+}

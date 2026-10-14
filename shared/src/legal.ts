@@ -12,7 +12,7 @@ export interface CompanyInfo {
   cvr: string;
   address: string;
   email: string;
-  /** Fx https://tilbudsradar.dk */
+  /** Fx https://tilbudsradaren.dk */
   appUrl: string;
 }
 

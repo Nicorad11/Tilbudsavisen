@@ -3,7 +3,7 @@
  * udskriver de id'er der skal i .env. Kan køres igen uden at lave dubletter.
  *
  *   STRIPE_SECRET_KEY=sk_test_… npm run stripe:setup
- *   STRIPE_SECRET_KEY=sk_live_… APP_URL=https://tilbudsradar.dk npm run stripe:setup -- --tax
+ *   STRIPE_SECRET_KEY=sk_live_… APP_URL=https://tilbudsradaren.dk npm run stripe:setup -- --tax
  *
  * --tax  opretter også en 25 % moms-sats (inklusiv), så fakturaerne viser momsen.
  *        Brug den først, når virksomheden er momsregistreret.
