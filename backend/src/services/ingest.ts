@@ -8,6 +8,14 @@ import { isInScope } from './scope';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Kæderne scrapes parallelt, men gemmes én transaktion ad gangen. Kæder deler
+ * varer (fx føtex og Bilka), og to transaktioner, der opretter de samme varer i
+ * forskellig rækkefølge, giver ellers en deadlock i Postgres. Låsen gælder også
+ * på tværs af flere serverinstanser og slippes automatisk ved commit/rollback.
+ */
+const INGEST_LOCK = sql.raw('SELECT pg_advisory_xact_lock(7240001)');
+
 function contentHash(record: RawRecord): string {
   return createHash('sha256')
     .update(JSON.stringify(record.payload))
@@ -65,6 +73,7 @@ export async function ingestOffers(
     const chunk = offers.slice(i, i + 250);
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as Db;
+      await txDb.execute(INGEST_LOCK);
       for (const o of chunk) {
         const productId = await matcher.resolve(txDb, o);
         touched.add(productId);

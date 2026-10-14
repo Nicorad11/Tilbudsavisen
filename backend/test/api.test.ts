@@ -361,6 +361,21 @@ describe('API', () => {
       await request(app).get('/api/receipts').expect(401);
     });
 
+    it('kæder med fælles varer kan gemmes samtidig', async () => {
+      // føtex og Bilka har mange af de samme varer. Samtidige transaktioner gav deadlock i Postgres.
+      const names = ['Colgate mundpleje', 'Lambi toiletpapir', 'Kims chips', 'Coca-Cola'];
+      const batch = (storeId: string) => names.map((n, i) => extraOffer(storeId, `delt-${storeId}-${i}`, n, 10 + i, '1 stk.', -1));
+      const [a, b] = await Promise.all([ingestOffers(database.db, batch('foetex')), ingestOffers(database.db, batch('bilka'))]);
+      expect(a.offersSaved).toBe(names.length);
+      expect(b.offersSaved).toBe(names.length);
+      const shared = await query<{ n: number }>(
+        database.db,
+        sql`SELECT count(DISTINCT product_id)::int AS n FROM offers
+            WHERE store_id IN ('foetex', 'bilka') AND title IN (${sql.join(names.map((n) => sql`${n}`), sql`, `)})`,
+      );
+      expect(shared[0]!.n).toBe(names.length);
+    });
+
     it('tjekker linjerne mod avisen, finder fejl og billigere kæder', async () => {
       const { token } = await member();
       const auth = { Authorization: `Bearer ${token}` };
