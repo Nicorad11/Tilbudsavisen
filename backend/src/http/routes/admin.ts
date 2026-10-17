@@ -10,9 +10,10 @@ import { bumpDataVersion } from '../../services/offers';
 import type { AppContext } from '../app';
 import { adminOpen, requireAdmin } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
+import { adminCustomerRoutes } from './adminCustomers';
 
-/** Styring af scraping-kilder: status, feature-flags, manuel kørsel og mapping. */
-export function adminRoutes({ db, scrape }: AppContext): Router {
+/** Admin-appen: overblik, kunder og styring af scraping-kilder (status, feature-flags, manuel kørsel og mapping). */
+export function adminRoutes({ db, scrape, stripe }: AppContext): Router {
   const r = Router();
   r.use(requireAdmin);
 
@@ -25,6 +26,9 @@ export function adminRoutes({ db, scrape }: AppContext): Router {
     const { days } = parse(z.object({ days: z.coerce.number().int().min(1).max(365).default(30) }), req.query);
     res.json(await adminOverview(db, await scrape.status(), days));
   });
+
+  /** Kunder: søg, se og redigér. */
+  r.use('/users', adminCustomerRoutes({ db, scrape, stripe }));
 
   /** Feature-flag pr. kæde – slår alle kædens kilder fra (fx hvis kæden beder om det). */
   r.patch('/stores/:id', async (req, res) => {

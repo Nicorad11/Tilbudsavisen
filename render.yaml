@@ -24,8 +24,10 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     # Render tilføjer selv www.tilbudsradaren.dk med omdirigering til domænet.
+    # admin.tilbudsradaren.dk er admin-appen (overblik, kunder, kilder) – samme service.
     domains:
       - tilbudsradaren.dk
+      - admin.tilbudsradaren.dk
     envVars:
       - key: NODE_ENV
         value: production

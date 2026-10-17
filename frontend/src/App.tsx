@@ -17,7 +17,6 @@ const Search = page(() => import('./pages/Search'), 'Search');
 const Lists = page(() => import('./pages/Lists'), 'Lists');
 const Receipts = page(() => import('./pages/Receipts'), 'Receipts');
 const Alerts = page(() => import('./pages/Alerts'), 'Alerts');
-const Sources = page(() => import('./pages/Sources'), 'Sources');
 const Account = page(() => import('./pages/Account'), 'Account');
 const ResetPassword = page(() => import('./pages/AccountFlows'), 'ResetPassword');
 const VerifyEmail = page(() => import('./pages/AccountFlows'), 'VerifyEmail');
@@ -82,7 +81,6 @@ export function App() {
         <Route path="kvitteringer" element={<Receipts />} />
         <Route path="kvitteringer/:id" element={<Receipts />} />
         <Route path="alarmer" element={<Alerts />} />
-        <Route path="kilder" element={<Sources />} />
         <Route path="konto" element={<Account />} />
         <Route path="nulstil-adgangskode" element={<ResetPassword />} />
         <Route path="bekraeft-email" element={<VerifyEmail />} />
@@ -96,7 +94,6 @@ export function App() {
       <Route path="kvitteringer" element={<LegacyRedirect to="/app/kvitteringer" />} />
       <Route path="kvitteringer/:id" element={<LegacyRedirect to="/app/kvitteringer" />} />
       <Route path="alarmer" element={<LegacyRedirect to="/app/alarmer" />} />
-      <Route path="kilder" element={<LegacyRedirect to="/app/kilder" />} />
       <Route path="konto" element={<LegacyRedirect to="/app/konto" />} />
       </Routes>
     </>

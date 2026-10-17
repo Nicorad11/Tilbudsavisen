@@ -5,6 +5,7 @@ import { Router, type CookieOptions, type Request, type Response } from 'express
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import {
+  adminEvents,
   communityReports,
   mealPlanRecipes,
   mealPlans,
@@ -359,6 +360,12 @@ export function authRoutes({ db, stripe }: AppContext): Router {
       receipts: await db.select().from(receipts).where(eq(receipts.userId, id)),
       receiptScans: await db.select().from(receiptScans).where(eq(receiptScans.userId, id)),
       withdrawals: await db.select().from(withdrawals).where(eq(withdrawals.userId, id)),
+      // Hvad support/administratorer har gjort ved kontoen – uden administratorens id.
+      adminEvents: (await db.select().from(adminEvents).where(eq(adminEvents.userId, id))).map((e) => ({
+        createdAt: e.createdAt,
+        action: e.action,
+        details: e.details,
+      })),
     });
   });
 

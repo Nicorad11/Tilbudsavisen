@@ -49,11 +49,6 @@ export function Account() {
           </div>
         </div>
       )}
-      {user?.role === 'admin' && (
-        <p className="text-center text-xs text-muted">
-          Administrator: se <Link to="/app/kilder" className="underline">scraping-kilder</Link>.
-        </p>
-      )}
     </div>
   );
 }

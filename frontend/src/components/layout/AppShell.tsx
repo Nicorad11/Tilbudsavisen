@@ -6,7 +6,6 @@ import {
   Home,
   ListChecks,
   Plus,
-  Radar,
   ReceiptText,
   Search,
   ShoppingCart,
@@ -36,7 +35,6 @@ const NAV = [
   { to: '/app/lister', label: 'Lister', icon: ListChecks },
   { to: '/app/kvitteringer', label: 'Kvitteringer', short: 'Kvittering', icon: ReceiptText },
   { to: '/app/alarmer', label: 'Alarmer', icon: Bell },
-  { to: '/app/kilder', label: 'Kilder', icon: Radar },
 ];
 
 function SidebarItem({

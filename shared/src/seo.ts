@@ -38,7 +38,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/app/kvitteringer': { title: 'Kvitteringer | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
   '/app/alarmer': { title: 'Prisalarmer | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
   '/app/konto': { title: 'Konto | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
-  '/app/kilder': { title: 'Kilder | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
 };
 
 /**
