@@ -16,7 +16,7 @@ Koden er klar til testnøgler. Det, der står herunder, kræver konti, betalings
   - `CONTACT_EMAIL` – standard `kontakt@tilbudsradaren.dk` (postkassen skal findes, se trin 3)
   - `VITE_INSTAGRAM_URL` – `[UDFYLD: https://www.instagram.com/<profil>]` (vises kun, når den starter med `https://`)
 - [ ] Søg i koden efter `[UDFYLD` for at sikre, at intet er glemt: `git grep -n "UDFYLD"`.
-- [ ] Sæt `ADMIN_EMAILS` til din egen e-mail (admin har altid fuld adgang og styrer kilderne).
+- [ ] Sæt `ADMIN_EMAILS` til din egen e-mail (admin har altid fuld adgang og logger ind i admin-appen på admin.tilbudsradaren.dk).
 
 ## 2. Stripe
 
@@ -49,8 +49,9 @@ Koden er klar til testnøgler. Det, der står herunder, kræver konti, betalings
 - [ ] Udfyld alle værdier markeret `sync: false` (Stripe, SMTP, firmaoplysninger, `ADMIN_EMAILS`, `ANTHROPIC_API_KEY` …). `JWT_SECRET` genereres automatisk.
 - [ ] Første deploy: tjek loggen. Mangler `DATABASE_URL`, `APP_URL`, `ADMIN_EMAILS` eller `JWT_SECRET`, stopper serveren med en liste over, hvad der mangler. Stripe og SMTP kan tilføjes senere – indtil da står der advarsler i loggen, prøveperioder kører, men abonnementer kan ikke tegnes. Dockerfilen er ikke bygget lokalt (Docker var ikke installeret under udviklingen) – den første build på Render er derfor også testen af den.
 - [ ] Domænet står i `render.yaml`. Opret de DNS-records, Render viser under *Settings → Custom Domains* (A-record for roden, CNAME for `www`), i DNS.services, og tryk *Verify*. Render udsteder TLS-certifikatet.
+- [ ] Admin-appen: tilføj `admin.tilbudsradaren.dk` under *Settings → Custom Domains* på servicen (står også i `render.yaml`), opret den CNAME-record Render viser (`admin` → `<service>.onrender.com`) i DNS.services, og tryk *Verify*. Log ind med en e-mail fra `ADMIN_EMAILS`.
 - [ ] Tjek `https://tilbudsradaren.dk/api/health`, `https://tilbudsradaren.dk/robots.txt` og `https://tilbudsradaren.dk/sitemap.xml`.
-- [ ] Første scraping starter automatisk ved opstart, når databasen er tom (3–4 minutter). Følg med under **Kilder**.
+- [ ] Første scraping starter automatisk ved opstart, når databasen er tom (3–4 minutter). Følg med under **Kilder** i admin-appen.
 - [ ] Aktivér automatisk backup/point-in-time recovery for databasen (betalt Render-plan) – eller planlæg et dagligt `pg_dump`.
 - [ ] Bruger du Neon eller Supabase i stedet for Render Postgres: vælg EU-region, tilføj `?sslmode=require` til `DATABASE_URL`, og **tilføj udbyderen i privatlivspolitikken** (`frontend/src/pages/legal/Privacy.tsx`).
 
@@ -107,7 +108,7 @@ Gentag 5, 7 og 9 med **live-nøgler** og dit eget kort, og refundér bagefter.
 
 - [ ] Hold øje med Sentry, Render-loggen (JSON) og Stripe → *Udviklere → Webhooks* (fejlede leveringer).
 - [ ] Følg Anthropic-forbruget de første uger og justér `RECEIPT_SCANS_PER_MONTH`.
-- [ ] Hold scraperne under opsyn under **Kilder** (strukturændringer giver notifikation via `SLACK_WEBHOOK_URL`/`ALERT_EMAIL_TO`).
+- [ ] Hold scraperne under opsyn under **Kilder** i admin-appen (strukturændringer giver notifikation via `SLACK_WEBHOOK_URL`/`ALERT_EMAIL_TO`).
 - [ ] Ændres betingelserne væsentligt: hæv `TERMS_VERSION` i `shared/src/billing.ts` (nye abonnementer skal acceptere den nye version) og giv eksisterende kunder besked med rimeligt varsel.
 
 ---

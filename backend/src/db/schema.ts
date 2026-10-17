@@ -558,3 +558,25 @@ export const pageViews = pgTable(
   },
   (t) => [index('page_views_created_idx').on(t.createdAt)],
 );
+
+/**
+ * Hvad en administrator har gjort ved en kundekonto (forlænget prøveperiode,
+ * skiftet e-mail, logget ud …). Rækkerne slettes sammen med kontoen, så
+ * loggen ikke gemmer persondata om slettede kunder.
+ */
+export const adminEvents = pgTable(
+  'admin_events',
+  {
+    id: serial('id').primaryKey(),
+    createdAt: createdAt(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Administratoren – null hvis kontoen er slettet, eller i udvikling uden ADMIN_EMAILS. */
+    adminId: uuid('admin_id').references(() => users.id, { onDelete: 'set null' }),
+    adminEmail: text('admin_email'),
+    action: text('action').notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  },
+  (t) => [index('admin_events_user_idx').on(t.userId, t.createdAt)],
+);

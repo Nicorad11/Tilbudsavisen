@@ -20,14 +20,24 @@ cp .env.example .env        # valgfrit – alle værdier har fornuftige standard
 npm run dev                 # API på :4000 og web på :5173
 ```
 
-Åbn <http://localhost:5173>.
+Åbn <http://localhost:5173>. Admin-appen (overblik, kunder og kilder) ligger på <http://admin.localhost:5173>.
 
 - **Ingen databaseinstallation nødvendig.** Uden `DATABASE_URL` kører en rigtig Postgres 17 (PGlite/WASM) inde i API-processen, og data gemmes i `backend/.data/pglite`.
-- **Første opstart scraper automatisk.** Det tager 3–4 minutter, fordi der holdes pauser mellem hver forespørgsel. Følg med under **Kilder**. Butikslokationer (til geolokation) hentes bagefter.
+- **Første opstart scraper automatisk.** Det tager 3–4 minutter, fordi der holdes pauser mellem hver forespørgsel. Følg med under **Kilder** i admin-appen. Butikslokationer (til geolokation) hentes bagefter.
 - Derefter scrapes der automatisk kl. 06:15 og 18:15 (`SCRAPE_CRON`).
 - **Uden SMTP skrives e-mails i API-konsollen** – også links til at bekræfte e-mail og nulstille adgangskode.
 - **Uden Stripe-nøgle er betaling slået fra.** Konti og prøveperioder virker; "Start abonnement" svarer, at betaling åbner snart. Med testnøgler: se [Stripe lokalt](#stripe-lokalt).
-- Sæt din egen e-mail i `ADMIN_EMAILS` for at få fuld adgang og admin-funktionerne under **Kilder**.
+- Sæt din egen e-mail i `ADMIN_EMAILS` for at få fuld adgang og logge ind i admin-appen. Uden `ADMIN_EMAILS` er admin åben for alle under udvikling (aldrig i produktion).
+
+### Admin-appen
+
+En separat app på sit eget domæne – **admin.tilbudsradaren.dk** (lokalt **admin.localhost:5173**). Hjemmesiden har ingen admin-faner eller -links, og admin-koden ligger i sin egen bundle (`frontend/admin.html` → `frontend/src/admin/`). Samme server og database; serveren viser admin-appen, når værtsnavnet starter med `admin.` (`backend/src/http/site.ts`). Login-sessionen er adskilt fra hjemmesidens, og kun e-mails i `ADMIN_EMAILS` kommer ind.
+
+- **Overblik:** brugere, tilmeldinger, besøg og driftsstatus.
+- **Kunder:** søg på e-mail, filtrér på status og åbn en kunde. Her kan du forlænge eller afslutte prøveperioden (op til 3 år – i praksis gratis adgang), markere e-mailen som bekræftet, sende bekræftelsesmail eller link til ny adgangskode, skifte e-mail (kunden bekræfter via link på den nye adresse), logge kunden ud overalt og slette kontoen. Alt logges i kundens historik (`admin_events`).
+- **Kilder:** scraping-status, feature-flags og manuel kørsel.
+
+Abonnementet ændres ikke i admin – det sker i Stripe Dashboard (link fra kunden), og webhooks fører ændringen hertil. Rollen *administrator* styres kun af `ADMIN_EMAILS`.
 
 ### Scripts
 
@@ -53,7 +63,8 @@ npm run dev                 # API på :4000 og web på :5173
 ```
 ┌──────────────────────────── frontend (React + Vite) ────────────────────────────┐
 │  /  /priser  /om  /handelsbetingelser  /privatlivspolitik  /cookies  /fortryd   │
-│  /app: Oversigt · Søg · Lister · Kvitteringer · Alarmer · Kilder · Konto         │
+│  /app: Oversigt · Søg · Lister · Kvitteringer · Alarmer · Konto                  │
+│  admin.<domæne>: Overblik · Kunder · Kilder  (egen indgang: admin.html)          │
 │  React Query (data) · Zustand (session/præferencer) · Recharts (prishistorik)    │
 └───────────────────────────────┬──────────────────────────────────────────────────┘
                                 │ /api  (JWT access token + httpOnly refresh-cookie)
@@ -118,7 +129,7 @@ Strukturerede API'er er valgt som primær kilde frem for HTML, fordi de er mere 
 - **Central rate-limiter pr. vært**, delt af alle scrapere: tilfældig pause på 1–3 s og loft på 30 requests/min (`SCRAPER_*` i `.env`).
 - **Tydelig User-Agent** med kontaktinfo (`SCRAPER_USER_AGENT`).
 - **Cache-Control, ETag og Retry-After** respekteres, og 429/5xx giver retry med eksponentiel backoff.
-- **Feature-flags:** en hel kæde eller en enkelt kilde kan slås fra under *Kilder* eller via `DISABLED_CHAINS`.
+- **Feature-flags:** en hel kæde eller en enkelt kilde kan slås fra under *Kilder* i admin-appen eller via `DISABLED_CHAINS`.
 
 ### Robusthed
 
@@ -206,6 +217,9 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | POST | `/api/receipts/scan` (billede som `image/jpeg`/`png`), `/api/receipts/parse-text` | Aflæs en kvittering (gemmes ikke) |
 | POST/GET/DELETE | `/api/receipts`, `/api/receipts/:id` | Gem og tjek en kvittering mod aviserne; oversigt og sletning |
 | GET/PATCH/POST | `/api/admin/status`, `/api/admin/stores/:id`, `/api/admin/sources/:id`, `/api/admin/scrape` | Kilder og feature-flags |
+| GET | `/api/admin/overview?days=30` | Overblik: brugere, besøg og drift |
+| GET/PATCH/DELETE | `/api/admin/users?q=&filter=&sort=&page=`, `/api/admin/users/:id` | Kunder: søg, se, ret prøveperiode og e-mailbekræftelse, slet |
+| POST | `/api/admin/users/:id/change-email`, `/resend-verification`, `/password-reset`, `/logout` | Kunder: mails til kunden og log ud overalt |
 
 ## Abonnement og adgang
 

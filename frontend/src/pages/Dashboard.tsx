@@ -283,12 +283,9 @@ function FirstRunNotice() {
       <div className="flex-1">
         <p className="text-ink">Aviserne hentes lige nu</p>
         <p className="text-sm text-muted">
-          Første scraping tager et par minutter, fordi vi holder pæne pauser mellem hver forespørgsel. Følg med under Kilder.
+          Første scraping tager et par minutter, fordi vi holder pæne pauser mellem hver forespørgsel. Kig forbi igen om lidt.
         </p>
       </div>
-      <Link to="/app/kilder">
-        <Button size="sm">Se status</Button>
-      </Link>
     </Card>
   );
 }

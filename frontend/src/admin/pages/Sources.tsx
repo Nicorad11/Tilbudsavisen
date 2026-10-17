@@ -2,12 +2,12 @@ import type { RunStatus, SourceStatusDTO } from '@tilbudsradar/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { AlertTriangle, Globe, MapPinned, Play, RefreshCw, ShieldCheck } from 'lucide-react';
-import { Button, Card, Pill, SectionHeader, Skeleton, StoreDot, Toggle } from '../components/ui/primitives';
-import { api } from '../lib/api';
-import { formatTime, int, relativeTime } from '../lib/format';
-import { useScrapeStatus, useStores } from '../lib/hooks';
-import { useUi } from '../lib/store';
-import { storeColor } from '../lib/storeColors';
+import { Button, Card, Pill, SectionHeader, Skeleton, StoreDot, Toggle } from '../../components/ui/primitives';
+import { api } from '../../lib/api';
+import { formatTime, int, relativeTime } from '../../lib/format';
+import { useScrapeStatus, useStores } from '../../lib/hooks';
+import { useUi } from '../../lib/store';
+import { storeColor } from '../../lib/storeColors';
 
 const STATUS: Record<RunStatus, { label: string; tone: 'lime' | 'warn' | 'bad' | 'ghost' | 'white' }> = {
   success: { label: 'OK', tone: 'lime' },
@@ -67,7 +67,6 @@ export function Sources() {
   });
 
   const data = status.data;
-  const forbidden = status.error && 'status' in status.error && (status.error as { status: number }).status === 403;
   const failing = data?.sources.filter((s) => s.lastStatus === 'failed' || s.lastStatus === 'partial').length ?? 0;
 
   return (
@@ -92,9 +91,6 @@ export function Sources() {
         </div>
       </div>
 
-      {forbidden && (
-        <Card className="p-5 text-sm text-ink-2">Denne side kræver administratoradgang. Log ind med en e-mail fra ADMIN_EMAILS.</Card>
-      )}
       {data?.adminOpen && (
         <p className="flex items-center gap-2 rounded-2xl bg-[#fbe6cf] px-4 py-2.5 text-[13px] text-[#8a4a0b]">
           <AlertTriangle className="size-4 shrink-0" />

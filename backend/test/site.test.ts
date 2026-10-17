@@ -12,6 +12,7 @@ writeFileSync(
   '<html><head><!--seo--><title>Standard</title><!--/seo--></head><body><div id="root"></div></body></html>',
 );
 writeFileSync(path.join(dist, 'sw.js'), 'self.addEventListener("fetch", () => {});');
+writeFileSync(path.join(dist, 'admin.html'), '<html><head><title>Admin</title><!--config--></head><body><div id="root"></div></body></html>');
 
 const app = express();
 mountSite(app, dist);
@@ -78,5 +79,30 @@ describe('SEO og statiske sider', () => {
     const res = await request(app).get('/sw.js');
     expect(res.status).toBe(200);
     expect(res.headers['cache-control']).toBe('no-cache');
+  });
+});
+
+describe('admin-appen på admin-domænet', () => {
+  const admin = (url: string) => request(app).get(url).set('Host', 'admin.tilbudsradar.test');
+
+  it('admin-domænet viser admin-appen på alle stier – med konfiguration og noindex', async () => {
+    for (const url of ['/', '/kunder', '/kunder/123', '/konto']) {
+      const res = await admin(url);
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<title>Admin</title>');
+      expect(res.text).toContain('<script id="tr-config"');
+      expect(res.headers['x-robots-tag']).toBe('noindex, nofollow');
+    }
+    expect((await admin('/robots.txt')).text).toContain('Disallow: /\n');
+    expect((await admin('/sitemap.xml')).status).toBe(404);
+  });
+
+  it('hjemmesiden udleverer aldrig admin-appen', async () => {
+    const res = await request(app).get('/admin.html');
+    expect(res.status).toBe(404);
+    expect(res.text).not.toContain('<title>Admin</title>');
+    expect((await request(app).get('/kunder')).status).toBe(404);
+    // Kilder-siden er flyttet til admin-appen – den gamle adresse findes ikke længere.
+    expect((await request(app).get('/kilder')).status).toBe(404);
   });
 });
