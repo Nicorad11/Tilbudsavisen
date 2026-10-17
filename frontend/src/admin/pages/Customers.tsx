@@ -124,19 +124,22 @@ export function Customers() {
                 </li>
               ))}
             </ul>
+            {/*
+              Tabellen passer altid i bredden: kolonnerne kommer til, efterhånden som der er plads
+              (md: e-mail, status, sidst aktiv · lg: + oprettet og prøveperiode · xl: + lister og alarmer).
+              E-mailen tager resten af pladsen og forkortes med "…".
+            */}
             <div className="hidden overflow-x-auto md:block">
-              <table
-                className={clsx('w-full min-w-[760px] text-left text-[13px] transition-opacity', list.isPlaceholderData && 'opacity-60')}
-              >
-                <thead className="text-muted">
+              <table className={clsx('w-full text-left text-[13px] transition-opacity', list.isPlaceholderData && 'opacity-60')}>
+                <thead className="whitespace-nowrap text-muted">
                   <tr>
                     <th className="px-3 py-2.5 font-normal">E-mail</th>
                     <th className="px-3 py-2.5 font-normal">Status</th>
-                    <th className="px-3 py-2.5 font-normal">Oprettet</th>
+                    <th className="hidden px-3 py-2.5 font-normal lg:table-cell">Oprettet</th>
                     <th className="px-3 py-2.5 font-normal">Sidst aktiv</th>
-                    <th className="px-3 py-2.5 font-normal">Prøveperiode til</th>
-                    <th className="px-3 py-2.5 text-right font-normal">Lister</th>
-                    <th className="px-3 py-2.5 text-right font-normal">Alarmer</th>
+                    <th className="hidden px-3 py-2.5 font-normal lg:table-cell">Prøveperiode til</th>
+                    <th className="hidden px-3 py-2.5 text-right font-normal xl:table-cell">Lister</th>
+                    <th className="hidden px-3 py-2.5 text-right font-normal xl:table-cell">Alarmer</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,7 +149,7 @@ export function Customers() {
                       className="cursor-pointer border-t border-black/[0.06] text-ink-2 hover:bg-black/[0.025]"
                       onClick={() => navigate(`/kunder/${u.id}`)}
                     >
-                      <td className="max-w-[300px] px-3 py-2.5">
+                      <td className="w-full max-w-0 px-3 py-2.5">
                         <div className="flex min-w-0 items-center gap-2">
                           <Link
                             to={`/kunder/${u.id}`}
@@ -156,7 +159,11 @@ export function Customers() {
                           >
                             {u.email}
                           </Link>
-                          {!u.emailVerified && <Pill tone="ghost">ikke bekræftet</Pill>}
+                          {!u.emailVerified && (
+                            <Pill tone="ghost" className="shrink-0">
+                              ikke bekræftet
+                            </Pill>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
@@ -166,11 +173,11 @@ export function Customers() {
                           <Pill tone={STATUS_TONE[u.status]}>{STATUS_LABEL[u.status]}</Pill>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{fmtDate(u.createdAt)}</td>
+                      <td className="hidden px-3 py-2.5 whitespace-nowrap lg:table-cell">{fmtDate(u.createdAt)}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{relativeTime(u.lastSeenAt)}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{fmtDate(u.trialEndsAt)}</td>
-                      <td className="tabular px-3 py-2.5 text-right">{int(u.lists)}</td>
-                      <td className="tabular px-3 py-2.5 text-right">{int(u.watches)}</td>
+                      <td className="hidden px-3 py-2.5 whitespace-nowrap lg:table-cell">{fmtDate(u.trialEndsAt)}</td>
+                      <td className="tabular hidden px-3 py-2.5 text-right xl:table-cell">{int(u.lists)}</td>
+                      <td className="tabular hidden px-3 py-2.5 text-right xl:table-cell">{int(u.watches)}</td>
                     </tr>
                   ))}
                 </tbody>
