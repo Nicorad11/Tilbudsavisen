@@ -80,7 +80,7 @@ export async function ingestOffers(
         const productId = await matcher.resolve(txDb, o);
         touched.add(productId);
 
-        const duplicate = !o.isBaseline && (await findDuplicateOffer(txDb, o));
+        const duplicate = !o.isBaseline && (await findDuplicateOffer(txDb, o, productId));
         if (duplicate) {
           stats.duplicatesSkipped++;
         } else if (!o.isBaseline) {
@@ -152,16 +152,20 @@ export async function upsertStoreLocations(db: Db, locations: StoreLocationInput
 /**
  * Kæderne lægger ofte det samme tilbud i flere aviser (fx Lidls ugeavis og
  * weekendavis), hvert med sit eget id. Det er det samme tilbud, når kæde,
- * vare, pris, mængde og gyldighed er ens – så vises det kun én gang.
+ * kanonisk vare, pris, pris pr. enhed og gyldighed er ens – så vises det kun
+ * én gang. Pris pr. enhed adskiller størrelser (150 g og 200 g til samme pris),
+ * mens forskellige tolkninger af mængdeteksten i aviserne ("6 x 60 g" læst som
+ * 60 g eller 360 g) ikke giver to tilbud. Mangler prisen pr. enhed, skal det
+ * normaliserede navn også være ens.
  */
-async function findDuplicateOffer(db: Db, o: ScrapedOffer): Promise<boolean> {
+async function findDuplicateOffer(db: Db, o: ScrapedOffer, productId: number): Promise<boolean> {
   const row = await queryOne<{ id: number }>(
     db,
     sql`SELECT id FROM offers
-        WHERE store_id = ${o.storeId} AND normalized_name = ${o.normalizedProductName}
+        WHERE store_id = ${o.storeId} AND product_id = ${productId}
           AND offer_price = ${o.offerPrice} AND unit = ${o.unit}
-          AND quantity_min IS NOT DISTINCT FROM ${o.quantity?.min ?? null}::double precision
-          AND quantity_max IS NOT DISTINCT FROM ${o.quantity?.max ?? null}::double precision
+          AND round(unit_price::numeric, 2) IS NOT DISTINCT FROM round(${o.unitPrice ?? null}::numeric, 2)
+          AND (unit_price IS NOT NULL OR normalized_name = ${o.normalizedProductName})
           AND valid_from = ${o.validFrom.toISOString()}::timestamptz AND valid_to = ${o.validTo.toISOString()}::timestamptz
           AND NOT (source_id = ${o.sourceId} AND external_id = ${o.externalId})
         LIMIT 1`,
@@ -169,11 +173,12 @@ async function findDuplicateOffer(db: Db, o: ScrapedOffer): Promise<boolean> {
   return Boolean(row);
 }
 
-/** Dubletter: alle andre end det ældste tilbud med samme kæde, vare, pris, mængde og gyldighed. */
+/** Dubletter: alle andre end det ældste tilbud med samme nøgle som i findDuplicateOffer. */
 const DUPLICATES = sql`
   SELECT id, keep FROM (
     SELECT id, first_value(id) OVER (
-      PARTITION BY store_id, normalized_name, offer_price, unit, quantity_min, quantity_max, valid_from, valid_to
+      PARTITION BY store_id, coalesce(product_id::text, normalized_name), offer_price, unit,
+        round(unit_price::numeric, 2), CASE WHEN unit_price IS NULL THEN normalized_name END, valid_from, valid_to
       ORDER BY id
     ) AS keep
     FROM offers

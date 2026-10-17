@@ -388,6 +388,16 @@ describe('API', () => {
       expect(rows[0]!.n).toBe(1);
     });
 
+    it('forskellige tolkninger af mængden er stadig samme tilbud – men en anden størrelse er ikke', async () => {
+      const base = extraOffer('lidl', 'croissant-ugeavis', 'TASTINO Smørcroissanter', 19.75, '6 x 60 g', -2);
+      // Samme vare og pris pr. kg, men mængdeteksten er læst som 60 g i den ene avis og 360 g i den anden.
+      const otherReading = { ...base, externalId: 'croissant-weekendavis', normalizedProductName: `${base.normalizedProductName} x6` };
+      // Samme titel og pris, men en anden størrelse (anden kilopris) – det er en anden vare.
+      const otherSize = { ...base, externalId: 'croissant-stor', unitPrice: (base.unitPrice ?? 50) * 0.75 };
+      const stats = await ingestOffers(database.db, [base, otherReading, otherSize]);
+      expect(stats).toMatchObject({ offersSaved: 2, duplicatesSkipped: 1 });
+    });
+
     it('eksisterende dubletter ryddes op – vurderinger flyttes til det tilbud, der beholdes', async () => {
       const [keep] = await query<{ id: number }>(
         database.db,
