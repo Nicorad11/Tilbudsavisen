@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   Bell,
-  Gauge,
   Home,
   ListChecks,
   Plus,
@@ -39,8 +38,6 @@ const NAV = [
   { to: '/app/alarmer', label: 'Alarmer', icon: Bell },
   { to: '/app/kilder', label: 'Kilder', icon: Radar },
 ];
-/** Kun for administratorer. */
-const ADMIN_NAV = { to: '/app/admin', label: 'Admin', icon: Gauge };
 
 function SidebarItem({
   active,
@@ -291,15 +288,13 @@ function NotificationsButton() {
 
 function TopBar() {
   const token = useAuth((s) => s.accessToken);
-  const { access } = useAccess();
-  const nav = access.isAdmin ? [...NAV, ADMIN_NAV] : NAV;
   const lists = useLists(Boolean(token));
   const itemCount = token ? (lists.data?.reduce((s, l) => s + l.itemCount, 0) ?? 0) : 0;
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 bg-canvas/80 px-4 py-3 backdrop-blur-md sm:px-6 lg:-mx-3 lg:px-3 lg:pt-5 lg:pb-3">
       <Wordmark className="lg:hidden" to="/app" />
       <nav className="mx-auto hidden rounded-full bg-black/[0.045] p-1 md:flex" aria-label="Hovedmenu">
-        {nav.map((n) => (
+        {NAV.map((n) => (
           <NavLink
             key={n.to}
             to={n.to}

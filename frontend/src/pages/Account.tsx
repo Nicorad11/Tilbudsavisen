@@ -1,7 +1,7 @@
 import type { AuthResponse, UserDTO } from '@tilbudsradar/shared';
 import { PLAN, TERMS_VERSION } from '@tilbudsradar/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, CreditCard, Download, Gauge, KeyRound, LogOut, Mail, Trash2, UserRound } from 'lucide-react';
+import { BadgeCheck, CreditCard, Download, KeyRound, LogOut, Mail, Trash2, UserRound } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { SubscribePanel } from '../components/billing/SubscribePanel';
@@ -285,18 +285,9 @@ function ProfileCard({ user }: { user: UserDTO }) {
           </p>
         )}
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {user.access.isAdmin && (
-          <Link to="/app/admin">
-            <Button tone="dark" icon={<Gauge className="size-4" />}>
-              Admin-overblik
-            </Button>
-          </Link>
-        )}
-        <Button icon={<LogOut className="size-4" />} loading={logout.isPending} onClick={() => logout.mutate()}>
-          Log ud
-        </Button>
-      </div>
+      <Button className="mt-5" icon={<LogOut className="size-4" />} loading={logout.isPending} onClick={() => logout.mutate()}>
+        Log ud
+      </Button>
     </Card>
   );
 }

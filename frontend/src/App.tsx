@@ -18,7 +18,6 @@ const Lists = page(() => import('./pages/Lists'), 'Lists');
 const Receipts = page(() => import('./pages/Receipts'), 'Receipts');
 const Alerts = page(() => import('./pages/Alerts'), 'Alerts');
 const Sources = page(() => import('./pages/Sources'), 'Sources');
-const Admin = page(() => import('./pages/Admin'), 'Admin');
 const Account = page(() => import('./pages/Account'), 'Account');
 const ResetPassword = page(() => import('./pages/AccountFlows'), 'ResetPassword');
 const VerifyEmail = page(() => import('./pages/AccountFlows'), 'VerifyEmail');
@@ -84,7 +83,6 @@ export function App() {
         <Route path="kvitteringer/:id" element={<Receipts />} />
         <Route path="alarmer" element={<Alerts />} />
         <Route path="kilder" element={<Sources />} />
-        <Route path="admin" element={<Admin />} />
         <Route path="konto" element={<Account />} />
         <Route path="nulstil-adgangskode" element={<ResetPassword />} />
         <Route path="bekraeft-email" element={<VerifyEmail />} />
