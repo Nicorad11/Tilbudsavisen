@@ -3,6 +3,7 @@ import { TERMS_VERSION } from '@tilbudsradar/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import { track } from './analytics';
+import { CONFIG } from './config';
 import { useMe } from './hooks';
 import { useAuth, useUi } from './store';
 
@@ -44,6 +45,15 @@ export function usePlanAction(feature: PaidFeature) {
     if (access.hasAccess) fn();
     else open(feature);
   };
+}
+
+/**
+ * Lanceringsperiode: betaling er ikke åbnet endnu, så alle med en konto har
+ * fuld adgang gratis. Serverens værdi i siden bruges, til status er hentet.
+ */
+export function useLaunch(): boolean {
+  const billing = useBillingStatus();
+  return billing.data ? !billing.data.billingEnabled : !CONFIG.billingEnabled;
 }
 
 export const useBillingStatus = () => {

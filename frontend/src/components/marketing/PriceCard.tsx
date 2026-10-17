@@ -1,22 +1,29 @@
 import { PAID_FEATURES, PLAN, WITHDRAWAL_DAYS } from '@tilbudsradar/shared';
 import { Check } from 'lucide-react';
+import { useLaunch } from '../../lib/access';
 import { SubscribePanel } from '../billing/SubscribePanel';
 
 const FREE = ['Søg i alle tilbudsaviser', 'Pris pr. kg, liter og stk. på tværs af kæderne', 'Vurdering af om tilbuddet er reelt', 'Ugens bedste tilbud'];
 
 /** Priskortet på landingssiden og /priser – med betalingsformularen indbygget. */
 export function PriceCard() {
+  const launch = useLaunch();
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
       <div className="grad-card grad-lime flex flex-col justify-between p-6 sm:p-8">
         <div>
-          <p className="text-sm text-ink/70">Tilbudsradar</p>
+          <p className="flex items-center gap-2 text-sm text-ink/70">
+            Tilbudsradar
+            {launch && <span className="rounded-full bg-ink px-2.5 py-0.5 text-[12px] font-medium text-lime">Gratis lige nu</span>}
+          </p>
           <p className="mt-3 flex items-baseline gap-2">
             <span className="text-[64px] leading-none tracking-[-0.05em]">{PLAN.priceDkk} kr</span>
             <span className="text-[15px] text-ink/70">pr. måned inkl. moms</span>
           </p>
           <p className="mt-3 max-w-[40ch] text-[15px] leading-snug text-ink/80">
-            {PLAN.trialDays} dage gratis med alle funktioner. Intet kort, ingen binding – og prøveperioden bliver ikke automatisk til et abonnement.
+            {launch
+              ? `Alle funktioner er gratis i lanceringsperioden. Når betaling åbner, får du ${PLAN.trialDays} dage gratis først – og prøveperioden bliver ikke automatisk til et abonnement.`
+              : `${PLAN.trialDays} dage gratis med alle funktioner. Intet kort, ingen binding – og prøveperioden bliver ikke automatisk til et abonnement.`}
           </p>
         </div>
         <div className="mt-8 grid gap-6 sm:grid-cols-2">

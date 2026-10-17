@@ -2,6 +2,7 @@ import { Compass } from 'lucide-react';
 import { lazy, Suspense, type ComponentType } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { PublicLayout } from './components/layout/PublicLayout';
+import { PageViewTracker } from './components/PageViewTracker';
 import { Button, EmptyState } from './components/ui/primitives';
 import { Landing } from './pages/Landing';
 
@@ -17,6 +18,7 @@ const Lists = page(() => import('./pages/Lists'), 'Lists');
 const Receipts = page(() => import('./pages/Receipts'), 'Receipts');
 const Alerts = page(() => import('./pages/Alerts'), 'Alerts');
 const Sources = page(() => import('./pages/Sources'), 'Sources');
+const Admin = page(() => import('./pages/Admin'), 'Admin');
 const Account = page(() => import('./pages/Account'), 'Account');
 const ResetPassword = page(() => import('./pages/AccountFlows'), 'ResetPassword');
 const VerifyEmail = page(() => import('./pages/AccountFlows'), 'VerifyEmail');
@@ -53,7 +55,9 @@ function NotFound({ home }: { home: string }) {
 
 export function App() {
   return (
-    <Routes>
+    <>
+      <PageViewTracker />
+      <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<Landing />} />
         <Route path="priser" element={<Pricing />} />
@@ -80,6 +84,7 @@ export function App() {
         <Route path="kvitteringer/:id" element={<Receipts />} />
         <Route path="alarmer" element={<Alerts />} />
         <Route path="kilder" element={<Sources />} />
+        <Route path="admin" element={<Admin />} />
         <Route path="konto" element={<Account />} />
         <Route path="nulstil-adgangskode" element={<ResetPassword />} />
         <Route path="bekraeft-email" element={<VerifyEmail />} />
@@ -95,6 +100,7 @@ export function App() {
       <Route path="alarmer" element={<LegacyRedirect to="/app/alarmer" />} />
       <Route path="kilder" element={<LegacyRedirect to="/app/kilder" />} />
       <Route path="konto" element={<LegacyRedirect to="/app/konto" />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

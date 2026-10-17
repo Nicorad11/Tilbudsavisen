@@ -24,9 +24,10 @@ export const WITHDRAWAL_DAYS = 14;
  * past_due  = betalingen fejlede – adgang i en kort henstand
  * canceled  = opsagt – adgang indtil den betalte periode udløber
  * expired   = konto uden aktiv prøveperiode eller abonnement (data er skrivebeskyttede)
+ * launch    = lanceringsperiode: betaling er ikke åbnet endnu, så alle konti har fuld adgang gratis
  * free      = ikke logget ind eller gæst
  */
-export type AccessStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'expired' | 'free';
+export type AccessStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'expired' | 'launch' | 'free';
 
 export interface AccessDTO {
   status: AccessStatus;

@@ -26,8 +26,15 @@ const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
  * Den ene sandhed om hvad en bruger må. Rækkefølge:
  * administrator → løbende abonnement → opsagt men betalt periode → prøveperiode → udløbet.
  * Gæster og anonyme har status "free" – de skal oprette en konto for at få en prøveperiode.
+ *
+ * `launch`: betaling er ikke åbnet endnu (ingen Stripe). Så har alle konti uden
+ * abonnement fuld adgang gratis, og prøveperioden regnes først fra den dag,
+ * betaling åbner (se services/launch.ts).
  */
-export function computeAccess(user: AccessUser | null, opts: { now?: Date; graceDays: number }): AccessDTO {
+export function computeAccess(
+  user: AccessUser | null,
+  opts: { now?: Date; graceDays: number; launch?: boolean },
+): AccessDTO {
   const now = opts.now ?? new Date();
   const base: AccessDTO = {
     status: 'free',
@@ -88,8 +95,12 @@ export function computeAccess(user: AccessUser | null, opts: { now?: Date; grace
   }
   if (status === 'past_due' && !out.nextPaymentAt) out.nextPaymentAt = iso(periodEnd);
 
+  if (opts.launch && (status === 'trial' || status === 'expired')) {
+    status = 'launch';
+    out.trialDaysLeft = null;
+  }
   if (out.isAdmin && status !== 'active') status = 'active';
   out.status = status;
-  out.hasAccess = status === 'trial' || status === 'active' || status === 'past_due' || status === 'canceled';
+  out.hasAccess = status === 'trial' || status === 'active' || status === 'past_due' || status === 'canceled' || status === 'launch';
   return out;
 }

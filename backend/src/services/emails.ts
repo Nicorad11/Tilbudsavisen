@@ -111,10 +111,15 @@ export function verifyEmailMail(to: string, link: string): Mail {
       subject: 'Bekræft din e-mail til Tilbudsradar',
       preheader: 'Ét klik, så er din konto klar.',
       title: 'Bekræft din e-mail',
-      paragraphs: [
-        `Tak fordi du oprettede en konto. Din gratis prøveperiode på ${PLAN.trialDays} dage er allerede startet.`,
-        'Bekræft din e-mail, så vi ved at den er din. Det er et krav, før du kan tegne et abonnement.',
-      ],
+      paragraphs: env.billingEnabled
+        ? [
+            `Tak fordi du oprettede en konto. Din gratis prøveperiode på ${PLAN.trialDays} dage er allerede startet.`,
+            'Bekræft din e-mail, så vi ved at den er din. Det er et krav, før du kan tegne et abonnement.',
+          ]
+        : [
+            'Tak fordi du oprettede en konto. Lige nu er alle funktioner gratis, mens Tilbudsradar er i lanceringsperiode.',
+            'Bekræft din e-mail, så vi ved at den er din. Så kan du også få nulstillet din adgangskode, hvis du glemmer den.',
+          ],
       button: { label: 'Bekræft e-mail', url: link },
       after: ['Linket virker i 48 timer.'],
       note: 'Har du ikke oprettet en konto, kan du se bort fra denne mail.',
@@ -185,6 +190,25 @@ export function passwordChangedMail(to: string): Mail {
 /* ------------------------------------------------------------------ */
 /* Prøveperiode og abonnement                                         */
 /* ------------------------------------------------------------------ */
+
+/** Sendes én gang, når betaling åbner efter lanceringsperioden. */
+export function billingOpenedMail(to: string, trialEndsAt: Date): Mail {
+  return {
+    to,
+    ...render({
+      subject: 'Tilbudsradar åbner for abonnement – du har 14 dage gratis endnu',
+      preheader: `Alle funktioner er gratis til og med ${formatDate(trialEndsAt)}. Der trækkes ingen penge automatisk.`,
+      title: 'Lanceringsperioden er slut',
+      paragraphs: [
+        'Tak fordi du har brugt Tilbudsradar i lanceringsperioden. Nu åbner vi for abonnement.',
+        ['Du har stadig alle funktioner gratis i ', { strong: `${PLAN.trialDays} dage – til og med ${formatDate(trialEndsAt)}` }, '.'],
+        `Vil du beholde indkøbslister, prisalarmer, kvitteringsscanneren og prishistorikken bagefter, koster det ${price} inkl. moms. Ingen binding. Der trækkes ingen penge automatisk – du tegner selv abonnementet under Konto, hvis du vil fortsætte.`,
+      ],
+      button: { label: 'Se abonnementet', url: appLink('/priser') },
+      note: 'Du får denne mail, fordi du har en konto på Tilbudsradar.',
+    }),
+  };
+}
 
 export function trialEndingSoonMail(to: string, trialEndsAt: Date): Mail {
   return {

@@ -6,3 +6,4 @@ export * from './receipts';
 export * from './billing';
 export * from './legal';
 export * from './seo';
+export * from './admin';

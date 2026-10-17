@@ -9,6 +9,10 @@ export interface FaqItem {
 }
 
 export const FAQ: Record<string, FaqItem> = {
+  launch: {
+    q: 'Hvorfor er det gratis lige nu?',
+    a: `Tilbudsradar er i lanceringsperiode, så alle funktioner er gratis for alle med en konto. Når betaling åbner, får du besked på e-mail og ${PLAN.trialDays} dage gratis, før det koster ${PLAN.priceDkk} kr. om måneden. Der trækkes aldrig penge automatisk.`,
+  },
   price: {
     q: 'Hvad koster Tilbudsradar?',
     a: `${PLAN.priceDkk} kr. om måneden inkl. moms. Du starter med ${PLAN.trialDays} dages gratis prøveperiode med alle funktioner. Søgning og ugens tilbud er altid gratis – også uden konto.`,

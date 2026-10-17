@@ -129,7 +129,7 @@ export function toUserDTO(u: typeof users.$inferSelect): UserDTO {
 }
 
 export function accessFor(u: typeof users.$inferSelect | null, now?: Date) {
-  return computeAccess(u, { now, graceDays: env.PAST_DUE_GRACE_DAYS });
+  return computeAccess(u, { now, graceDays: env.PAST_DUE_GRACE_DAYS, launch: !env.billingEnabled });
 }
 
 /** GDPR-dataminimering: ryd udløbne tokens og gæster uden aktivitet i 30 dage. */

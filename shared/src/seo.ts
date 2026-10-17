@@ -58,6 +58,8 @@ export interface PublicConfig {
   plausibleSrc: string;
   sentryDsn: string | null;
   sentryEnvironment: string;
+  /** Betaling er åbnet (Stripe sat op). Ellers er siden i lanceringsperiode, hvor alt er gratis. */
+  billingEnabled: boolean;
 }
 
 export const CONFIG_ELEMENT_ID = 'tr-config';

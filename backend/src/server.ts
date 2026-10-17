@@ -5,11 +5,17 @@ import { env, log } from './env';
 import { createApp } from './http/app';
 import { cleanupAuth } from './services/auth';
 import { createStripeClient } from './services/billing';
+import { cleanupPageViews } from './services/analytics';
 import { runBillingCron } from './services/billingCron';
+import { openBillingIfNeeded } from './services/launch';
 
 const { database, scrape } = await bootstrap();
 const stripe = createStripeClient();
 if (!stripe) log.warn('STRIPE_SECRET_KEY er ikke sat – abonnementer er slået fra (betalingsendpoints svarer 503).');
+// Første opstart med Stripe: lanceringsperioden slutter, og alle konti får 14 dage gratis fra i dag.
+await openBillingIfNeeded(database.db, env.billingEnabled).catch((err) =>
+  log.error('Kunne ikke afslutte lanceringsperioden', { err: String(err) }),
+);
 const app = createApp({ db: database.db, scrape, stripe });
 
 const server = app.listen(env.PORT, () => {
@@ -17,10 +23,14 @@ const server = app.listen(env.PORT, () => {
 });
 
 scrape.schedule();
-cron.schedule('0 4 * * *', () => void cleanupAuth(database.db).catch((err) => log.warn('Oprydning fejlede', { err: String(err) })), {
-  timezone: 'Europe/Copenhagen',
-  name: 'cleanup',
-});
+cron.schedule(
+  '0 4 * * *',
+  () =>
+    void Promise.all([cleanupAuth(database.db), cleanupPageViews(database.db)]).catch((err) =>
+      log.warn('Oprydning fejlede', { err: String(err) }),
+    ),
+  { timezone: 'Europe/Copenhagen', name: 'cleanup' },
+);
 if (env.BILLING_CRON) {
   cron.schedule(
     env.BILLING_CRON,

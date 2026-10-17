@@ -21,7 +21,7 @@ export const isPaywallError = (err: unknown): err is ApiError =>
 
 type Query = Record<string, string | number | boolean | undefined | null | string[]>;
 
-function buildUrl(path: string, query?: Query): string {
+export function buildUrl(path: string, query?: Query): string {
   const url = new URL(`${BASE}/api${path}`, window.location.origin);
   for (const [k, v] of Object.entries(query ?? {})) {
     if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;

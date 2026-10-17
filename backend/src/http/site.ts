@@ -48,6 +48,7 @@ export function publicConfig(): PublicConfig {
     plausibleSrc: env.VITE_PLAUSIBLE_SRC,
     sentryDsn: env.VITE_SENTRY_DSN,
     sentryEnvironment: env.SENTRY_ENVIRONMENT ?? env.NODE_ENV,
+    billingEnabled: env.billingEnabled,
   };
 }
 

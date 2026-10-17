@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../../db/client';
 import { scrapeSources, stores } from '../../db/schema';
+import { adminOverview } from '../../services/analytics';
 import { addManualAlias } from '../../services/matcher';
 import { bumpDataVersion } from '../../services/offers';
 import type { AppContext } from '../app';
@@ -17,6 +18,12 @@ export function adminRoutes({ db, scrape }: AppContext): Router {
 
   r.get('/status', async (_req, res) => {
     res.json({ ...(await scrape.status()), adminOpen: adminOpen() });
+  });
+
+  /** Overblik: brugere, tilmeldinger, besøg og driftsstatus. */
+  r.get('/overview', async (req, res) => {
+    const { days } = parse(z.object({ days: z.coerce.number().int().min(1).max(365).default(30) }), req.query);
+    res.json(await adminOverview(db, await scrape.status(), days));
   });
 
   /** Feature-flag pr. kæde – slår alle kædens kilder fra (fx hvis kæden beder om det). */

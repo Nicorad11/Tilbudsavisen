@@ -22,6 +22,17 @@ const base: AccessUser = {
 const access = (u: Partial<AccessUser> | null) => computeAccess(u ? { ...base, ...u } : null, { now, graceDays: 5 });
 
 describe('computeAccess', () => {
+  it('launch: uden betaling har alle konti fuld adgang gratis', () => {
+    const launch = (u: Partial<AccessUser>) => computeAccess({ ...base, ...u }, { now, graceDays: 5, launch: true });
+    expect(launch({ trialEndsAt: at(-30) })).toMatchObject({ status: 'launch', hasAccess: true, trialDaysLeft: null });
+    expect(launch({ trialEndsAt: at(5) })).toMatchObject({ status: 'launch', hasAccess: true });
+    // Gæster skal stadig oprette en konto, og administratorer er altid "active".
+    expect(computeAccess({ ...base, isGuest: true }, { now, graceDays: 5, launch: true }).status).toBe('free');
+    expect(launch({ role: 'admin' }).status).toBe('active');
+    // Et rigtigt abonnement vises som abonnement.
+    expect(launch({ subscriptionId: 's', subscriptionStatus: 'active', currentPeriodEnd: at(20) }).status).toBe('active');
+  });
+
   it('free: ikke logget ind eller gæst', () => {
     expect(access(null)).toMatchObject({ status: 'free', hasAccess: false });
     expect(access({ isGuest: true, trialEndsAt: at(10) })).toMatchObject({ status: 'free', hasAccess: false });

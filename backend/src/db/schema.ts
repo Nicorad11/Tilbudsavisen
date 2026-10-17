@@ -1,6 +1,7 @@
 import type { ReceiptLine } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
 import {
+  bigserial,
   boolean,
   date,
   doublePrecision,
@@ -523,4 +524,37 @@ export const receipts = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('receipts_user_idx').on(t.userId, t.createdAt)],
+);
+
+/* ------------------------------------------------------------------ */
+/* Drift og statistik                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Små nøgle/værdi-indstillinger (fx hvornår betaling blev åbnet, dagens salt til statistikken). */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+});
+
+/**
+ * Cookiefri besøgsstatistik. `visitor` er en hash af IP-adresse og browser med
+ * et salt, der skiftes hver dag og ikke gemmes bagefter – så den samme person
+ * kan ikke genkendes fra dag til dag, og IP-adressen gemmes aldrig.
+ */
+export const pageViews = pgTable(
+  'page_views',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    createdAt: createdAt(),
+    path: text('path').notNull(),
+    referrer: text('referrer'),
+    utmSource: text('utm_source'),
+    utmMedium: text('utm_medium'),
+    utmCampaign: text('utm_campaign'),
+    device: text('device').notNull(),
+    visitor: text('visitor').notNull(),
+    member: boolean('member').notNull().default(false),
+  },
+  (t) => [index('page_views_created_idx').on(t.createdAt)],
 );

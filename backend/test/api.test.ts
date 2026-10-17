@@ -361,6 +361,18 @@ describe('API', () => {
       await request(app).get('/api/receipts').expect(401);
     });
 
+    it('besøgsstatistik: sidevisning gemmes uden login, og admin ser overblikket', async () => {
+      await request(app)
+        .post('/api/analytics/pageview')
+        .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148')
+        .send({ path: '/priser?utm_source=x', utmSource: 'instagram' })
+        .expect(204);
+      await request(app).post('/api/analytics/pageview').send({ path: 42 }).expect(400);
+      const overview = (await request(app).get('/api/admin/overview?days=7').expect(200)).body;
+      expect(overview.traffic.topPages).toEqual(expect.arrayContaining([expect.objectContaining({ path: '/priser' })]));
+      expect(overview.byDay).toHaveLength(7);
+    });
+
     it('kæder med fælles varer kan gemmes samtidig', async () => {
       // føtex og Bilka har mange af de samme varer. Samtidige transaktioner gav deadlock i Postgres.
       const names = ['Colgate mundpleje', 'Lambi toiletpapir', 'Kims chips', 'Coca-Cola'];

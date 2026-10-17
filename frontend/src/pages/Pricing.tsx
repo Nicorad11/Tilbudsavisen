@@ -1,16 +1,20 @@
 import { PLAN, WITHDRAWAL_DAYS } from '@tilbudsradar/shared';
 import { Link } from 'react-router';
+import { useLaunch } from '../lib/access';
 import { Faq, FAQ } from '../components/marketing/Faq';
 import { PriceCard } from '../components/marketing/PriceCard';
 
 export function Pricing() {
+  const launch = useLaunch();
   return (
     <div className="space-y-14 pt-6 lg:pt-12">
       <div className="max-w-[720px]">
         <p className="text-sm text-muted">Priser</p>
         <h1 className="mt-1 text-[40px] leading-[1.04] tracking-[-0.045em] text-ink sm:text-[56px]">Én pris. Alle funktioner.</h1>
         <p className="mt-4 text-[17px] leading-snug text-muted">
-          Prøv alt gratis i {PLAN.trialDays} dage – uden kort. Vil du fortsætte, koster det {PLAN.priceDkk} kr. om måneden inkl. moms. Ingen binding.
+          {launch
+            ? `Lige nu er alt gratis i lanceringsperioden. Når betaling åbner, får du ${PLAN.trialDays} dage gratis – derefter koster det ${PLAN.priceDkk} kr. om måneden inkl. moms, hvis du vil fortsætte. Ingen binding, og der trækkes aldrig penge automatisk.`
+            : `Prøv alt gratis i ${PLAN.trialDays} dage – uden kort. Vil du fortsætte, koster det ${PLAN.priceDkk} kr. om måneden inkl. moms. Ingen binding.`}
         </p>
       </div>
 
@@ -30,7 +34,7 @@ export function Pricing() {
       <section>
         <h2 className="text-[28px] tracking-[-0.035em] text-ink">Spørgsmål om abonnementet</h2>
         <div className="mt-6">
-          <Faq items={[FAQ.price!, FAQ.card!, FAQ.after!, FAQ.cancel!, FAQ.withdraw!]} />
+          <Faq items={[...(launch ? [FAQ.launch!] : []), FAQ.price!, FAQ.card!, FAQ.after!, FAQ.cancel!, FAQ.withdraw!]} />
         </div>
         <p className="mt-6 text-[13px] text-muted">
           Læs de fulde{' '}

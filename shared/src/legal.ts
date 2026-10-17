@@ -49,6 +49,7 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
         `Når du opretter en konto, får du automatisk ${PLAN.trialDays} dages gratis prøveperiode med adgang til alle funktioner. Det kræver ikke betalingskort.`,
         'Prøveperioden bliver ikke automatisk til et betalt abonnement. Når den slutter, skal du selv vælge at tegne et abonnement, hvis du vil fortsætte. Vi sender dig en e-mail 3 dage før prøveperioden slutter.',
         'Der gives én prøveperiode pr. e-mailadresse – også hvis kontoen slettes og oprettes igen.',
+        `I en lanceringsperiode, før betaling er åbnet, kan alle funktioner bruges gratis af alle med en konto. Prøveperioden på ${PLAN.trialDays} dage regnes i så fald fra den dag, betaling åbner, og vi giver besked på e-mail inden.`,
         'Når prøveperioden eller abonnementet udløber, sletter vi ikke dine data. Du kan stadig se dine lister, kvitteringer og alarmer, men ikke ændre dem eller bruge de betalte funktioner, før du abonnerer igen.',
       ],
     },

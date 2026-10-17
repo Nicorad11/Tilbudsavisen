@@ -2,7 +2,7 @@ import { DraftNotice, LegalPage, Section, Table } from './LegalPage';
 
 export function Cookies() {
   return (
-    <LegalPage kicker="Derfor ingen cookie-banner" title="Cookies og lokal lagring" updated="8. oktober 2026">
+    <LegalPage kicker="Derfor ingen cookie-banner" title="Cookies og lokal lagring" updated="17. oktober 2026">
       <DraftNotice />
       <Section title="Kort fortalt">
         <p>
@@ -26,8 +26,14 @@ export function Cookies() {
       </Section>
       <Section title="Statistik uden cookies">
         <p>
-          Hvis vi måler besøg, sker det med Plausible, som er cookiefrit og EU-hostet. Plausible gemmer intet på din enhed og registrerer ikke
-          personoplysninger – kun samlede tal som antal besøg og hvilke sider der bruges.
+          Vi tæller besøg på vores egen server – uden cookies og uden at gemme noget på din enhed. For hver side registrerer vi stien (fx
+          /priser), hvilken side du kom fra (kun domænet, fx instagram.com), eventuelle kampagnekoder i linket og om du bruger mobil, tablet
+          eller computer.
+        </p>
+        <p>
+          For at kunne tælle unikke besøgende laver vi en kode ud fra din IP-adresse og browser sammen med et tilfældigt tal, der skiftes og
+          slettes hver dag. IP-adressen gemmes aldrig, og koden kan ikke bruges til at genkende dig fra dag til dag. Bruger din browser
+          "Do Not Track" eller "Global Privacy Control", tæller vi dig ikke med.
         </p>
       </Section>
       <Section title="Betaling hos Stripe">

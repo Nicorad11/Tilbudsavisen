@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { PLAN } from '@tilbudsradar/shared';
 import { Outlet, NavLink, Link } from 'react-router';
 import clsx from 'clsx';
-import { useAccess } from '../../lib/access';
+import { useAccess, useLaunch } from '../../lib/access';
 import { useSeo } from '../../lib/seo';
 import { Button } from '../ui/primitives';
 import { Footer } from './Footer';
@@ -12,6 +12,7 @@ import { Wordmark } from './Wordmark';
 export function PublicLayout() {
   useSeo();
   const { isMember } = useAccess();
+  const launch = useLaunch();
   const nav = ({ isActive }: { isActive: boolean }) =>
     clsx('hidden h-9 items-center rounded-full px-3.5 text-[13.5px] transition sm:flex', isActive ? 'bg-raised text-ink shadow-pill' : 'text-ink-2 hover:text-ink');
 
@@ -39,9 +40,15 @@ export function PublicLayout() {
               </NavLink>
               <Link to="/app/konto?opret=1">
                 <Button tone="dark" size="sm">
-                  <span>
-                    Prøv gratis<span className="hidden sm:inline"> i {PLAN.trialDays} dage</span>
-                  </span>
+                  {launch ? (
+                    <span>
+                      Opret<span className="hidden sm:inline"> gratis</span> konto
+                    </span>
+                  ) : (
+                    <span>
+                      Prøv gratis<span className="hidden sm:inline"> i {PLAN.trialDays} dage</span>
+                    </span>
+                  )}
                 </Button>
               </Link>
             </>

@@ -5,7 +5,7 @@ import { DraftNotice, LegalPage, Section, Table } from './LegalPage';
 
 export function Privacy() {
   return (
-    <LegalPage kicker="Sådan behandler vi dine personoplysninger" title="Privatlivspolitik" updated="8. oktober 2026">
+    <LegalPage kicker="Sådan behandler vi dine personoplysninger" title="Privatlivspolitik" updated="17. oktober 2026">
       <DraftNotice />
 
       <Section title="Dataansvarlig">
@@ -40,6 +40,11 @@ export function Privacy() {
             ],
             ['Fortrydelser (navn, e-mail, tidspunkt)', 'Behandle og dokumentere din fortrydelse', 'Retlig forpligtelse (litra c)'],
             ['Tekniske fejldata (uden navn og e-mail)', 'Finde og rette fejl', 'Legitim interesse (litra f)'],
+            [
+              'Besøgsstatistik: side, henvisende domæne, kampagnekode, enhedstype og en daglig skiftende kode beregnet ud fra IP-adresse og browser (IP-adressen gemmes ikke)',
+              'Tælle besøg og se, hvilke sider der bruges, og hvor besøgende kommer fra',
+              'Legitim interesse (litra f) i at forbedre tjenesten',
+            ],
           ]}
         />
         <p>Betalingskort håndteres udelukkende af Stripe. Vi ser og gemmer aldrig dine kortoplysninger.</p>
@@ -77,6 +82,7 @@ export function Privacy() {
             ['Fakturaer og betalinger (hos Stripe)', '5 år fra regnskabsårets udløb (bogføringsloven)'],
             ['Fortrydelser', '5 år som dokumentation'],
             ['Fejldata i Sentry', 'Op til 90 dage'],
+            ['Besøgsstatistik', '13 måneder. Koden for den besøgende kan ikke genskabes efter den dag, den blev lavet'],
           ]}
         />
       </Section>

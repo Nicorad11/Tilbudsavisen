@@ -1,12 +1,12 @@
 import type { AuthResponse, UserDTO } from '@tilbudsradar/shared';
 import { PLAN, TERMS_VERSION } from '@tilbudsradar/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, CreditCard, Download, KeyRound, LogOut, Mail, Trash2, UserRound } from 'lucide-react';
+import { BadgeCheck, CreditCard, Download, Gauge, KeyRound, LogOut, Mail, Trash2, UserRound } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { SubscribePanel } from '../components/billing/SubscribePanel';
 import { Button, Card, Chip, Pill, Segmented, StoreDot, TextInput } from '../components/ui/primitives';
-import { formatLongDate, useAccess, useBillingStatus, usePortal, useResendVerification } from '../lib/access';
+import { formatLongDate, useAccess, useBillingStatus, useLaunch, usePortal, useResendVerification } from '../lib/access';
 import { track } from '../lib/analytics';
 import { api, ApiError } from '../lib/api';
 import { formatDay } from '../lib/format';
@@ -71,6 +71,7 @@ function errorText(err: unknown): string | null {
 }
 
 function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMode }) {
+  const launch = useLaunch();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,7 +94,13 @@ function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMod
       void qc.invalidateQueries();
       if (mode === 'register') {
         track('Prøveperiode startet');
-        toast(r.user.access.status === 'trial' ? 'Kontoen er oprettet – din prøveperiode er startet' : 'Kontoen er oprettet');
+        toast(
+          r.user.access.status === 'launch'
+            ? 'Kontoen er oprettet – alle funktioner er åbne'
+            : r.user.access.status === 'trial'
+              ? 'Kontoen er oprettet – din prøveperiode er startet'
+              : 'Kontoen er oprettet',
+        );
       } else toast('Du er logget ind');
     },
   });
@@ -151,7 +158,9 @@ function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMod
           {mode === 'register' && (
             <p className="mt-4 rounded-2xl bg-lime/50 px-3 py-2 text-[13px] leading-snug text-ink">
               {guest ? 'Dine lister og alarmer fra gæstesessionen følger med over på kontoen. ' : ''}
-              Du får {PLAN.trialDays} dages gratis prøveperiode med alle funktioner – uden betalingskort. Den bliver ikke automatisk til et abonnement.
+              {launch
+                ? `Alle funktioner er gratis i lanceringsperioden – uden betalingskort. Når betaling åbner, får du besked og ${PLAN.trialDays} dage gratis, før noget koster penge.`
+                : `Du får ${PLAN.trialDays} dages gratis prøveperiode med alle funktioner – uden betalingskort. Den bliver ikke automatisk til et abonnement.`}
             </p>
           )}
           <form
@@ -196,7 +205,7 @@ function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMod
             )}
             {err && <p className="text-sm text-bad">{err}</p>}
             <Button type="submit" tone="dark" size="lg" className="w-full" loading={submit.isPending} disabled={mode === 'register' && !accepted}>
-              {mode === 'login' ? 'Log ind' : `Opret konto – ${PLAN.trialDays} dage gratis`}
+              {mode === 'login' ? 'Log ind' : launch ? 'Opret gratis konto' : `Opret konto – ${PLAN.trialDays} dage gratis`}
             </Button>
           </form>
           {mode === 'login' && (
@@ -214,11 +223,12 @@ function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMod
 }
 
 function WhyCard() {
+  const launch = useLaunch();
   return (
     <Card className="p-6 text-sm text-ink-2">
       <p className="text-lg tracking-tight text-ink">Hvad får du med en konto?</p>
       <ul className="mt-3 list-disc space-y-1.5 pl-5">
-        <li>{PLAN.trialDays} dages gratis prøveperiode – intet betalingskort</li>
+        <li>{launch ? 'Gratis i lanceringsperioden' : `${PLAN.trialDays} dages gratis prøveperiode`} – intet betalingskort</li>
         <li>Indkøbslister, der finder den billigste kombination af butikker</li>
         <li>Prisalarmer på e-mail, når dine faste varer kommer på tilbud</li>
         <li>Kvitteringsscanner, der viser hvad du sparede – og fejl ved kassen</li>
@@ -275,14 +285,24 @@ function ProfileCard({ user }: { user: UserDTO }) {
           </p>
         )}
       </div>
-      <Button className="mt-5" icon={<LogOut className="size-4" />} loading={logout.isPending} onClick={() => logout.mutate()}>
-        Log ud
-      </Button>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {user.access.isAdmin && (
+          <Link to="/app/admin">
+            <Button tone="dark" icon={<Gauge className="size-4" />}>
+              Admin-overblik
+            </Button>
+          </Link>
+        )}
+        <Button icon={<LogOut className="size-4" />} loading={logout.isPending} onClick={() => logout.mutate()}>
+          Log ud
+        </Button>
+      </div>
     </Card>
   );
 }
 
 const STATUS_LABEL = {
+  launch: 'Gratis (lancering)',
   trial: 'Prøveperiode',
   active: 'Aktivt abonnement',
   past_due: 'Betaling fejlede',
@@ -302,7 +322,9 @@ function SubscriptionCard() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-lg tracking-tight">Abonnement</p>
-          <p className="text-xs text-muted">{PLAN.priceDkk} kr/md inkl. moms · ingen binding</p>
+          <p className="text-xs text-muted">
+            {access.status === 'launch' ? 'Gratis i lanceringsperioden' : `${PLAN.priceDkk} kr/md inkl. moms · ingen binding`}
+          </p>
         </div>
         <Pill tone={access.hasAccess ? 'lime' : 'ghost'} icon={<CreditCard className="size-3.5" />}>
           {access.isAdmin ? 'Administrator' : STATUS_LABEL[access.status]}

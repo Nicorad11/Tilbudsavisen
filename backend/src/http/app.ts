@@ -13,6 +13,7 @@ import { optionalAuth } from './auth';
 import { errorHandler, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
+import { analyticsRoutes } from './routes/analytics';
 import { billingRoutes, stripeWebhook } from './routes/billing';
 import { offerRoutes } from './routes/offers';
 import { receiptRoutes } from './routes/receipts';
@@ -83,6 +84,7 @@ export function createApp(ctx: AppContext): express.Express {
   });
   app.use('/api/auth', authRoutes(ctx));
   app.use('/api/billing', billingRoutes(ctx));
+  app.use('/api/analytics', analyticsRoutes(ctx));
   app.use('/api/admin', adminRoutes(ctx));
   app.use('/api', offerRoutes(ctx));
   app.use('/api', userRoutes(ctx));

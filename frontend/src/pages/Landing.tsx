@@ -8,7 +8,7 @@ import { PriceCard } from '../components/marketing/PriceCard';
 import { SearchBox } from '../components/SearchBox';
 import { DotNumber } from '../components/ui/DotNumber';
 import { Button, Pill } from '../components/ui/primitives';
-import { useAccess } from '../lib/access';
+import { useAccess, useLaunch } from '../lib/access';
 import { track } from '../lib/analytics';
 import { COMPANY } from '../lib/company';
 import { useStats } from '../lib/hooks';
@@ -25,6 +25,7 @@ const CHAINS = [
 /** Offentlig forside for besøgende. Indloggede sendes direkte til appen. */
 export function Landing() {
   const { isMember } = useAccess();
+  const launch = useLaunch();
   const { search } = useLocation();
   // Bevar fx UTM-parametre fra Instagram-links ved viderestilling.
   if (isMember) return <Navigate to={`/app${search}`} replace />;
@@ -37,7 +38,10 @@ export function Landing() {
       <Features />
       <Difference />
       <section id="priser" className="scroll-mt-24">
-        <Heading kicker="Pris" title={`${PLAN.priceDkk} kr om måneden. Første ${PLAN.trialDays} dage gratis.`} />
+        <Heading
+          kicker="Pris"
+          title={launch ? `Gratis lige nu. Senere ${PLAN.priceDkk} kr om måneden.` : `${PLAN.priceDkk} kr om måneden. Første ${PLAN.trialDays} dage gratis.`}
+        />
         <div className="mt-8">
           <PriceCard />
         </div>
@@ -45,7 +49,7 @@ export function Landing() {
       <section id="faq" className="scroll-mt-24">
         <Heading kicker="Spørgsmål og svar" title="Det spørger folk om" />
         <div className="mt-8">
-          <Faq items={Object.values(FAQ)} />
+          <Faq items={Object.entries(FAQ).filter(([k]) => launch || k !== 'launch').map(([, v]) => v)} />
         </div>
       </section>
       <FinalCta />
@@ -64,6 +68,7 @@ function Heading({ kicker, title, children }: { kicker: string; title: string; c
 }
 
 function Hero() {
+  const launch = useLaunch();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   return (
@@ -103,14 +108,16 @@ function Hero() {
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link to="/app/konto?opret=1" onClick={() => track('CTA prøv gratis', { placering: 'hero' })}>
             <Button tone="dark" size="lg" icon={<ArrowRight className="size-4" />}>
-              Prøv gratis i {PLAN.trialDays} dage
+              {launch ? 'Opret gratis konto' : `Prøv gratis i ${PLAN.trialDays} dage`}
             </Button>
           </Link>
           <Link to="/priser">
             <Button size="lg">Se priser</Button>
           </Link>
         </div>
-        <p className="mt-3 text-[12.5px] text-muted">Intet kort · Ingen binding · Derefter {PLAN.priceDkk} kr/md, hvis du vil fortsætte</p>
+        <p className="mt-3 text-[12.5px] text-muted">
+          {launch ? 'Gratis i lanceringsperioden · Intet kort · Du får besked, før betaling åbner' : `Intet kort · Ingen binding · Derefter ${PLAN.priceDkk} kr/md, hvis du vil fortsætte`}
+        </p>
       </div>
       <HeroVisual />
     </section>
@@ -244,6 +251,7 @@ function Difference() {
 }
 
 function FinalCta() {
+  const launch = useLaunch();
   return (
     <section className="grad-card grad-green flex flex-col items-start gap-6 p-7 sm:p-10 lg:flex-row lg:items-end lg:justify-between">
       <div>
@@ -253,7 +261,7 @@ function FinalCta() {
       <div className="flex flex-col items-start gap-3">
         <Link to="/app/konto?opret=1" onClick={() => track('CTA prøv gratis', { placering: 'bund' })}>
           <Button tone="lime" size="lg" icon={<ArrowRight className="size-4" />}>
-            Prøv gratis i {PLAN.trialDays} dage
+            {launch ? 'Opret gratis konto' : `Prøv gratis i ${PLAN.trialDays} dage`}
           </Button>
         </Link>
         {COMPANY.instagram && (

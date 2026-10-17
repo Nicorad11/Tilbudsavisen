@@ -34,4 +34,5 @@ export const CONFIG: PublicConfig = {
   plausibleSrc: pick('plausibleSrc', fromEnv('VITE_PLAUSIBLE_SRC') ?? 'https://plausible.io/js/script.js'),
   sentryDsn: pick('sentryDsn', fromEnv('VITE_SENTRY_DSN')),
   sentryEnvironment: pick('sentryEnvironment', import.meta.env.MODE),
+  billingEnabled: pick('billingEnabled', false),
 };

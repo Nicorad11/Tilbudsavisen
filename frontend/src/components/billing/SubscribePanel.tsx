@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { Check, CreditCard, MailWarning } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { formatLongDate, useAccess, useBillingStatus, useCheckout, usePortal, useResendVerification } from '../../lib/access';
+import { formatLongDate, useAccess, useBillingStatus, useCheckout, useLaunch, usePortal, useResendVerification } from '../../lib/access';
 import { Button } from '../ui/primitives';
 
 const HOUR = 3_600_000;
@@ -22,17 +22,18 @@ export function SubscribePanel({ className, compact }: { className?: string; com
   const resend = useResendVerification();
   const [accepted, setAccepted] = useState(false);
   const checkboxId = useId();
+  const launch = useLaunch();
 
   if (!isMember) {
     return (
       <div className={clsx('space-y-3', className)}>
         <Link to="/app/konto?opret=1" className="block">
           <Button tone="dark" size="lg" className="w-full">
-            Prøv gratis i {PLAN.trialDays} dage
+            {launch ? 'Opret gratis konto' : `Prøv gratis i ${PLAN.trialDays} dage`}
           </Button>
         </Link>
         <p className="text-center text-[12.5px] text-muted">
-          Intet kort · Ingen binding · Derefter {PLAN.priceDkk} kr/md, hvis du vælger at abonnere
+          {launch ? 'Gratis i lanceringsperioden · Intet kort · Du får besked, før betaling åbner' : `Intet kort · Ingen binding · Derefter ${PLAN.priceDkk} kr/md, hvis du vælger at abonnere`}
         </p>
         <p className="text-center text-[13px] text-ink-2">
           Har du en konto?{' '}
@@ -56,6 +57,23 @@ export function SubscribePanel({ className, compact }: { className?: string; com
         <Button className="w-full" loading={portal.isPending} onClick={() => portal.mutate()}>
           {access.cancelAtPeriodEnd ? 'Genoptag abonnementet' : 'Administrér eller opsig'}
         </Button>
+      </div>
+    );
+  }
+
+  if (launch) {
+    return (
+      <div className={clsx('space-y-2 rounded-[22px] bg-lime/35 p-4 text-[13.5px] leading-snug text-ink-2 ring-1 ring-lime-deep/40', className)}>
+        <p className="flex items-center gap-2 font-medium text-ink">
+          <span className="grid size-6 place-items-center rounded-full bg-lime">
+            <Check className="size-3.5" />
+          </span>
+          Alle funktioner er gratis lige nu
+        </p>
+        <p>
+          Tilbudsradar er i lanceringsperiode. Når betaling åbner, får du besked på e-mail og {PLAN.trialDays} dage gratis, før det koster{' '}
+          {PLAN.priceDkk} kr/md. Der trækkes aldrig penge automatisk.
+        </p>
       </div>
     );
   }

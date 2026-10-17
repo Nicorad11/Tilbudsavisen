@@ -1,7 +1,7 @@
 import { and, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { users } from '../db/schema';
-import { log } from '../env';
+import { env, log } from '../env';
 import { accessFor } from './auth';
 import { trialEndedMail, trialEndingSoonMail } from './emails';
 import { sendMail } from './mailer';
@@ -16,6 +16,8 @@ const DAY = 86_400_000;
 export async function runBillingCron(db: Db, now = new Date()): Promise<{ reminders: number; ended: number }> {
   let reminders = 0;
   let ended = 0;
+  // I lanceringsperioden (ingen betaling) udløber prøveperioder ikke – så heller ingen mails om det.
+  if (!env.billingEnabled) return { reminders, ended };
 
   const soon = await db
     .select()
