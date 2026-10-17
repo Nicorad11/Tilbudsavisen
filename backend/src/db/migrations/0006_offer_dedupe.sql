@@ -1,0 +1,1 @@
+CREATE INDEX "offers_dedupe_idx" ON "offers" USING btree ("store_id","normalized_name","valid_to");

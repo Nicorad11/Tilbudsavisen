@@ -20,7 +20,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, query, type Database } from '../src/db/client';
 import { createApp } from '../src/http/app';
-import { ingestOffers } from '../src/services/ingest';
+import { ingestOffers, removeDuplicateOffers } from '../src/services/ingest';
 import { planStores } from '../src/services/lists';
 import { ScrapeManager } from '../src/services/scrapeJobs';
 import { purgeOutOfScope } from '../src/services/scope';
@@ -371,6 +371,52 @@ describe('API', () => {
       const overview = (await request(app).get('/api/admin/overview?days=7').expect(200)).body;
       expect(overview.traffic.topPages).toEqual(expect.arrayContaining([expect.objectContaining({ path: '/priser' })]));
       expect(overview.byDay).toHaveLength(7);
+    });
+
+    it('samme tilbud i to aviser fra samme kæde gemmes kun én gang', async () => {
+      // Fx Lidls ugeavis og weekendavis: samme vare, pris og gyldighed – forskellige id'er.
+      const first = extraOffer('lidl', 'ugeavis-roedbeder', 'Økologiske danske rødbeder', 9, '1 kg', -2);
+      const second = { ...first, externalId: 'weekendavis-roedbeder', sourceUrl: `${first.sourceUrl}&p=2` };
+      const stats = await ingestOffers(database.db, [first, second]);
+      expect(stats).toMatchObject({ offersSaved: 1, duplicatesSkipped: 1 });
+      // Næste scraping ændrer ikke på det.
+      expect(await ingestOffers(database.db, [second, first])).toMatchObject({ offersSaved: 1, duplicatesSkipped: 1 });
+      const rows = await query<{ n: number }>(
+        database.db,
+        sql`SELECT count(*)::int AS n FROM offers WHERE store_id = 'lidl' AND title = 'Økologiske danske rødbeder'`,
+      );
+      expect(rows[0]!.n).toBe(1);
+    });
+
+    it('eksisterende dubletter ryddes op – vurderinger flyttes til det tilbud, der beholdes', async () => {
+      const [keep] = await query<{ id: number }>(
+        database.db,
+        sql`SELECT id FROM offers WHERE store_id = 'lidl' AND title = 'Økologiske danske rødbeder'`,
+      );
+      // En dublet gemt før sorteringen fandtes (kopi af rækken med et andet eksternt id).
+      const [dup] = await query<{ id: number }>(
+        database.db,
+        sql`INSERT INTO offers (store_id, source_id, external_id, product_id, title, description, normalized_name, brand, category,
+              offer_price, original_price, unit, quantity_min, quantity_max, pieces, unit_price, unit_price_max, valid_from, valid_to,
+              image_url, source_url)
+            SELECT store_id, source_id, 'gammel-dublet', product_id, title, description, normalized_name, brand, category,
+              offer_price, original_price, unit, quantity_min, quantity_max, pieces, unit_price, unit_price_max, valid_from, valid_to,
+              image_url, source_url
+            FROM offers WHERE id = ${keep!.id} RETURNING id`,
+      );
+      const { token } = await member();
+      await request(app)
+        .post(`/api/offers/${dup!.id}/reports`)
+        .set({ Authorization: `Bearer ${token}` })
+        .send({ verdict: 'real' })
+        .expect(201);
+
+      expect(await removeDuplicateOffers(database.db)).toBe(1);
+      const left = await query<{ id: number }>(database.db, sql`SELECT id FROM offers WHERE id IN (${keep!.id}, ${dup!.id})`);
+      expect(left.map((r) => r.id)).toEqual([keep!.id]);
+      const reports = await query<{ offer_id: number }>(database.db, sql`SELECT offer_id FROM community_reports WHERE offer_id = ${keep!.id}`);
+      expect(reports).toHaveLength(1);
+      expect(await removeDuplicateOffers(database.db)).toBe(0);
     });
 
     it('kæder med fælles varer kan gemmes samtidig', async () => {

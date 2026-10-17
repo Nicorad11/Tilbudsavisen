@@ -195,6 +195,8 @@ export const offers = pgTable(
     index('offers_validity_idx').on(t.validTo, t.validFrom),
     index('offers_product_idx').on(t.productId),
     index('offers_store_idx').on(t.storeId),
+    // Opslag efter samme tilbud i en anden avis (se findDuplicateOffer i services/ingest.ts).
+    index('offers_dedupe_idx').on(t.storeId, t.normalizedName, t.validTo),
     index('offers_category_idx').on(t.category),
   ],
 );

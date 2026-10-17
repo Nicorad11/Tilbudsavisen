@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { RawRecord, ScrapedOffer, StoreLocationInput } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
-import { query, type Db } from '../db/client';
+import { query, queryOne, type Db } from '../db/client';
 import { ProductMatcher } from './matcher';
 import { bumpDataVersion } from './offers';
 import { isInScope } from './scope';
@@ -49,6 +49,8 @@ export interface IngestStats {
   offersSaved: number;
   baselineSaved: number;
   productsTouched: number;
+  /** Samme tilbud fra en anden avis i samme kæde (fx Lidls ugeavis og weekendavis) – gemmes kun én gang. */
+  duplicatesSkipped: number;
 }
 
 /**
@@ -64,7 +66,7 @@ export async function ingestOffers(
   observedOn: string = today(),
 ): Promise<IngestStats> {
   const matcher = new ProductMatcher();
-  const stats: IngestStats = { offersSaved: 0, baselineSaved: 0, productsTouched: 0 };
+  const stats: IngestStats = { offersSaved: 0, baselineSaved: 0, productsTouched: 0, duplicatesSkipped: 0 };
   const touched = new Set<number>();
   // Pausede kæder/kategorier gemmes ikke (de rå data er allerede gemt).
   offers = offers.filter(isInScope);
@@ -78,7 +80,10 @@ export async function ingestOffers(
         const productId = await matcher.resolve(txDb, o);
         touched.add(productId);
 
-        if (!o.isBaseline) {
+        const duplicate = !o.isBaseline && (await findDuplicateOffer(txDb, o));
+        if (duplicate) {
+          stats.duplicatesSkipped++;
+        } else if (!o.isBaseline) {
           await txDb.execute(sql`
             INSERT INTO offers (
               store_id, source_id, external_id, product_id, raw_offer_id, title, description, normalized_name, brand,
@@ -142,4 +147,61 @@ export async function upsertStoreLocations(db: Db, locations: StoreLocationInput
     n += chunk.length;
   }
   return n;
+}
+
+/**
+ * Kæderne lægger ofte det samme tilbud i flere aviser (fx Lidls ugeavis og
+ * weekendavis), hvert med sit eget id. Det er det samme tilbud, når kæde,
+ * vare, pris, mængde og gyldighed er ens – så vises det kun én gang.
+ */
+async function findDuplicateOffer(db: Db, o: ScrapedOffer): Promise<boolean> {
+  const row = await queryOne<{ id: number }>(
+    db,
+    sql`SELECT id FROM offers
+        WHERE store_id = ${o.storeId} AND normalized_name = ${o.normalizedProductName}
+          AND offer_price = ${o.offerPrice} AND unit = ${o.unit}
+          AND quantity_min IS NOT DISTINCT FROM ${o.quantity?.min ?? null}::double precision
+          AND quantity_max IS NOT DISTINCT FROM ${o.quantity?.max ?? null}::double precision
+          AND valid_from = ${o.validFrom.toISOString()}::timestamptz AND valid_to = ${o.validTo.toISOString()}::timestamptz
+          AND NOT (source_id = ${o.sourceId} AND external_id = ${o.externalId})
+        LIMIT 1`,
+  );
+  return Boolean(row);
+}
+
+/** Dubletter: alle andre end det ældste tilbud med samme kæde, vare, pris, mængde og gyldighed. */
+const DUPLICATES = sql`
+  SELECT id, keep FROM (
+    SELECT id, first_value(id) OVER (
+      PARTITION BY store_id, normalized_name, offer_price, unit, quantity_min, quantity_max, valid_from, valid_to
+      ORDER BY id
+    ) AS keep
+    FROM offers
+  ) ranked
+  WHERE id <> keep`;
+
+/**
+ * Rydder dubletter, der blev gemt før de blev sorteret fra ved indlæsningen.
+ * Vurderinger og notifikationer flyttes over på det tilbud, der beholdes.
+ */
+export async function removeDuplicateOffers(db: Db): Promise<number> {
+  let removed = 0;
+  await db.transaction(async (tx) => {
+    const txDb = tx as unknown as Db;
+    await txDb.execute(INGEST_LOCK);
+    await txDb.execute(sql`
+      UPDATE community_reports c SET offer_id = d.keep
+      FROM (${DUPLICATES}) d
+      WHERE c.offer_id = d.id
+        AND NOT EXISTS (SELECT 1 FROM community_reports c2 WHERE c2.offer_id = d.keep AND c2.user_id = c.user_id)`);
+    await txDb.execute(sql`
+      UPDATE notifications n SET offer_id = d.keep
+      FROM (${DUPLICATES}) d
+      WHERE n.offer_id = d.id
+        AND NOT EXISTS (SELECT 1 FROM notifications n2 WHERE n2.offer_id = d.keep AND n2.watch_id IS NOT DISTINCT FROM n.watch_id)`);
+    const deleted = await query<{ id: number }>(txDb, sql`DELETE FROM offers WHERE id IN (SELECT id FROM (${DUPLICATES}) d) RETURNING id`);
+    removed = deleted.length;
+  });
+  if (removed) bumpDataVersion();
+  return removed;
 }
