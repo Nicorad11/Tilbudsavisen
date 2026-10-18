@@ -2,94 +2,104 @@
 
 > **Alle juridiske tekster er udkast og skal gennemgås af en jurist før lancering.** Det gælder handelsbetingelserne (`shared/src/legal.ts`), privatlivspolitikken, cookiesiden, fortrydelsessiden (`/fortryd`), oplysningerne før betaling, ordrebekræftelsen og de øvrige e-mails (`backend/src/services/emails.ts`) samt påstande på landingssiden. Teksterne bygger på kilderne nederst, men er ikke juridisk rådgivning.
 
-Koden er klar til testnøgler. Det, der står herunder, kræver konti, betalingsoplysninger, domæne eller beslutninger, som du selv skal tage. Rækkefølgen er den anbefalede.
+## Status pr. 18. oktober 2026
+
+**Live:** <https://tilbudsradaren.dk> (hjemmeside og app) og <https://admin.tilbudsradaren.dk> (admin-app), begge på Render i Frankfurt med HTTPS.
+
+| Område | Status |
+|---|---|
+| Domæne og DNS | ✅ tilbudsradaren.dk hos DNS.services – rod, `www` og `admin` peger på Render |
+| Hosting og database | ✅ Render Blueprint `tilbudsradar` (Starter) + Postgres `tilbudsradar-db` (basic-256mb), Frankfurt. Deployer automatisk fra `main` |
+| Konti og login | ✅ Oprettelse, login, bekræftelse af e-mail og nulstilling af adgangskode virker |
+| E-mail | ✅ Resend (EU), domænet er verificeret, sender fra `noreply@tilbudsradaren.dk`. Testmail leveret 17/10 |
+| Fejlovervågning | ✅ Sentry (EU), organisation `kodo-rg`, projekt `tilbudsradar`. Mail ved alvorlige fejl |
+| Besøgsstatistik | ✅ Egen, cookiefri statistik – vises i admin-appen (Overblik) |
+| Admin | ✅ admin.tilbudsradaren.dk – overblik, kunder og kilder. Administratorer: `ADMIN_EMAILS` |
+| Betaling | ⏳ **Lanceringsperiode:** Stripe er ikke sat op endnu (afventer CVR), så alle konti har alt gratis |
+| Firmaoplysninger | ⏳ Footer, `/om` og betingelserne viser `[UDFYLD …]`, til virksomheden er oprettet |
+| Kontaktmail | ⏳ `kontakt@tilbudsradaren.dk` kan endnu ikke modtage mails |
+| Jurist | ⏳ Ikke gennemgået |
+
+Rækkefølgen herunder er den anbefalede for det, der mangler.
 
 ---
 
 ## 1. Virksomhed og pladsholdere
 
 - [ ] Virksomheden er registreret, og du har CVR-nummer (virk.dk).
-- [ ] Udfyld i Render (eller `.env`). Værdierne vises i footer, på `/om`, i betingelserne, i privatlivspolitikken og i alle e-mails – uden nyt build:
-  - `COMPANY_NAME` – `[UDFYLD: firmanavn]`
-  - `COMPANY_CVR` – `[UDFYLD: CVR]`
-  - `COMPANY_ADDRESS` – `[UDFYLD: adresse]`
-  - `CONTACT_EMAIL` – standard `kontakt@tilbudsradaren.dk` (postkassen skal findes, se trin 3)
-  - `VITE_INSTAGRAM_URL` – `[UDFYLD: https://www.instagram.com/<profil>]` (vises kun, når den starter med `https://`)
+- [ ] Udfyld i Render → tilbudsradar → **Environment**. Værdierne vises i footer, på `/om`, i betingelserne, i privatlivspolitikken og i alle e-mails – uden nyt build:
+  - `COMPANY_NAME` – vises nu som `[UDFYLD: firmanavn]`
+  - `COMPANY_CVR` – vises nu som `[UDFYLD: CVR]`
+  - `COMPANY_ADDRESS` – vises nu som `[UDFYLD: adresse]`
+  - `VITE_INSTAGRAM_URL` – fx `https://www.instagram.com/<profil>` (linket vises kun, når den starter med `https://`)
+- [x] `ADMIN_EMAILS` = `nicorad2005@gmail.com,nicorad120@gmail.com`. Admin-rollen sættes ved login – log ind igen, når listen ændres.
 - [ ] Søg i koden efter `[UDFYLD` for at sikre, at intet er glemt: `git grep -n "UDFYLD"`.
-- [ ] Sæt `ADMIN_EMAILS` til din egen e-mail (admin har altid fuld adgang og logger ind i admin-appen på admin.tilbudsradaren.dk).
 
-## 2. Stripe
+## 2. E-mail
 
-- [ ] Opret en Stripe-konto på virksomheden og **aktivér den** (CVR, bankkonto, ID-verifikation). Indtil da virker kun testnøgler.
-- [ ] **Indstillinger → Betalingsmetoder:** slå **kort** til. Apple Pay og Google Pay følger med kort i den Stripe-hostede Checkout og kræver ingen domæneverifikation der. MobilePay i Stripe understøtter ikke tilbagevendende betaling og kan derfor ikke bruges til abonnementet; koden beder kun om kort.
-- [ ] **Indstillinger → Kundemails:** slå *kvitteringer for gennemførte betalinger* og *refusioner* til. Slå *mails om mislykkede betalinger* til, hvis du vil have Stripes egne rykkermails ud over appens.
-- [ ] **Indstillinger → Abonnementer og e-mails → Håndtering af mislykkede betalinger:** brug Smart Retries over ca. 1 uge, og vælg *annullér abonnementet*, når alle forsøg er brugt. Appen giver adgang i `PAST_DUE_GRACE_DAYS` (5) dage efter første fejl.
-- [ ] **Indstillinger → Virksomhed → Offentlige oplysninger:** navn "Tilbudsradar", support-e-mail, `https://tilbudsradaren.dk/handelsbetingelser` og `https://tilbudsradaren.dk/privatlivspolitik`. Kontoudtog-tekst fx `TILBUDSRADAR`.
-- [ ] Kør opsætningen – først med testnøgle, siden med live-nøgle (scriptet er idempotent):
+- [x] Resend-konto (EU, Irland). Domænet `tilbudsradaren.dk` er verificeret med DKIM (`resend._domainkey`), CNAME `rsend` og `send` samt DMARC (`_dmarc`: `v=DMARC1; p=none;`) i DNS.services.
+- [x] `SMTP_URL` og `MAIL_FROM=Tilbudsradar <noreply@tilbudsradaren.dk>` er sat i Render. Bekræftelsesmailen er leveret (status *Delivered* i Resend).
+- [ ] **Ny Resend-nøgle:** den første API-nøgle blev indsat i en chat. Opret en ny under Resend → API Keys, slet den gamle, og opdatér `SMTP_URL` i Render.
+- [ ] **Kontaktmail:** `CONTACT_EMAIL=kontakt@tilbudsradaren.dk` står på siden, men domænet kan ikke modtage mail endnu. Slå modtagelse til i Resend (*Domains → Enable Receiving* + MX-record) eller brug en videresendelsestjeneste – eller sæt `CONTACT_EMAIL` til en adresse, der findes. Fortrydelser, der ikke kan matches til en konto, sendes hertil.
+- [ ] (Anbefalet) Resend foreslår en afsender, man kan svare på, i stedet for `noreply@` – fx `hej@tilbudsradaren.dk`, når modtagelse virker.
+- [ ] Skærp DMARC til `p=quarantine` efter et par uger uden problemer, og tilføj `rua=mailto:<din adresse>` for at få rapporter.
+- [ ] (Valgfrit) Sæt `ALERT_EMAIL_TO` i Render, så scraperne mailer dig ved strukturændringer hos kæderne.
+
+## 3. Domæne, hosting og database
+
+- [x] Domænet `tilbudsradaren.dk` er købt hos DNS.services (<https://dns.services/clientarea/domains/>), automatisk fornyelse er slået til (udløber 13/10/2027). DNS ligger under *DNS Hotel → Primær DNS*. Bemærk: DNS.services logger hurtigt ud.
+- [x] Render Blueprint fra `render.yaml`: webservice (Docker, Starter) og Postgres i Frankfurt. Dockerfilen bygger på Render.
+- [x] DNS: A-record `tilbudsradaren.dk` → `216.24.57.1`, CNAME `www` og `admin` → `tilbudsradar.onrender.com`. Alle tre domæner er verificeret i Render med certifikat.
+- [x] `https://tilbudsradaren.dk/api/health`, `/robots.txt` og `/sitemap.xml` svarer. Admin-domænet har `noindex` og `Disallow: /`.
+- [x] Første scraping er kørt. Kilderne følges under **Kilder** i admin-appen.
+- [ ] Tjek backup: Render → `tilbudsradar-db` → *Recovery* (point-in-time recovery på betalte databaser). Ellers planlæg et dagligt `pg_dump`.
+- [ ] Bruger du på et tidspunkt Neon eller Supabase i stedet for Render Postgres: vælg EU-region, tilføj `?sslmode=require` til `DATABASE_URL`, og **tilføj udbyderen i privatlivspolitikken** (`frontend/src/pages/legal/Privacy.tsx`).
+
+## 4. Stripe (når CVR er på plads)
+
+Stripe-kontoen hedder **Kodo**. Indtil videre er kun sandboxen sat op: produktet "Tilbudsradaren" med prisen `price_1UQtj3Awu1aDnP7KHo3vF8j2` (49 kr/md) og kundeportalen (opsig ved periodens udløb, skift kort, fakturahistorik, ingen redigering af kundeoplysninger).
+
+- [ ] **Aktivér kontoen** (*Settings → Activate products*): CVR, bankkonto og ID-verifikation.
+- [ ] **Offentlige oplysninger:** navn "Tilbudsradar", support-e-mail, `https://tilbudsradaren.dk/handelsbetingelser` og `https://tilbudsradaren.dk/privatlivspolitik`. Kontoudtog-tekst fx `TILBUDSRADAR`. (Kan først sættes efter aktivering.)
+- [ ] Overvej at omdøbe produktet "Tilbudsradaren" til "Tilbudsradar" – navnet står på betalingssiden og fakturaerne.
+- [ ] **Betalingsmetoder:** kort (Apple Pay og Google Pay følger med i Checkout). MobilePay understøtter ikke tilbagevendende betaling i Stripe; koden beder kun om kort.
+- [ ] **Kundemails:** kvitteringer og refusioner til. **Mislykkede betalinger:** Smart Retries over ca. 1 uge, derefter *annullér abonnementet*. Appen giver adgang i `PAST_DUE_GRACE_DAYS` (5) dage efter første fejl.
+- [ ] **Live-opsætning** – enten i dashboardet som i sandboxen, eller med scriptet (opretter et nyt produkt "Tilbudsradar"; brug ikke begge):
   ```bash
-  STRIPE_SECRET_KEY=sk_test_… APP_URL=https://tilbudsradaren.dk npm run stripe:setup
+  STRIPE_SECRET_KEY=sk_live_… APP_URL=https://tilbudsradaren.dk npm run stripe:setup
   ```
-  Det opretter produktet *Tilbudsradar*, prisen **49 kr/md inkl. moms** (`lookup_key: tilbudsradar_maaned_49`), kundeportalen (opsig ved periodens udløb, skift kort, se fakturaer) og webhooken `https://tilbudsradaren.dk/api/billing/webhook` med hændelserne `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid` og `invoice.payment_failed`. Til sidst skrives `STRIPE_PRICE_ID` og `STRIPE_PORTAL_CONFIG_ID` ud.
-- [ ] Kopiér webhookens **signeringsnøgle** (`whsec_…`) fra *Udviklere → Webhooks* til `STRIPE_WEBHOOK_SECRET`.
-- [ ] Sæt `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` og `STRIPE_PORTAL_CONFIG_ID` i Render. Brug gerne en **begrænset nøgle** (`rk_live_…`) med skriveadgang til Checkout Sessions, Customers, Customer Portal, Subscriptions og Refunds og læseadgang til Invoices.
-- [ ] Bemærk: Stripe-CLI-flowet (`stripe listen` + testbetaling ende til ende) er **ikke kørt** under udviklingen, fordi der ikke var en testnøgle. Webhook-logikken er dækket af automatiske tests med signerede testhændelser, men kør testplanen i trin 8 med testnøgler før live.
-
-## 3. E-mail
-
-- [ ] Opret en konto hos en e-mailudbyder med EU-region, fx Resend (EU) eller Postmark.
-- [ ] Verificér domænet `tilbudsradaren.dk`: tilføj udbyderens **SPF**- og **DKIM**-records og en **DMARC**-record (start med `v=DMARC1; p=none; rua=mailto:<din adresse>`, skærp til `quarantine` når alt virker).
-- [ ] Sæt `SMTP_URL` (fx `smtps://resend:<api-nøgle>@smtp.resend.com:465`) og `MAIL_FROM=Tilbudsradar <noreply@tilbudsradaren.dk>`.
-- [ ] Opret postkassen i `CONTACT_EMAIL` (fx via domæneudbyderen eller Google Workspace). Fortrydelser, som ikke kan matches til en konto, sendes hertil.
-- [ ] Send en testmail (opret en konto) og tjek, at den ikke lander i spam, og at links peger på `https://tilbudsradaren.dk`.
-
-## 4. Domæne, hosting og database
-
-- [x] Domænet `tilbudsradaren.dk` er købt hos DNS.services (DNS styres i deres kundeområde: <https://dns.services/clientarea/domains/>). Husk at forny det inden 13/10/2027 – eller slå automatisk fornyelse til.
-- [ ] Opret en Render-konto og vælg **New → Blueprint** med dette repository. `render.yaml` opretter webservicen og en Postgres-database i **Frankfurt**. Webservicen skal mindst være på *Starter* (gratis-instanser sover, og så kører cron-jobs ikke).
-- [ ] Udfyld alle værdier markeret `sync: false` (Stripe, SMTP, firmaoplysninger, `ADMIN_EMAILS`, `ANTHROPIC_API_KEY` …). `JWT_SECRET` genereres automatisk.
-- [ ] Første deploy: tjek loggen. Mangler `DATABASE_URL`, `APP_URL`, `ADMIN_EMAILS` eller `JWT_SECRET`, stopper serveren med en liste over, hvad der mangler. Stripe og SMTP kan tilføjes senere – indtil da står der advarsler i loggen, prøveperioder kører, men abonnementer kan ikke tegnes. Dockerfilen er ikke bygget lokalt (Docker var ikke installeret under udviklingen) – den første build på Render er derfor også testen af den.
-- [ ] Domænet står i `render.yaml`. Opret de DNS-records, Render viser under *Settings → Custom Domains* (A-record for roden, CNAME for `www`), i DNS.services, og tryk *Verify*. Render udsteder TLS-certifikatet.
-- [ ] Admin-appen: tilføj `admin.tilbudsradaren.dk` under *Settings → Custom Domains* på servicen (står også i `render.yaml`), opret den CNAME-record Render viser (`admin` → `<service>.onrender.com`) i DNS.services, og tryk *Verify*. Log ind med en e-mail fra `ADMIN_EMAILS`.
-- [ ] Tjek `https://tilbudsradaren.dk/api/health`, `https://tilbudsradaren.dk/robots.txt` og `https://tilbudsradaren.dk/sitemap.xml`.
-- [ ] Første scraping starter automatisk ved opstart, når databasen er tom (3–4 minutter). Følg med under **Kilder** i admin-appen.
-- [ ] Aktivér automatisk backup/point-in-time recovery for databasen (betalt Render-plan) – eller planlæg et dagligt `pg_dump`.
-- [ ] Bruger du Neon eller Supabase i stedet for Render Postgres: vælg EU-region, tilføj `?sslmode=require` til `DATABASE_URL`, og **tilføj udbyderen i privatlivspolitikken** (`frontend/src/pages/legal/Privacy.tsx`).
+  Webhook: `https://tilbudsradaren.dk/api/billing/webhook` med `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid` og `invoice.payment_failed`.
+- [ ] Sæt `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` og `STRIPE_PRICE_ID` (alle tre samlet) og evt. `STRIPE_PORTAL_CONFIG_ID` i Render. Brug gerne en **begrænset nøgle** (`rk_live_…`) med skriveadgang til Checkout Sessions, Customers, Customer Portal, Subscriptions og Refunds og læseadgang til Invoices.
+- [ ] **Når nøglerne er sat, slutter lanceringsperioden automatisk:** første opstart med Stripe giver alle konti uden abonnement 14 dage gratis fra den dag og sender dem en mail om det (sker én gang). Kør testplanen i trin 7 med testnøgler først.
 
 ## 5. Kvitteringer, overvågning og statistik
 
-- [ ] `ANTHROPIC_API_KEY` fra console.anthropic.com. Standardmodellen er `claude-sonnet-5-5`, og hver bruger kan scanne `RECEIPT_SCANS_PER_MONTH` (20) kvitteringer pr. måned. Tokenforbruget pr. scanning står i tabellen `receipt_scans`. Sæt et forbrugsloft i Anthropic Console. Uden nøgle bruges tekstgenkendelse på serveren.
-- [ ] (Valgfrit) Sentry med **EU-datalagring**: sæt `SENTRY_DSN` (backend) og `VITE_SENTRY_DSN` (browser). Persondata fjernes, før hændelser sendes. CSP'en åbner kun for Sentry, når DSN'en er sat.
-- [ ] (Valgfrit) Plausible (EU-hostet, cookiefri): opret sitet `tilbudsradaren.dk` og sæt `VITE_PLAUSIBLE_DOMAIN=tilbudsradaren.dk`. Opret målene *Prøveperiode startet* og *Checkout startet* for at se konverteringen. UTM-parametre fra Instagram-links (fx `?utm_source=instagram&utm_campaign=lancering`) registreres automatisk.
-- [ ] Indgå databehandleraftaler (DPA) med Render, Stripe, e-mailudbyderen, Anthropic og evt. Sentry/Plausible. De fleste accepteres i deres dashboard eller er en del af vilkårene – gem en kopi.
+- [ ] `ANTHROPIC_API_KEY` fra console.anthropic.com (ikke sat – kvitteringer læses indtil da med tekstgenkendelse på serveren). Standardmodellen er `claude-sonnet-5-5`, og hver bruger kan scanne `RECEIPT_SCANS_PER_MONTH` (20) kvitteringer pr. måned. Sæt et forbrugsloft i Anthropic Console.
+- [x] Sentry (EU): `SENTRY_DSN` og `VITE_SENTRY_DSN` er sat. Testet 17/10. Fejl fra brugere med en gammel fane efter en deploy håndteres nu ved at genindlæse siden.
+- [x] Egen cookiefri besøgsstatistik (sidevisninger, besøgende pr. dag, kilder som Instagram, enheder) – ingen cookies, IP-adresser gemmes ikke, slettes efter 13 måneder. Plausible er ikke nødvendig, men kan stadig slås til med `VITE_PLAUSIBLE_DOMAIN`.
+- [ ] Indgå databehandleraftaler (DPA) med Render, Resend og Sentry nu – og med Stripe og Anthropic, når de tages i brug. De fleste accepteres i deres dashboard eller er en del af vilkårene – gem en kopi.
 
 ## 6. Jurist
 
 Få en jurist med speciale i e-handel og persondata til at gennemgå:
 
-- [ ] **Handelsbetingelserne** (`/handelsbetingelser`, `shared/src/legal.ts`) og den vedhæftede tekstversion i ordrebekræftelsen.
-- [ ] **Oplysningerne før betaling** (`SubscribePanel` i frontenden og teksten under knappen i Stripe Checkout). Forbrugeraftalelovens § 12 kræver, at bestillingsknappen tydeligt angiver betalingsforpligtelse. Stripe viser "Betal"/"Abonnér" (`submit_type: 'pay'`), og appens egen knap hedder "Start abonnement – 49 kr/md" – få bekræftet, at det er tilstrækkeligt.
-- [ ] **Fortrydelsesretten:** Vi har valgt at refundere **hele** beløbet ved fortrydelse inden for 14 dage (mere end § 25 kræver), så forbrugeren ikke skal give samtykke til straks-levering og miste retten. Fortrydelsesfunktionen `/fortryd` er linket fra footer på alle sider (krav om digital fortrydelsesfunktion fra 19. juni 2026).
-- [ ] **Privatlivspolitikken:** formål, retsgrundlag, opbevaringsperioder, databehandlere og tredjelandsoverførsler (Stripe, Anthropic m.fl. under EU-US Data Privacy Framework).
-- [ ] **Cookiesiden:** at login-cookien, præferencer i `localStorage` (`tilbudsradar:prefs`, `tr:recent-searches`, `tilbudsradar:promo`) og service worker-cachen er strengt nødvendige, så der ikke skal være samtykke/cookie-banner.
-- [ ] **Markedsføring på landingssiden:** sammenligninger med kæderne, "reelt tilbud"-vurderingen og eksempelpriserne (markedsføringsloven og prismarkedsføringsreglerne). Eksemplet med hakket oksekød er fra uge 41, 2026.
+- [ ] **Handelsbetingelserne** (`/handelsbetingelser`, `shared/src/legal.ts`) og den vedhæftede tekstversion i ordrebekræftelsen – herunder afsnittet om **lanceringsperioden** (gratis til betaling åbner, derefter 14 dages prøveperiode).
+- [ ] **Oplysningerne før betaling** (`SubscribePanel` og teksten under knappen i Stripe Checkout). Forbrugeraftalelovens § 12 kræver, at bestillingsknappen tydeligt angiver betalingsforpligtelse. Stripe viser "Betal"/"Abonnér" (`submit_type: 'pay'`), og appens egen knap hedder "Start abonnement – 49 kr/md".
+- [ ] **Fortrydelsesretten:** fuld refusion ved fortrydelse inden for 14 dage (mere end § 25 kræver). `/fortryd` er linket fra footer på alle sider (krav om digital fortrydelsesfunktion fra 19. juni 2026).
+- [ ] **Privatlivspolitikken:** formål, retsgrundlag, opbevaringsperioder, databehandlere (Render, Resend, Sentry, Stripe, Anthropic) og tredjelandsoverførsler. Nyt siden første udkast: den **egne besøgsstatistik** (daglig skiftende kode af IP og browser, IP gemmes ikke) og at administratorer kan se og ændre kundekonti i admin-appen (handlingerne logges i kundens historik og indgår i dataudtrækket).
+- [ ] **Cookiesiden:** at login-cookien, `localStorage` (`tilbudsradar:prefs`, `tr:recent-searches`, `tilbudsradar:promo`), `sessionStorage` (`tr:reload`) og service worker-cachen er strengt nødvendige, og at statistikken er cookiefri – så der ikke skal være samtykke/cookie-banner.
+- [ ] **Markedsføring på landingssiden:** sammenligninger med kæderne, "reelt tilbud"-vurderingen, "Gratis lige nu" og eksempelpriserne (markedsføringsloven og prismarkedsføringsreglerne). Eksemplet med hakket oksekød er fra uge 41, 2026.
 - [ ] **Uafhængighed:** teksten om, at Tilbudsradar ikke er tilknyttet kæderne, og brugen af kædenavne og -farver.
 - [ ] **Datakilden:** tilbuds-API'et bag eTilbudsavis (Tjek) er ikke officielt dokumenteret – afklar vilkår for kommerciel brug (håndteres separat).
 
-## 7. Moms
+## 7. Testplan
 
-- [ ] Priserne er **inkl. 25 % moms** (49 kr). Virksomheden skal momsregistreres, når salget overstiger **50.000 kr. over 12 måneder** – svarende til ca. 85 aktive abonnenter i et år.
-- [ ] Når virksomheden er momsregistreret: kør `npm run stripe:setup -- --tax` og sæt `STRIPE_TAX_RATE_ID`. Fakturaerne viser derefter momsen. Prisen for kunden er uændret (momsen er inklusiv).
-- [ ] Sælger du til forbrugere i andre EU-lande for over 10.000 € om året, gælder deres moms (OSS). Appen er rettet mod Danmark.
-- [ ] Aftal bogføring med en revisor (Stripe-udbetalinger, gebyrer og refusioner).
+Allerede testet på den live side (✅) og resten med **testnøgler**, før betaling åbner:
 
-## 8. Testplan før lancering
-
-Med **testnøgler** på en staging-udgave (eller lokalt med `stripe listen`):
-
-1. [ ] Opret konto → prøveperioden starter (14 dage), bekræftelsesmail modtages, linket virker.
+1. [x] Opret konto → bekræftelsesmail modtages (leveret 17/10). Klik på linket og tjek, at e-mailen står som bekræftet.
 2. [ ] Opret konto igen med samme e-mail efter sletning (også med `+tag` eller punktummer i Gmail) → ingen ny prøveperiode.
 3. [ ] Glemt adgangskode → mail → nyt kodeord → alle andre sessioner er logget ud, og der kommer en mail om ændringen.
-4. [ ] Uden konto: søgning virker. Lister, alarmer, kvitteringer, prishistorik og community viser betalingsmuren.
+4. [x] Uden konto: søgning virker. Lister, alarmer, kvitteringer, prishistorik og community viser betalingsmuren ("Gratis lige nu").
 5. [ ] Tegn abonnement under prøveperioden med testkort `4242 4242 4242 4242` → ingen betaling før prøveperioden slutter, ordrebekræftelse med betingelser vedhæftet, status "Aktiv".
 6. [ ] Tegn abonnement efter udløbet prøveperiode → betaling trækkes straks.
 7. [ ] Kundeportal: skift kort, opsig → status "Opsagt", adgang til periodens udløb. Genoptag.
@@ -97,19 +107,27 @@ Med **testnøgler** på en staging-udgave (eller lokalt med `stripe listen`):
 9. [ ] `/fortryd` inden for 14 dage (logget ind og logget ud) → abonnementet stopper straks, refusion i Stripe, kvittering på e-mail.
 10. [ ] Slet konto med aktivt abonnement → abonnementet opsiges i Stripe først.
 11. [ ] Hent dataudtræk (Konto → Hent mine data) og tjek indholdet.
-12. [ ] Prøveperiode-mails: sæt `trial_ends_at` for en testbruger til om 2 dage hhv. i går, og sæt midlertidigt `BILLING_CRON=*/5 * * * *` → påmindelse og "prøveperioden er slut" sendes hver én gang.
+12. [ ] Prøveperiode-mails: sæt `trial_ends_at` for en testbruger til om 2 dage hhv. i går (fx i admin-appen), og sæt midlertidigt `BILLING_CRON=*/5 * * * *` → påmindelse og "prøveperioden er slut" sendes hver én gang.
 13. [ ] Kvitteringsscanning: scan, og tjek at forbruget tæller, og at loftet giver en venlig besked.
-14. [ ] Mobil (iPhone Safari og Android Chrome): landingsside, oprettelse, Checkout, "Føj til hjemmeskærm" (PWA).
+14. [ ] Mobil (iPhone Safari og Android Chrome): oprettelse, Checkout, "Føj til hjemmeskærm" (PWA). Landingssiden er tjekket på 375 px.
 15. [ ] Del `https://tilbudsradaren.dk` og `/priser` i en besked/Instagram-DM → forhåndsvisning med billede og titel.
 
 Gentag 5, 7 og 9 med **live-nøgler** og dit eget kort, og refundér bagefter.
 
-## 9. Efter lancering
+## 8. Drift
 
-- [ ] Hold øje med Sentry, Render-loggen (JSON) og Stripe → *Udviklere → Webhooks* (fejlede leveringer).
-- [ ] Følg Anthropic-forbruget de første uger og justér `RECEIPT_SCANS_PER_MONTH`.
-- [ ] Hold scraperne under opsyn under **Kilder** i admin-appen (strukturændringer giver notifikation via `SLACK_WEBHOOK_URL`/`ALERT_EMAIL_TO`).
+- [x] Overvågning: Sentry (fejl, mail ved alvorlige fejl), admin-appen (brugere, besøg, kilder) og Render (logs og deploys).
+- [ ] Når Stripe kører: hold øje med Stripe → *Udviklere → Webhooks* (fejlede leveringer).
+- [ ] Følg Anthropic-forbruget de første uger, når nøglen er sat, og justér `RECEIPT_SCANS_PER_MONTH`.
 - [ ] Ændres betingelserne væsentligt: hæv `TERMS_VERSION` i `shared/src/billing.ts` (nye abonnementer skal acceptere den nye version) og giv eksisterende kunder besked med rimeligt varsel.
+- Hver push til `main` deployer automatisk. Brugere med en åben, gammel fane får den nye version ved næste klik (siden genindlæses én gang).
+
+## 9. Moms
+
+- [ ] Priserne er **inkl. 25 % moms** (49 kr). Virksomheden skal momsregistreres, når salget overstiger **50.000 kr. over 12 måneder** – svarende til ca. 85 aktive abonnenter i et år.
+- [ ] Når virksomheden er momsregistreret: kør `npm run stripe:setup -- --tax` og sæt `STRIPE_TAX_RATE_ID`. Fakturaerne viser derefter momsen. Prisen for kunden er uændret (momsen er inklusiv).
+- [ ] Sælger du til forbrugere i andre EU-lande for over 10.000 € om året, gælder deres moms (OSS). Appen er rettet mod Danmark.
+- [ ] Aftal bogføring med en revisor (Stripe-udbetalinger, gebyrer og refusioner).
 
 ---
 
@@ -117,20 +135,26 @@ Gentag 5, 7 og 9 med **live-nøgler** og dit eget kort, og refundér bagefter.
 
 | Emne | Beslutning | Hvorfor |
 |---|---|---|
-| Prøveperiode | 14 dage fra oprettelse, uden kort, stopper af sig selv | Ingen overraskende træk, ingen "abonnementsfælde". Kræver aktiv tilmelding |
+| Navn og domæne | Navnet er **Tilbudsradar**, domænet **tilbudsradaren.dk** | tilbudsradar.dk var ikke ledigt |
+| Lanceringsperiode | Uden Stripe har alle konti alt gratis. Når betaling åbner, får alle 14 dage fra den dag og en mail | Siden kan gå live før CVR og Stripe, uden at nogen mister adgang efter 14 dage |
+| Prøveperiode | 14 dage, uden kort, stopper af sig selv | Ingen overraskende træk, ingen "abonnementsfælde". Kræver aktiv tilmelding |
 | Én prøveperiode pr. e-mail | SHA-256 af normaliseret e-mail i `trial_claims` (små bogstaver, uden `+tag`, Gmail-punktummer fjernet) | Forhindrer gentagne prøveperioder, også efter sletning, uden at gemme e-mailen |
-| Eksisterende brugere | Får en ny prøveperiode på 14 dage ved migrationen | Rimeligt over for tidlige brugere |
 | Tegning under prøveperioden | Første betaling udskydes til prøveperiodens udløb (`trial_end` i Stripe) | Man mister ikke de resterende gratis dage |
 | Krav før betaling | Bekræftet e-mail og accepterede betingelser (versioneret) | Kvittering og ordrebekræftelse når frem. Dokumentation for accept |
 | Betalingsmetode | Kun kort (inkl. Apple Pay/Google Pay) | MobilePay understøtter ikke tilbagevendende betaling i Stripe |
+| Stripe-konto | Kontoen "Kodo" (virksomheden bag) | Én konto til virksomheden. Navnet kunderne ser, sættes til "Tilbudsradar" |
 | Fortrydelse | Fuld refusion inden for 14 dage, via `/fortryd` uden login | Enklere og mere kundevenligt end forholdsmæssig betaling efter § 25 |
 | Opsigelse | I Stripes kundeportal, virker fra periodens udløb | Ingen binding, ingen refusion for påbegyndt måned (står i betingelserne) |
 | Fejlet betaling | 5 dages fortsat adgang, én mail pr. rykkerforløb | Kortudløb skal ikke straks låse brugeren ude |
 | Udløbet adgang | Egne data kan stadig ses, hentes og slettes, men ikke ændres | GDPR (indsigt og sletning) og tillid |
 | Gæster | Frontenden opretter ikke længere anonyme gæster | Betalte funktioner kræver konto. Endpointet findes stadig for ældre klienter |
-| Cookies | Kun strengt nødvendig lagring, Plausible er cookiefri | Intet cookie-banner nødvendigt |
-| Database | Render Postgres i Frankfurt | Én databehandler mindre end Neon/Supabase, alt i EU |
+| Cookies og statistik | Kun strengt nødvendig lagring. Egen cookiefri statistik i stedet for Plausible | Intet cookie-banner, ingen ekstra databehandler, gratis |
+| Admin | Separat app på admin.tilbudsradaren.dk, serveret af samme service efter værtsnavn | Ingen admin-kode eller -links på hjemmesiden. Én service at drive |
+| Hosting og database | Render (Docker, Starter) og Render Postgres i Frankfurt | Kører altid (cron-jobs), alt i EU, én databehandler |
+| E-mail og fejl | Resend og Sentry, begge med EU-datalagring | Gratis niveauer rækker til start. Data i EU |
 | Firmaoplysninger m.m. | Indsættes af serveren ved hver sidevisning | Ét sæt miljøvariabler, intet nyt build når de ændres |
+| Dubletter | Samme tilbud i flere aviser fra samme kæde gemmes og vises én gang (kæde, vare, pris, pris pr. enhed og gyldighed) | Fx Lidls ugeavis og weekendavis gav det samme tilbud to gange |
+| Ny version | En fane fra før en deploy genindlæses én gang, hvis den mangler kode | Undgår en tom side efter hver deploy |
 | Kvitteringsmodel | `claude-sonnet-5-5`, 20 scanninger pr. måned, forbrug logges | Billigere end Opus til aflæsning, forudsigelige omkostninger |
 
 ## Kilder
