@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { ApiError, refreshSession } from '../lib/api';
 import { initMonitoring } from '../lib/monitoring';
+import { listenForNewVersions } from '../lib/updates';
+import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AdminApp } from './AdminApp';
 import '../index.css';
 
@@ -24,12 +26,15 @@ const queryClient = new QueryClient({
 
 void refreshSession();
 void initMonitoring();
+listenForNewVersions();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AdminApp />
+        <AppErrorBoundary>
+          <AdminApp />
+        </AppErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

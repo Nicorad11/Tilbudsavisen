@@ -6,6 +6,8 @@ import { App } from './App';
 import { initAnalytics } from './lib/analytics';
 import { ApiError, isPaywallError, refreshSession } from './lib/api';
 import { initMonitoring } from './lib/monitoring';
+import { listenForNewVersions } from './lib/updates';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { registerServiceWorker } from './lib/pwa';
 import { useUi } from './lib/store';
 import './index.css';
@@ -29,6 +31,7 @@ const queryClient = new QueryClient({
 // Gendan en eksisterende session (refresh-cookie) – opretter ikke en ny gæst.
 void refreshSession();
 void initMonitoring();
+listenForNewVersions();
 initAnalytics();
 registerServiceWorker();
 
@@ -36,7 +39,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

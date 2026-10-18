@@ -5,10 +5,13 @@ import { CONFIG } from './config';
  * dynamisk, så pakken ikke tynger appen uden DSN. Ingen persondata, ingen
  * session replay og ingen lagring i browseren.
  */
+let sentry: typeof import('@sentry/react') | null = null;
+
 export async function initMonitoring(): Promise<void> {
   const dsn = CONFIG.sentryDsn;
   if (!dsn) return;
   const Sentry = await import('@sentry/react');
+  sentry = Sentry;
   Sentry.init({
     dsn,
     environment: CONFIG.sentryEnvironment,
@@ -22,4 +25,10 @@ export async function initMonitoring(): Promise<void> {
       return event;
     },
   });
+}
+
+/** Fejl der er fanget (fx af AppErrorBoundary) og derfor ikke når Sentrys globale fejlhåndtering. */
+export function reportError(error: unknown, componentStack?: string): void {
+  if (sentry) sentry.captureException(error, componentStack ? { contexts: { react: { componentStack } } } : undefined);
+  else console.error(error);
 }

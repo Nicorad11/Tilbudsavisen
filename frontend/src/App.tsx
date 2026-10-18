@@ -1,14 +1,15 @@
 import { Compass } from 'lucide-react';
-import { lazy, Suspense, type ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { PageViewTracker } from './components/PageViewTracker';
 import { Button, EmptyState } from './components/ui/primitives';
+import { lazyWithReload } from './lib/updates';
 import { Landing } from './pages/Landing';
 
 /** Forsiden indlæses med det samme; resten hentes, når siden besøges. */
 function page<M>(load: () => Promise<M>, name: keyof M) {
-  return lazy(async () => ({ default: (await load())[name] as ComponentType }));
+  return lazyWithReload(async () => ({ default: (await load())[name] as ComponentType }));
 }
 
 const AppShell = page(() => import('./components/layout/AppShell'), 'AppShell');

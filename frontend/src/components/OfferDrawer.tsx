@@ -12,20 +12,21 @@ import {
   ThumbsUp,
   X,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAccess, usePlanAction } from '../lib/access';
 import { authed, isPaywallError } from '../lib/api';
 import { formatDay, kr, packageSize, pct, unitLabel, validityLabel } from '../lib/format';
 import { useAddToList, useAddWatch, useOffer, usePriceHistory } from '../lib/hooks';
 import { useUi } from '../lib/store';
+import { lazyWithReload } from '../lib/updates';
 import { storeColor } from '../lib/storeColors';
 import { OfferRow, Price, ProductImage, TrustBadge } from './OfferCard';
 import { RulerTicks } from './ui/charts';
 import { Button, IconButton, Pill, Skeleton, StoreDot, TextInput } from './ui/primitives';
 
 // Grafbiblioteket er stort – hent det først, når en prishistorik vises.
-const PriceHistoryChart = lazy(() => import('./PriceHistoryChart').then((m) => ({ default: m.PriceHistoryChart })));
+const PriceHistoryChart = lazyWithReload(() => import('./PriceHistoryChart').then((m) => ({ default: m.PriceHistoryChart })));
 
 /** Detaljepanel for et tilbud – åbnes fra alle sider via ?tilbud=<id>. */
 export function OfferDrawer() {
