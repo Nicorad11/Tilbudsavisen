@@ -4,7 +4,7 @@
 
 /** Pris og prøveperiode – vises overalt i appen og bruges af backend. */
 export const PLAN = {
-  /** Pris pr. måned inkl. moms. */
+  /** Samlet pris pr. måned (inkl. moms, når virksomheden er momsregistreret). */
   priceDkk: 49,
   trialDays: 14,
 } as const;

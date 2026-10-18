@@ -25,7 +25,8 @@ const pick = <K extends keyof PublicConfig>(key: K, fallback: PublicConfig[K]): 
 
 export const CONFIG: PublicConfig = {
   companyName: pick('companyName', '[UDFYLD: firmanavn]'),
-  companyCvr: pick('companyCvr', '[UDFYLD: CVR]'),
+  companyCvr: pick('companyCvr', null),
+  vatRegistered: pick('vatRegistered', false),
   companyAddress: pick('companyAddress', '[UDFYLD: adresse]'),
   contactEmail: pick('contactEmail', 'kontakt@tilbudsradaren.dk'),
   instagramUrl: pick('instagramUrl', httpsOnly(fromEnv('VITE_INSTAGRAM_URL'))),

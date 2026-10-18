@@ -78,7 +78,13 @@ const schema = z.object({
 
   // Virksomheden (vises i e-mails – samme værdier som VITE_COMPANY_* i frontenden)
   COMPANY_NAME: withPlaceholder('[UDFYLD: firmanavn]'),
-  COMPANY_CVR: withPlaceholder('[UDFYLD: CVR]'),
+  /** Tom = intet CVR (enkeltmand) – så vises CVR ingen steder. */
+  COMPANY_CVR: optional,
+  /** Momsregistreret: priser vises "inkl. moms". Ellers står der kun prisen, og betingelserne siger, at der ikke er moms. */
+  VAT_REGISTERED: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
   COMPANY_ADDRESS: withPlaceholder('[UDFYLD: adresse]'),
   CONTACT_EMAIL: withPlaceholder(DEFAULT_CONTACT),
   /** Link til Instagram-profilen i footer og på /om. Tom eller pladsholder = linket vises ikke. */
@@ -175,8 +181,8 @@ export const log: Logger = createAppLogger('api', {
   level: env.isTest ? 'error' : 'info',
 });
 
-if (env.isProd && [raw.COMPANY_NAME, raw.COMPANY_CVR, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
-  log.warn('Firmaoplysningerne (COMPANY_NAME, COMPANY_CVR, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
+if (env.isProd && [raw.COMPANY_NAME, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
+  log.warn('Navn og adresse (COMPANY_NAME, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
 }
 if (env.isProd && !raw.VITE_INSTAGRAM_URL) log.warn('VITE_INSTAGRAM_URL er ikke sat (eller er ikke https://) – Instagram-linket vises ikke.');
 if (env.isProd && !env.billingEnabled) {

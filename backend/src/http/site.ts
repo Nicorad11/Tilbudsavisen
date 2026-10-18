@@ -40,6 +40,7 @@ export function publicConfig(): PublicConfig {
   return {
     companyName: env.COMPANY_NAME,
     companyCvr: env.COMPANY_CVR,
+    vatRegistered: env.VAT_REGISTERED,
     companyAddress: env.COMPANY_ADDRESS,
     contactEmail: env.CONTACT_EMAIL,
     instagramUrl: env.VITE_INSTAGRAM_URL,

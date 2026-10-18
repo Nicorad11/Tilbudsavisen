@@ -2,6 +2,7 @@ import { PLAN, WITHDRAWAL_DAYS } from '@tilbudsradar/shared';
 import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
+import { VAT } from '../../lib/company';
 
 export interface FaqItem {
   q: string;
@@ -15,7 +16,7 @@ export const FAQ: Record<string, FaqItem> = {
   },
   price: {
     q: 'Hvad koster Tilbudsradar?',
-    a: `${PLAN.priceDkk} kr. om måneden inkl. moms. Du starter med ${PLAN.trialDays} dages gratis prøveperiode med alle funktioner. Søgning og ugens tilbud er altid gratis – også uden konto.`,
+    a: `${PLAN.priceDkk} kr. om måneden${VAT}. Du starter med ${PLAN.trialDays} dages gratis prøveperiode med alle funktioner. Søgning og ugens tilbud er altid gratis – også uden konto.`,
   },
   card: {
     q: 'Skal jeg give mit betalingskort for at prøve?',

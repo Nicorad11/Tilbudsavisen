@@ -8,7 +8,14 @@ import type { Mail } from './mailer';
  */
 
 export function company(): CompanyInfo {
-  return { name: env.COMPANY_NAME, cvr: env.COMPANY_CVR, address: env.COMPANY_ADDRESS, email: env.CONTACT_EMAIL, appUrl: env.APP_URL };
+  return {
+    name: env.COMPANY_NAME,
+    cvr: env.COMPANY_CVR,
+    address: env.COMPANY_ADDRESS,
+    email: env.CONTACT_EMAIL,
+    appUrl: env.APP_URL,
+    vatRegistered: env.VAT_REGISTERED,
+  };
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -51,7 +58,7 @@ const textParagraph = (p: Paragraph) => partsOf(p).map((x) => (typeof x === 'str
 
 function render(l: Layout): Pick<Mail, 'subject' | 'html' | 'text'> {
   const c = company();
-  const footer = `${c.name} · CVR ${c.cvr} · ${c.address} · ${c.email}`;
+  const footer = [c.name, c.cvr && `CVR ${c.cvr}`, c.address, c.email].filter(Boolean).join(' · ');
   const html = `<!doctype html>
 <html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(l.subject)}</title></head>
 <body style="margin:0;padding:0;background:#e7e7e5;font-family:'Inter Tight','Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased">
@@ -99,6 +106,8 @@ function render(l: Layout): Pick<Mail, 'subject' | 'html' | 'text'> {
 }
 
 const price = `${PLAN.priceDkk} kr/md`;
+/** " inkl. moms" når virksomheden er momsregistreret – ellers ingenting. */
+const vat = () => (env.VAT_REGISTERED ? ' inkl. moms' : '');
 
 /* ------------------------------------------------------------------ */
 /* Konto                                                              */
@@ -202,7 +211,7 @@ export function billingOpenedMail(to: string, trialEndsAt: Date): Mail {
       paragraphs: [
         'Tak fordi du har brugt Tilbudsradar i lanceringsperioden. Nu åbner vi for abonnement.',
         ['Du har stadig alle funktioner gratis i ', { strong: `${PLAN.trialDays} dage – til og med ${formatDate(trialEndsAt)}` }, '.'],
-        `Vil du beholde indkøbslister, prisalarmer, kvitteringsscanneren og prishistorikken bagefter, koster det ${price} inkl. moms. Ingen binding. Der trækkes ingen penge automatisk – du tegner selv abonnementet under Konto, hvis du vil fortsætte.`,
+        `Vil du beholde indkøbslister, prisalarmer, kvitteringsscanneren og prishistorikken bagefter, koster det ${price}${vat()}. Ingen binding. Der trækkes ingen penge automatisk – du tegner selv abonnementet under Konto, hvis du vil fortsætte.`,
       ],
       button: { label: 'Se abonnementet', url: appLink('/priser') },
       note: 'Du får denne mail, fordi du har en konto på Tilbudsradar.',
@@ -219,7 +228,7 @@ export function trialEndingSoonMail(to: string, trialEndsAt: Date): Mail {
       title: 'Din prøveperiode slutter snart',
       paragraphs: [
         ['Din gratis prøveperiode slutter ', { strong: formatDate(trialEndsAt) }, '.'],
-        `Vil du beholde indkøbslister, prisalarmer, kvitteringsscanneren og prishistorikken, kan du tegne et abonnement til ${price} inkl. moms. Ingen binding – du kan opsige når som helst.`,
+        `Vil du beholde indkøbslister, prisalarmer, kvitteringsscanneren og prishistorikken, kan du tegne et abonnement til ${price}${vat()}. Ingen binding – du kan opsige når som helst.`,
         'Gør du ingenting, sker der intet: vi trækker ingen penge, og dine data bliver liggende, så du kan se dem igen, hvis du abonnerer senere.',
       ],
       button: { label: `Se abonnementet – ${price}`, url: appLink('/priser') },
@@ -259,11 +268,11 @@ export function subscriptionStartedMail(
     attachments: [{ filename: 'handelsbetingelser-tilbudsradar.txt', content: termsAsText(c), contentType: 'text/plain; charset=utf-8' }],
     ...render({
       subject: 'Ordrebekræftelse: dit abonnement på Tilbudsradar',
-      preheader: `${price} inkl. moms, ingen binding.`,
+      preheader: `${price}${vat()}, ingen binding.`,
       title: 'Tak for dit abonnement',
       paragraphs: [
         ['Ydelse: ', { strong: 'Tilbudsradar-abonnement' }, ' – indkøbslister med butiks-splitting, prisalarmer, kvitteringsscanner, prishistorik og community-vurderinger.'],
-        ['Pris: ', { strong: `${PLAN.priceDkk} kr. pr. måned inkl. moms` }, '. Betales forud for én måned ad gangen og fornyes automatisk, indtil du opsiger.'],
+        ['Pris: ', { strong: `${PLAN.priceDkk} kr. pr. måned${vat()}` }, '. Betales forud for én måned ad gangen og fornyes automatisk, indtil du opsiger.'],
         firstCharge,
         ['Binding: ', { strong: 'ingen' }, '. Du kan opsige når som helst under Konto → "Administrér eller opsig". Opsigelsen gælder fra udløbet af den betalte måned.'],
         ['Aftalen er indgået: ', { strong: formatDateTime(opts.startedAt) }, '.'],

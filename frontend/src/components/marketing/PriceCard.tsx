@@ -2,6 +2,7 @@ import { PAID_FEATURES, PLAN, WITHDRAWAL_DAYS } from '@tilbudsradar/shared';
 import { Check } from 'lucide-react';
 import { useLaunch } from '../../lib/access';
 import { SubscribePanel } from '../billing/SubscribePanel';
+import { VAT } from '../../lib/company';
 
 const FREE = ['Søg i alle tilbudsaviser', 'Pris pr. kg, liter og stk. på tværs af kæderne', 'Vurdering af om tilbuddet er reelt', 'Ugens bedste tilbud'];
 
@@ -18,7 +19,7 @@ export function PriceCard() {
           </p>
           <p className="mt-3 flex items-baseline gap-2">
             <span className="text-[64px] leading-none tracking-[-0.05em]">{PLAN.priceDkk} kr</span>
-            <span className="text-[15px] text-ink/70">pr. måned inkl. moms</span>
+            <span className="text-[15px] text-ink/70">pr. måned{VAT}</span>
           </p>
           <p className="mt-3 max-w-[40ch] text-[15px] leading-snug text-ink/80">
             {launch

@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useLaunch } from '../lib/access';
 import { Faq, FAQ } from '../components/marketing/Faq';
 import { PriceCard } from '../components/marketing/PriceCard';
+import { VAT } from '../lib/company';
 
 export function Pricing() {
   const launch = useLaunch();
@@ -13,8 +14,8 @@ export function Pricing() {
         <h1 className="mt-1 text-[40px] leading-[1.04] tracking-[-0.045em] text-ink sm:text-[56px]">Én pris. Alle funktioner.</h1>
         <p className="mt-4 text-[17px] leading-snug text-muted">
           {launch
-            ? `Lige nu er alt gratis i lanceringsperioden. Når betaling åbner, får du ${PLAN.trialDays} dage gratis – derefter koster det ${PLAN.priceDkk} kr. om måneden inkl. moms, hvis du vil fortsætte. Ingen binding, og der trækkes aldrig penge automatisk.`
-            : `Prøv alt gratis i ${PLAN.trialDays} dage – uden kort. Vil du fortsætte, koster det ${PLAN.priceDkk} kr. om måneden inkl. moms. Ingen binding.`}
+            ? `Lige nu er alt gratis i lanceringsperioden. Når betaling åbner, får du ${PLAN.trialDays} dage gratis – derefter koster det ${PLAN.priceDkk} kr. om måneden${VAT}, hvis du vil fortsætte. Ingen binding, og der trækkes aldrig penge automatisk.`
+            : `Prøv alt gratis i ${PLAN.trialDays} dage – uden kort. Vil du fortsætte, koster det ${PLAN.priceDkk} kr. om måneden${VAT}. Ingen binding.`}
         </p>
       </div>
 

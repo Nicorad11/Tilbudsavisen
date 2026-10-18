@@ -13,6 +13,7 @@ import { formatDay } from '../lib/format';
 import { useStores } from '../lib/hooks';
 import { useAuth, useUi } from '../lib/store';
 import { storeColor } from '../lib/storeColors';
+import { VAT } from '../lib/company';
 
 export function Account() {
   const token = useAuth((s) => s.accessToken);
@@ -309,7 +310,7 @@ function SubscriptionCard() {
         <div>
           <p className="text-lg tracking-tight">Abonnement</p>
           <p className="text-xs text-muted">
-            {access.status === 'launch' ? 'Gratis i lanceringsperioden' : `${PLAN.priceDkk} kr/md inkl. moms · ingen binding`}
+            {access.status === 'launch' ? 'Gratis i lanceringsperioden' : `${PLAN.priceDkk} kr/md${VAT} · ingen binding`}
           </p>
         </div>
         <Pill tone={access.hasAccess ? 'lime' : 'ghost'} icon={<CreditCard className="size-3.5" />}>

@@ -61,7 +61,8 @@ export function Footer({ className, appNav }: { className?: string; /** Plads ti
         </nav>
       </div>
       <p className="mt-8 text-[12px] leading-snug text-muted">
-        © {new Date().getFullYear()} {COMPANY.name} · CVR {COMPANY.cvr} · {COMPANY.address} ·{' '}
+        © {new Date().getFullYear()} {COMPANY.name} · {COMPANY.cvr && `CVR ${COMPANY.cvr} · `}
+        {COMPANY.address} ·{' '}
         <a href={`mailto:${COMPANY.email}`} className="hover:text-ink">
           {COMPANY.email}
         </a>

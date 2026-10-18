@@ -9,8 +9,11 @@ import { PLAN, TERMS_VERSION, WITHDRAWAL_DAYS } from './billing';
 
 export interface CompanyInfo {
   name: string;
-  cvr: string;
+  /** CVR-nummer – null for en enkeltmand uden CVR (så vises det ikke). */
+  cvr: string | null;
   address: string;
+  /** Momsregistreret: priserne står "inkl. moms". Ellers er prisen den samlede pris uden moms. */
+  vatRegistered: boolean;
   email: string;
   /** Fx https://tilbudsradaren.dk */
   appUrl: string;
@@ -29,7 +32,7 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
       id: 'om-os',
       title: '1. Om Tilbudsradar',
       paragraphs: [
-        `Tilbudsradar drives af ${c.name}, CVR-nr. ${c.cvr}, ${c.address} ("vi"). Du kan altid kontakte os på ${c.email}.`,
+        `Tilbudsradar drives af ${c.name}${c.cvr ? `, CVR-nr. ${c.cvr}` : ''}, ${c.address} ("vi"). Du kan altid kontakte os på ${c.email}.`,
         'Betingelserne gælder, når du opretter en konto og når du tegner et abonnement på Tilbudsradar. Du skal være mindst 18 år for at tegne et abonnement.',
       ],
     },
@@ -57,7 +60,9 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
       id: 'pris',
       title: '4. Pris og betaling',
       paragraphs: [
-        `Abonnementet koster ${price} pr. måned inkl. moms. Der er ingen oprettelsesgebyrer eller andre omkostninger.`,
+        c.vatRegistered
+          ? `Abonnementet koster ${price} pr. måned inkl. moms. Der er ingen oprettelsesgebyrer eller andre omkostninger.`
+          : `Abonnementet koster ${price} pr. måned. Det er den samlede pris – vi er ikke momsregistreret, så der lægges ikke moms oveni. Der er ingen oprettelsesgebyrer eller andre omkostninger.`,
         'Abonnementet betales forud for én måned ad gangen og fornyes automatisk hver måned, indtil du opsiger det. Betalingen trækkes på det betalingskort (eller Apple Pay/Google Pay), du angiver. Betalingen håndteres af Stripe; vi ser og gemmer aldrig dine kortoplysninger.',
         'Tegner du abonnementet, mens du stadig er i din gratis prøveperiode, trækkes den første betaling først, når prøveperioden slutter – dog trækkes den med det samme, hvis der er mindre end 48 timer tilbage af prøveperioden.',
         'Hvis vi ændrer prisen, får du besked på e-mail mindst 30 dage før, og du kan opsige abonnementet inden ændringen træder i kraft.',

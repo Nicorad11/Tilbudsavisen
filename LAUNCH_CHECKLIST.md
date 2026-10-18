@@ -15,8 +15,8 @@
 | Fejlovervågning | ✅ Sentry (EU), organisation `kodo-rg`, projekt `tilbudsradar`. Mail ved alvorlige fejl |
 | Besøgsstatistik | ✅ Egen, cookiefri statistik – vises i admin-appen (Overblik) |
 | Admin | ✅ admin.tilbudsradaren.dk – overblik, kunder og kilder. Administratorer: `ADMIN_EMAILS` |
-| Betaling | ⏳ **Lanceringsperiode:** Stripe er ikke sat op endnu (afventer CVR), så alle konti har alt gratis |
-| Firmaoplysninger | ⏳ Footer, `/om` og betingelserne viser `[UDFYLD …]`, til virksomheden er oprettet |
+| Betaling | ⏳ **Lanceringsperiode:** Stripe er ikke sat op endnu (live-kontoen skal aktiveres som enkeltmand), så alle konti har alt gratis |
+| Sælger | ⏳ Enkeltmand uden CVR (aftalt med advokat og revisor). Navn og adresse mangler på siden |
 | Kontaktmail | ⏳ `kontakt@tilbudsradaren.dk` kan endnu ikke modtage mails |
 | Jurist | ⏳ Ikke gennemgået |
 
@@ -24,13 +24,15 @@ Rækkefølgen herunder er den anbefalede for det, der mangler.
 
 ---
 
-## 1. Virksomhed og pladsholdere
+## 1. Sælger og pladsholdere
 
-- [ ] Virksomheden er registreret, og du har CVR-nummer (virk.dk).
+Tilbudsradar drives som **enkeltmand uden CVR** (aftalt med advokat og revisor, oktober 2026). Uden CVR vises der ingen CVR-linje nogen steder, og uden momsregistrering står priserne uden "inkl. moms".
+
 - [ ] Udfyld i Render → tilbudsradar → **Environment**. Værdierne vises i footer, på `/om`, i betingelserne, i privatlivspolitikken og i alle e-mails – uden nyt build:
-  - `COMPANY_NAME` – vises nu som `[UDFYLD: firmanavn]`
-  - `COMPANY_CVR` – vises nu som `[UDFYLD: CVR]`
-  - `COMPANY_ADDRESS` – vises nu som `[UDFYLD: adresse]`
+  - `COMPANY_NAME` – handelsnavnet **Kodo**. For en enkeltmand skal ejerens navn fremgå, fx `Kodo v/ <fulde navn>`.
+  - `COMPANY_ADDRESS` – adressen (e-handelsloven § 7 kræver en geografisk adresse)
+  - `COMPANY_CVR` – lades tom. Sæt den, hvis du senere får CVR.
+  - `VAT_REGISTERED` – lades tom/`false`. Sæt `true`, når du bliver momsregistreret.
   - `VITE_INSTAGRAM_URL` – fx `https://www.instagram.com/<profil>` (linket vises kun, når den starter med `https://`)
 - [x] `ADMIN_EMAILS` = `nicorad2005@gmail.com,nicorad120@gmail.com`. Admin-rollen sættes ved login – log ind igen, når listen ændres.
 - [ ] Søg i koden efter `[UDFYLD` for at sikre, at intet er glemt: `git grep -n "UDFYLD"`.
@@ -55,11 +57,11 @@ Rækkefølgen herunder er den anbefalede for det, der mangler.
 - [ ] Tjek backup: Render → `tilbudsradar-db` → *Recovery* (point-in-time recovery på betalte databaser). Ellers planlæg et dagligt `pg_dump`.
 - [ ] Bruger du på et tidspunkt Neon eller Supabase i stedet for Render Postgres: vælg EU-region, tilføj `?sslmode=require` til `DATABASE_URL`, og **tilføj udbyderen i privatlivspolitikken** (`frontend/src/pages/legal/Privacy.tsx`).
 
-## 4. Stripe (når CVR er på plads)
+## 4. Stripe
 
 Stripe-kontoen hedder **Kodo**. Indtil videre er kun sandboxen sat op: produktet "Tilbudsradaren" med prisen `price_1UQtj3Awu1aDnP7KHo3vF8j2` (49 kr/md) og kundeportalen (opsig ved periodens udløb, skift kort, fakturahistorik, ingen redigering af kundeoplysninger).
 
-- [ ] **Aktivér kontoen** (*Settings → Activate products*): CVR, bankkonto og ID-verifikation.
+- [ ] **Aktivér kontoen** (*Settings → Activate products*) som **privatperson/enkeltmand** (*Individual*) – uden CVR: dine personoplysninger, bankkonto og ID-verifikation. Branche fx "Software/SaaS", hjemmeside `https://tilbudsradaren.dk`.
 - [ ] **Offentlige oplysninger:** navn "Tilbudsradar", support-e-mail, `https://tilbudsradaren.dk/handelsbetingelser` og `https://tilbudsradaren.dk/privatlivspolitik`. Kontoudtog-tekst fx `TILBUDSRADAR`. (Kan først sættes efter aktivering.)
 - [ ] Overvej at omdøbe produktet "Tilbudsradaren" til "Tilbudsradar" – navnet står på betalingssiden og fakturaerne.
 - [ ] **Betalingsmetoder:** kort (Apple Pay og Google Pay følger med i Checkout). MobilePay understøtter ikke tilbagevendende betaling i Stripe; koden beder kun om kort.
@@ -124,8 +126,9 @@ Gentag 5, 7 og 9 med **live-nøgler** og dit eget kort, og refundér bagefter.
 
 ## 9. Moms
 
-- [ ] Priserne er **inkl. 25 % moms** (49 kr). Virksomheden skal momsregistreres, når salget overstiger **50.000 kr. over 12 måneder** – svarende til ca. 85 aktive abonnenter i et år.
-- [ ] Når virksomheden er momsregistreret: kør `npm run stripe:setup -- --tax` og sæt `STRIPE_TAX_RATE_ID`. Fakturaerne viser derefter momsen. Prisen for kunden er uændret (momsen er inklusiv).
+- [x] Ikke momsregistreret: prisen er 49 kr/md i alt, og siden skriver ikke "inkl. moms" (`VAT_REGISTERED=false`).
+- [ ] Hold øje med omsætningen: du skal momsregistreres (og have CVR), når salget overstiger **50.000 kr. over 12 måneder** – svarende til ca. 85 aktive abonnenter i et år. Overskud fra en enkeltmand uden CVR beskattes som personlig indkomst – aftal med revisoren, hvordan det opgøres.
+- [ ] Når du bliver momsregistreret: sæt `COMPANY_CVR` og `VAT_REGISTERED=true` i Render, kør `npm run stripe:setup -- --tax` og sæt `STRIPE_TAX_RATE_ID`. Bemærk: 49 kr. inkl. moms giver 39,20 kr. efter moms – overvej prisen.
 - [ ] Sælger du til forbrugere i andre EU-lande for over 10.000 € om året, gælder deres moms (OSS). Appen er rettet mod Danmark.
 - [ ] Aftal bogføring med en revisor (Stripe-udbetalinger, gebyrer og refusioner).
 
@@ -142,7 +145,8 @@ Gentag 5, 7 og 9 med **live-nøgler** og dit eget kort, og refundér bagefter.
 | Tegning under prøveperioden | Første betaling udskydes til prøveperiodens udløb (`trial_end` i Stripe) | Man mister ikke de resterende gratis dage |
 | Krav før betaling | Bekræftet e-mail og accepterede betingelser (versioneret) | Kvittering og ordrebekræftelse når frem. Dokumentation for accept |
 | Betalingsmetode | Kun kort (inkl. Apple Pay/Google Pay) | MobilePay understøtter ikke tilbagevendende betaling i Stripe |
-| Stripe-konto | Kontoen "Kodo" (virksomheden bag) | Én konto til virksomheden. Navnet kunderne ser, sættes til "Tilbudsradar" |
+| Sælger | Enkeltmand uden CVR, handelsnavn Kodo. Stripe-kontoen "Kodo" aktiveres som privatperson | Hurtigst i gang. Aftalt med advokat og revisor. CVR og moms kommer, når omsætningen kræver det |
+| Moms | Ikke momsregistreret: "49 kr/md" uden "inkl. moms" (`VAT_REGISTERED`) | Der er ingen moms i prisen, så "inkl. moms" ville være misvisende |
 | Fortrydelse | Fuld refusion inden for 14 dage, via `/fortryd` uden login | Enklere og mere kundevenligt end forholdsmæssig betaling efter § 25 |
 | Opsigelse | I Stripes kundeportal, virker fra periodens udløb | Ingen binding, ingen refusion for påbegyndt måned (står i betingelserne) |
 | Fejlet betaling | 5 dages fortsat adgang, én mail pr. rykkerforløb | Kortudløb skal ikke straks låse brugeren ude |

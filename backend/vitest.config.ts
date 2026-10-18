@@ -11,6 +11,9 @@ export default defineConfig({
       STRIPE_WEBHOOK_SECRET: 'whsec_test_secret',
       STRIPE_PRICE_ID: 'price_test_49',
       CONTACT_EMAIL: 'kontakt@tilbudsradar.test',
+      // Enkeltmand uden CVR og moms – uafhængigt af en lokal .env.
+      COMPANY_CVR: '',
+      VAT_REGISTERED: 'false',
     },
   },
 });

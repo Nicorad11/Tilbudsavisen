@@ -22,7 +22,7 @@ export function About() {
           head={['', '']}
           rows={[
             ['Navn', COMPANY.name],
-            ['CVR-nr.', COMPANY.cvr],
+            ...(COMPANY.cvr ? [['CVR-nr.', COMPANY.cvr]] : []),
             ['Adresse', COMPANY.address],
             ['E-mail', <a key="m" href={`mailto:${COMPANY.email}`} className="underline">{COMPANY.email}</a>],
           ]}

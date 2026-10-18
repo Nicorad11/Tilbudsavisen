@@ -5,6 +5,7 @@ import { useId, useState } from 'react';
 import { Link } from 'react-router';
 import { formatLongDate, useAccess, useBillingStatus, useCheckout, useLaunch, usePortal, useResendVerification } from '../../lib/access';
 import { Button } from '../ui/primitives';
+import { VAT } from '../../lib/company';
 
 const HOUR = 3_600_000;
 
@@ -95,7 +96,7 @@ export function SubscribePanel({ className, compact }: { className?: string; com
         <div>
           <dt className="font-medium text-ink">Pris</dt>
           <dd>
-            {PLAN.priceDkk} kr. pr. måned inkl. moms. Betales forud og fornyes automatisk hver måned, indtil du opsiger.
+            {PLAN.priceDkk} kr. pr. måned{VAT}. Betales forud og fornyes automatisk hver måned, indtil du opsiger.
           </dd>
         </div>
         <div>

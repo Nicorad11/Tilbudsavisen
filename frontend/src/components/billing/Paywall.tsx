@@ -7,6 +7,7 @@ import { useAccess, useLaunch } from '../../lib/access';
 import { useUi } from '../../lib/store';
 import { IconButton } from '../ui/primitives';
 import { SubscribePanel } from './SubscribePanel';
+import { VAT } from '../../lib/company';
 
 /**
  * Betalingsmuren: forklarer hvad funktionen giver, og hvad man får med en
@@ -73,7 +74,7 @@ export function Paywall({ feature, className }: { feature: PaidFeature | 'any'; 
             <>
               <p className="flex items-baseline gap-1.5 text-ink">
                 <span className="text-[40px] leading-none tracking-[-0.045em]">{PLAN.priceDkk} kr</span>
-                <span className="text-sm text-muted">/ md inkl. moms</span>
+                <span className="text-sm text-muted">/ md{VAT}</span>
               </p>
               <p className="mt-1 text-[13px] text-muted">
                 {expired ? 'Ingen binding · Opsig når som helst' : `${PLAN.trialDays} dage gratis først · Intet kort`}

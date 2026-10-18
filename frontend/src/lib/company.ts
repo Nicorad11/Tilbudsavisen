@@ -15,10 +15,14 @@ export const COMPANY = {
   appUrl: CONFIG.appUrl,
 };
 
+/** " inkl. moms" når virksomheden er momsregistreret – ellers ingenting (prisen er den samlede pris). */
+export const VAT = CONFIG.vatRegistered ? ' inkl. moms' : '';
+
 export const companyInfo: CompanyInfo = {
   name: COMPANY.name,
   cvr: COMPANY.cvr,
   address: COMPANY.address,
   email: COMPANY.email,
   appUrl: COMPANY.appUrl,
+  vatRegistered: CONFIG.vatRegistered,
 };

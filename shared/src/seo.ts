@@ -22,7 +22,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/': { title: 'Tilbudsradar – alle tilbudsaviser i ét søgefelt', description: DEFAULT_DESCRIPTION },
   '/priser': {
     title: `Priser – ${PLAN.priceDkk} kr/md, ${PLAN.trialDays} dage gratis | Tilbudsradar`,
-    description: `Tilbudsradar koster ${PLAN.priceDkk} kr. om måneden inkl. moms. ${PLAN.trialDays} dages gratis prøveperiode uden kort, ingen binding.`,
+    description: `Tilbudsradar koster ${PLAN.priceDkk} kr. om måneden. ${PLAN.trialDays} dages gratis prøveperiode uden kort, ingen binding.`,
   },
   '/handelsbetingelser': { title: 'Handelsbetingelser | Tilbudsradar', description: 'Handelsbetingelser for abonnement på Tilbudsradar.' },
   '/privatlivspolitik': { title: 'Privatlivspolitik | Tilbudsradar', description: 'Sådan behandler Tilbudsradar dine personoplysninger.' },
@@ -48,7 +48,8 @@ export const PAGE_META: Record<string, PageMeta> = {
  */
 export interface PublicConfig {
   companyName: string;
-  companyCvr: string;
+  companyCvr: string | null;
+  vatRegistered: boolean;
   companyAddress: string;
   contactEmail: string;
   instagramUrl: string | null;
