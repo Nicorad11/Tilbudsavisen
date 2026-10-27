@@ -37,9 +37,12 @@ const idOf = (v: string | { id: string } | null | undefined) => (v ? (typeof v =
 /* Checkout og portal                                                 */
 /* ------------------------------------------------------------------ */
 
+/** " inkl. moms" når virksomheden er momsregistreret – ellers ingenting (prisen er den samlede pris). */
+const vat = () => (env.VAT_REGISTERED ? ' inkl. moms' : '');
+
 /** Tekst ved betalingsknappen i Stripe Checkout (forbrugeraftaleloven § 12). */
-const CHECKOUT_NOTICE =
-  `Du bestiller et abonnement med betalingsforpligtelse: ${PLAN.priceDkk} kr. pr. måned inkl. moms, ` +
+const checkoutNotice = () =>
+  `Du bestiller et abonnement med betalingsforpligtelse: ${PLAN.priceDkk} kr. pr. måned${vat()}, ` +
   'som fornyes automatisk hver måned, indtil du opsiger. Ingen binding – du kan opsige når som helst under Konto, ' +
   'og opsigelsen gælder fra udløbet af den betalte måned. Du har 14 dages fortrydelsesret.';
 
@@ -68,9 +71,12 @@ export async function createCheckoutSession(db: Db, stripe: StripeClient, user: 
     allowed_payment_method_types: ['card'],
     submit_type: 'pay',
     billing_address_collection: 'auto',
-    custom_text: { submit: { message: CHECKOUT_NOTICE } },
+    custom_text: { submit: { message: checkoutNotice() } },
+    // Vi er selv sælger (og har egne handelsbetingelser) – ikke Stripe som "merchant of record".
+    // Managed Payments er slået til som standard på nye Stripe-konti og afviser custom_text.
+    managed_payments: { enabled: false },
     subscription_data: {
-      description: `Tilbudsradar – ${PLAN.priceDkk} kr/md inkl. moms, ingen binding`,
+      description: `Tilbudsradar – ${PLAN.priceDkk} kr/md${vat()}, ingen binding`,
       metadata: { userId: user.id, termsVersion: TERMS_VERSION },
       ...(trialEnd ? { trial_end: Math.floor(trialEnd.getTime() / 1000) } : {}),
       ...(env.STRIPE_TAX_RATE_ID ? { default_tax_rates: [env.STRIPE_TAX_RATE_ID] } : {}),

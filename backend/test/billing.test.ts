@@ -296,11 +296,15 @@ describe('abonnement', () => {
       client_reference_id: a.user.id,
       line_items: [{ price: 'price_test_49', quantity: 1 }],
       allowed_payment_method_types: ['card'],
+      managed_payments: { enabled: false },
       success_url: 'https://tilbudsradar.test/app/betaling/gennemfoert?session_id={CHECKOUT_SESSION_ID}',
     });
     // I prøveperioden udskydes første træk til prøveperiodens slut.
     expect(params.subscription_data.trial_end).toBeGreaterThan(Date.now() / 1000 + 13 * 86_400);
     expect(params.custom_text.submit.message).toMatch(/betalingsforpligtelse/);
+    // Ikke momsregistreret i testmiljøet: ingen "inkl. moms" på Stripes betalingsside.
+    expect(params.custom_text.submit.message).not.toContain('inkl. moms');
+    expect(params.subscription_data.description).not.toContain('inkl. moms');
     expect((await dbUser(a.user.id)).stripeCustomerId).toMatch(/^cus_test_/);
   });
 
