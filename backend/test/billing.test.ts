@@ -297,6 +297,7 @@ describe('abonnement', () => {
       line_items: [{ price: 'price_test_49', quantity: 1 }],
       allowed_payment_method_types: ['card'],
       managed_payments: { enabled: false },
+      submit_type: 'subscribe',
       success_url: 'https://tilbudsradar.test/app/betaling/gennemfoert?session_id={CHECKOUT_SESSION_ID}',
     });
     // I prøveperioden udskydes første træk til prøveperiodens slut.

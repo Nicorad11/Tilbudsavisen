@@ -69,7 +69,8 @@ export async function createCheckoutSession(db: Db, stripe: StripeClient, user: 
     locale: 'da',
     // MobilePay understøtter ikke tilbagevendende betalinger i Stripe – kort dækker også Apple Pay og Google Pay.
     allowed_payment_method_types: ['card'],
-    submit_type: 'pay',
+    // 'pay' er ikke tilladt i abonnements-tilstand; 'subscribe' giver knappen "Abonner".
+    submit_type: 'subscribe',
     billing_address_collection: 'auto',
     custom_text: { submit: { message: checkoutNotice() } },
     // Vi er selv sælger (og har egne handelsbetingelser) – ikke Stripe som "merchant of record".
