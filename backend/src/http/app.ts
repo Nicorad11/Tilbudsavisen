@@ -12,6 +12,7 @@ import type { ScrapeManager } from '../services/scrapeJobs';
 import { optionalAuth } from './auth';
 import { errorHandler, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
+import { statsRoutes } from './routes/stats';
 import { authRoutes } from './routes/auth';
 import { analyticsRoutes } from './routes/analytics';
 import { billingRoutes, stripeWebhook } from './routes/billing';
@@ -86,6 +87,7 @@ export function createApp(ctx: AppContext): express.Express {
   app.use('/api/billing', billingRoutes(ctx));
   app.use('/api/analytics', analyticsRoutes(ctx));
   app.use('/api/admin', adminRoutes(ctx));
+  app.use('/api/stats', statsRoutes(ctx));
   app.use('/api', offerRoutes(ctx));
   app.use('/api', userRoutes(ctx));
   app.use('/api', receiptRoutes(ctx));
