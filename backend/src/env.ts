@@ -42,6 +42,11 @@ const schema = z.object({
   /** Frontend og API på samme domæne → Lax. Kun "none" hvis de ligger på hver sit domæne. */
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   ADMIN_EMAILS: z.string().default(''),
+  /** Hemmelig nøgle til morgen-tælleren på administratorens PC (GET /api/stats/paying). Tom = slået fra. */
+  STATS_TOKEN: z
+    .string()
+    .default('')
+    .transform((v) => v.trim()),
   SCRAPE_CRON: z.string().default('15 6,18 * * *'),
   STORES_CRON: z.string().default('30 3 * * 1'),
   /** Daglige mails om prøveperioden (Europe/Copenhagen). */
@@ -131,6 +136,7 @@ export function productionProblems(raw: RawEnv, source: NodeJS.ProcessEnv = proc
   if (raw.STRIPE_SECRET_KEY && !/^(sk|rk)_(live|test)_/.test(raw.STRIPE_SECRET_KEY)) {
     problems.push('STRIPE_SECRET_KEY ligner ikke en Stripe-nøgle (sk_live_… eller rk_live_…)');
   }
+  if (raw.STATS_TOKEN && raw.STATS_TOKEN.length < 32) problems.push('STATS_TOKEN skal være mindst 32 tegn (eller tom)');
   if (raw.STRIPE_WEBHOOK_SECRET && !raw.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')) {
     problems.push('STRIPE_WEBHOOK_SECRET skal starte med whsec_');
   }

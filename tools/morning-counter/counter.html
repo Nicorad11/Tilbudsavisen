@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilbudsradar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    /* the tan wall behind the monitors */
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(255,245,220,.18), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.025) 0 2px, transparent 2px 5px),
+      #b3a481;
+    overflow: hidden; cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wall { display: flex; flex-direction: column; align-items: center; gap: var(--gap); }
+  :root { --t: min(8.6vw, 17vh); --gap: calc(var(--t) * .16); }
+  .row { display: flex; gap: var(--gap); }
+  .row.ghost { opacity: 1; }
+
+  /* monitor frame */
+  .monitor {
+    position: relative;
+    padding: calc(var(--t) * .12) calc(var(--t) * .12) calc(var(--t) * .18);
+    border-radius: calc(var(--t) * .07);
+    background:
+      linear-gradient(170deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.04) 18%, transparent 40%),
+      linear-gradient(#2b2520, #15110e 60%, #0c0a08);
+    box-shadow:
+      0 0 0 calc(var(--t) * .012) #6d6455,
+      0 calc(var(--t) * .05) calc(var(--t) * .12) rgba(40,30,10,.55);
+  }
+  .monitor .logo { /* tiny badge on the bottom bezel */
+    position: absolute; left: 50%; bottom: calc(var(--t) * .07); transform: translateX(-50%);
+    width: calc(var(--t) * .2); height: calc(var(--t) * .028); border-radius: 2px;
+    background: linear-gradient(#8d8a84, #5b5953); opacity: .8;
+  }
+  .screen {
+    position: relative; display: flex; gap: calc(var(--t) * .04);
+    padding: calc(var(--t) * .06) calc(var(--t) * .1);
+    border-radius: calc(var(--t) * .03);
+    background: #2a0a07;
+    /* chrome rim around the panel */
+    box-shadow:
+      0 0 0 calc(var(--t) * .018) #b9b3a6,
+      0 0 0 calc(var(--t) * .03) #3c3731,
+      inset 0 0 calc(var(--t) * .25) rgba(0,0,0,.85);
+    overflow: hidden;
+  }
+  .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .screen.empty { width: calc(var(--t) * 3.28); height: calc(var(--t) * 1.5); }
+
+  /* flip tile */
+  .card {
+    position: relative; z-index: 1;
+    width: var(--t); height: calc(var(--t) * 1.38);
+    perspective: calc(var(--t) * 5);
+    font: 700 calc(var(--t) * 1.12)/1 "Arial Rounded MT Bold", "Arial Rounded MT", "Segoe UI", Arial, sans-serif;
+    filter: drop-shadow(0 calc(var(--t) * .03) calc(var(--t) * .04) rgba(0,0,0,.7));
+  }
+  .half, .leaf { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; }
+  .half span, .leaf span {
+    position: absolute; left: 0; width: 100%; height: 200%;
+    display: flex; align-items: center; justify-content: center; padding-top: calc(var(--t) * .04);
+    background: linear-gradient(#ffffff 0%, #e4e7ec 38%, #aab1bc 52%, #c9ced6 70%, #8f97a3 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .top, .leaf.down {
+    top: 0; border-radius: calc(var(--t) * .05) calc(var(--t) * .05) 0 0;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,.28), transparent 12%, transparent 88%, rgba(0,0,0,.28)),
+      linear-gradient(#5a7aa8, #3e5d8c 55%, #34507b);
+  }
+  .bottom, .leaf.up {
+    top: 50%; border-radius: 0 0 calc(var(--t) * .05) calc(var(--t) * .05);
+    background:
+      linear-gradient(90deg, rgba(0,0,0,.3), transparent 12%, transparent 88%, rgba(0,0,0,.3)),
+      linear-gradient(#2f4a74, #2a4369 60%, #213656);
+  }
+  .bottom span, .leaf.up span { top: -100%; }
+  .card::after { /* the split between the two flaps */
+    content: ""; position: absolute; z-index: 5; left: 0; right: 0;
+    top: calc(50% - var(--t) * .012); height: calc(var(--t) * .024);
+    background: linear-gradient(#0c1424 0 55%, rgba(170,190,220,.35) 55%);
+  }
+  .leaf { z-index: 3; backface-visibility: hidden; }
+  .leaf.down { transform-origin: bottom; animation: down .22s ease-in forwards; }
+  .leaf.up { transform-origin: top; transform: rotateX(90deg); animation: up .22s ease-out .22s forwards; }
+  @keyframes down { to { transform: rotateX(-90deg); filter: brightness(.55); } }
+  @keyframes up { from { filter: brightness(1.5); } to { transform: rotateX(0); filter: none; } }
+
+  .note { position: fixed; bottom: 2vh; left: 0; right: 0; text-align: center;
+    font: 600 1.6vh Arial, sans-serif; color: #5a4e36; }
+</style>
+</head>
+<body>
+  <div class="wall" id="wall"></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var n = parseInt(q.get('n'), 10);
+  var prev = parseInt(q.get('prev'), 10);
+  if (isNaN(n)) n = 0;
+  if (isNaN(prev)) prev = n;
+
+  var len = Math.ceil(Math.max(6, String(Math.max(n, prev)).length) / 3) * 3;
+  var from = String(prev).padStart(len, '0');
+  var to = String(n).padStart(len, '0');
+  var groups = len / 3;
+  var wall = document.getElementById('wall');
+
+  function monitor(withDigits, startIndex) {
+    var m = document.createElement('div');
+    m.className = 'monitor';
+    var s = document.createElement('div');
+    s.className = 'screen' + (withDigits ? '' : ' empty');
+    s.appendChild(document.createElement('canvas'));
+    if (withDigits) {
+      for (var i = 0; i < 3; i++) {
+        var d = from[startIndex + i];
+        var c = document.createElement('div');
+        c.className = 'card';
+        c.dataset.value = d;
+        c.innerHTML = '<div class="half top"><span>' + d + '</span></div><div class="half bottom"><span>' + d + '</span></div>';
+        s.appendChild(c);
+      }
+    }
+    m.appendChild(s);
+    var logo = document.createElement('div'); logo.className = 'logo'; m.appendChild(logo);
+    return m;
+  }
+
+  // Monitor wall: the counter row in the middle, more monitors above and below running off the screen.
+  var rows = [];
+  ['ghost', 'ghost', 'main', 'ghost', 'ghost'].forEach(function (kind) {
+    var row = document.createElement('div');
+    row.className = 'row ' + kind;
+    for (var g = 0; g < groups + 2; g++) {
+      var isDigit = kind === 'main' && g >= 1 && g <= groups;
+      row.appendChild(monitor(isDigit, (g - 1) * 3));
+    }
+    wall.appendChild(row);
+    rows.push(row);
+  });
+
+  // The dark red sparkle behind the tiles (like fireworks on the screens).
+  var sparks = [];
+  document.querySelectorAll('.screen canvas').forEach(function (cv) {
+    var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = r.width * dpr; cv.height = r.height * dpr;
+    var ctx = cv.getContext('2d');
+    var bg = ctx.createRadialGradient(cv.width * .5, cv.height * .5, 0, cv.width * .5, cv.height * .5, cv.width * .7);
+    bg.addColorStop(0, '#5a1a10'); bg.addColorStop(1, '#1c0604');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, cv.width, cv.height);
+    var pts = [];
+    for (var i = 0; i < r.width * r.height / 55; i++) {
+      pts.push({ x: Math.random() * cv.width, y: Math.random() * cv.height, s: Math.random() * 1.6 * dpr + .3,
+        h: 5 + Math.random() * 35, p: Math.random() * 6.28 });
+    }
+    // a few bursts
+    for (var b = 0; b < 3; b++) {
+      var cx = Math.random() * cv.width, cy = Math.random() * cv.height, rad = (30 + Math.random() * 60) * dpr;
+      for (var k = 0; k < 60; k++) {
+        var a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * rad;
+        pts.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, s: Math.random() * 1.4 * dpr + .4, h: 20 + Math.random() * 25, p: Math.random() * 6.28 });
+      }
+    }
+    sparks.push({ ctx: ctx, cv: cv, bg: bg, pts: pts });
+  });
+  function twinkle(t) {
+    sparks.forEach(function (s) {
+      s.ctx.fillStyle = s.bg; s.ctx.fillRect(0, 0, s.cv.width, s.cv.height);
+      s.pts.forEach(function (p) {
+        var l = 55 + 25 * Math.sin(t / 600 + p.p);
+        s.ctx.fillStyle = 'hsl(' + p.h + ',95%,' + l + '%)';
+        s.ctx.fillRect(p.x, p.y, p.s, p.s);
+      });
+    });
+    requestAnimationFrame(twinkle);
+  }
+  requestAnimationFrame(twinkle);
+
+  // Flip animation, rolling each digit through the numbers in between.
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.row.main .card'));
+  function flip(card, next) {
+    var cur = card.dataset.value;
+    card.dataset.value = next;
+    card.querySelector('.top span').textContent = next;
+    var down = document.createElement('div'); down.className = 'leaf down'; down.innerHTML = '<span>' + cur + '</span>';
+    var up = document.createElement('div'); up.className = 'leaf up'; up.innerHTML = '<span>' + next + '</span>';
+    card.appendChild(down); card.appendChild(up);
+    setTimeout(function () { card.querySelector('.bottom span').textContent = next; down.remove(); up.remove(); }, 460);
+  }
+  function roll(card, target, delay) {
+    setTimeout(function step() {
+      if (card.dataset.value === target) return;
+      flip(card, String((parseInt(card.dataset.value, 10) + 1) % 10));
+      setTimeout(step, 480);
+    }, delay);
+  }
+  setTimeout(function () {
+    cards.forEach(function (c, i) { roll(c, to[i], (cards.length - 1 - i) * 80); });
+  }, 800);
+
+  if (q.get('error')) {
+    var note = document.createElement('div'); note.className = 'note';
+    note.textContent = 'Kunne ikke hente det nye tal – viser det seneste';
+    document.body.appendChild(note);
+  }
+
+  function close() { window.close(); }
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', close);
+})();
+</script>
+</body>
+</html>
