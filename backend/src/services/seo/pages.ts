@@ -7,6 +7,7 @@ import type {
   SeoLink,
   SeoMeta,
   SeoOffer,
+  SeoPageBase,
   StorePageDTO,
   StoresHubDTO,
   StoreSummary,
@@ -15,9 +16,10 @@ import type {
   TrustCounts,
   WeeklyBestDTO,
 } from '@tilbudsradar/shared';
-import { isoWeek, SEO_CATEGORIES, SEO_STORES, SEO_TERMS, seoCategoryBySlug, seoCategoryById, seoStoreById, seoStoreBySlug, seoTermBySlug } from '@tilbudsradar/shared';
+import { breadcrumbJsonLd, isoWeek, itemListJsonLd, SEO_CATEGORIES, SEO_STORES, SEO_TERMS, seoCategoryBySlug, seoCategoryById, seoStoreById, seoStoreBySlug, seoTermBySlug, webPageJsonLd } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
 import { query, queryOne, type Db } from '../../db/client';
+import { env } from '../../env';
 import { cached } from '../cache';
 import { OFFER_SELECT, toOfferDTOs, type OfferRow } from '../offers';
 import { activeChainSql } from '../scope';
@@ -81,6 +83,7 @@ function toSeoOffer(o: OfferDTO): SeoOffer {
   return {
     id: o.id,
     title: o.title,
+    brand: o.brand,
     store: o.store,
     offerPrice: o.offerPrice,
     originalPrice: o.originalPrice,
@@ -148,7 +151,7 @@ const periodText = (ctx: Context) =>
   ctx.since.getTime() > ctx.now.getTime() - (WINDOW_DAYS - 1) * DAY ? `siden ${dayMonth.format(ctx.since)}` : `de sidste ${WINDOW_DAYS} dage`;
 
 /** Alle aktuelle tilbud (gælder nu eller fra næste uges avis) med troværdighed. */
-function currentOffers(db: Db): Promise<OfferDTO[]> {
+export function currentOffers(db: Db): Promise<OfferDTO[]> {
   return cached('seo:current', PAGE_TTL, async () => {
     const rows = await query<OfferRow>(
       db,
@@ -162,6 +165,20 @@ function currentOffers(db: Db): Promise<OfferDTO[]> {
 const isActive = (o: { validFrom: string; validTo: string }, now: Date) => time(o.validFrom) <= now.getTime() && time(o.validTo) > now.getTime();
 
 const crumbs = (...links: SeoLink[]): SeoLink[] => [{ href: '/', label: 'Forside' }, ...links];
+
+/**
+ * Strukturerede data og delingsbillede ud fra sidens egne brødkrummer, meta og
+ * opdateringstid: BreadcrumbList og WebPage (med dateModified) på alle
+ * datasider, ItemList med produkter og priser, hvor siden viser tilbud.
+ */
+function finish<T extends SeoPageBase>(page: T, extra: { offers?: SeoOffer[]; listName?: string; image?: string; imageAlt?: string } = {}): T {
+  const jsonLd: object[] = [
+    breadcrumbJsonLd(page.breadcrumbs, env.APP_URL),
+    webPageJsonLd({ appUrl: env.APP_URL, path: page.meta.path!, name: page.meta.title, description: page.meta.description, dateModified: page.updatedAt }),
+  ];
+  if (extra.offers?.length) jsonLd.push(itemListJsonLd(extra.offers, extra.listName ?? page.meta.title));
+  return { ...page, meta: { ...page.meta, jsonLd, ...(extra.image ? { image: extra.image, imageAlt: extra.imageAlt ?? page.meta.title } : {}) } };
+}
 
 function meta(m: { title: string; description: string; path: string; noindex?: boolean }): SeoMeta {
   return { title: m.title, description: clip(m.description), path: m.path, ...(m.noindex ? { noindex: true } : {}) };
@@ -302,7 +319,7 @@ export async function getTermPage(db: Db, slug: string): Promise<TermPageDTO | n
         ' Se hvilke tilbud der er reelle.'
       : `${cap(phrase)} er ikke på tilbud i denne uge. Se den laveste pris de sidste ${WINDOW_DAYS} dage, og få besked, når prisen falder.`;
 
-    return {
+    return finish({
       kind: 'term',
       slug,
       label: term.label,
@@ -324,7 +341,12 @@ export async function getTermPage(db: Db, slug: string): Promise<TermPageDTO | n
       week: ctx.week,
       breadcrumbs: crumbs({ href: '/tilbud', label: 'Tilbud' }, { href: `/tilbud/${slug}`, label: term.label }),
       meta: meta({ title: termTitle(term.label, unit, ctx.week), description, path: `/tilbud/${slug}`, noindex: !s.indexable }),
-    } satisfies TermPageDTO;
+    } satisfies TermPageDTO, {
+      offers,
+      listName: `Tilbud på ${phrase} i uge ${ctx.week}`,
+      image: `/og/tilbud/${slug}.png`,
+      imageAlt: `${term.label} på tilbud i uge ${ctx.week}`,
+    });
   });
 }
 
@@ -352,7 +374,7 @@ export async function getTermHub(db: Db): Promise<TermHubDTO> {
       });
       groups.set(letter, list);
     }
-    return {
+    return finish({
       kind: 'termHub',
       groups: [...groups.entries()].map(([letter, list]) => ({ letter, terms: list })),
       termCount: terms.length,
@@ -365,7 +387,7 @@ export async function getTermHub(db: Db): Promise<TermHubDTO> {
         description: `${terms.length} dagligvarer fra smør til toiletpapir med ugens laveste pris pr. kg, liter eller stk. hos REMA 1000, Netto, føtex, Bilka og Lidl.`,
         path: '/tilbud',
       }),
-    } satisfies TermHubDTO;
+    } satisfies TermHubDTO, {});
   });
 }
 
@@ -398,7 +420,7 @@ export async function getStoresHub(db: Db): Promise<StoresHubDTO> {
   return cached('seo:stores', PAGE_TTL, async () => {
     const ctx = await context(db);
     const stores = await storeSummaries(db, ctx);
-    return {
+    return finish({
       kind: 'storesHub',
       stores,
       generatedAt: ctx.generatedAt,
@@ -410,7 +432,7 @@ export async function getStoresHub(db: Db): Promise<StoresHubDTO> {
         description: `Ugens tilbud fra ${listText(stores.map((s) => s.name))} samlet ét sted – med pris pr. kg og vurdering af, om tilbuddene er reelle.`,
         path: '/butikker',
       }),
-    } satisfies StoresHubDTO;
+    } satisfies StoresHubDTO, {});
   });
 }
 
@@ -440,7 +462,7 @@ export async function getStorePage(db: Db, slug: string): Promise<StorePageDTO |
     text += ` ${counts.real} af ugens tilbud er reelle – mindst ${TRUST_THRESHOLDS.realPct} % under varens gennemsnitspris de sidste ${TRUST_THRESHOLDS.windowDays} dage.`;
     if (summary.nextCatalogAt) text += ` Næste avis gælder fra ${weekdayDate.format(new Date(summary.nextCatalogAt))}.`;
 
-    return {
+    return finish({
       kind: 'store',
       store: summary,
       indexable: mine.length >= 10,
@@ -463,7 +485,7 @@ export async function getStorePage(db: Db, slug: string): Promise<StorePageDTO |
         path: `/butik/${slug}`,
         noindex: mine.length < 10,
       }),
-    } satisfies StorePageDTO;
+    } satisfies StorePageDTO, { offers: best, listName: `De bedste tilbud hos ${st.name} i uge ${ctx.week}`, image: `/og/butik/${slug}.png`, imageAlt: `${st.name} tilbud i uge ${ctx.week}` });
   });
 }
 
@@ -493,7 +515,7 @@ export async function getCategoryPage(db: Db, slug: string): Promise<CategoryPag
         ...(s.cheapest && s.unit ? { detail: `fra ${kr(s.cheapest.unit_price!)} ${PER_UNIT[s.unit]}` } : {}),
       }));
     const label = cat.label.toLocaleLowerCase('da-DK');
-    return {
+    return finish({
       kind: 'category',
       slug,
       label: cat.label,
@@ -513,7 +535,12 @@ export async function getCategoryPage(db: Db, slug: string): Promise<CategoryPag
         path: `/kategori/${slug}`,
         noindex: mine.length < 10,
       }),
-    } satisfies CategoryPageDTO;
+    } satisfies CategoryPageDTO, {
+      offers: best,
+      listName: `De bedste tilbud på ${label} i uge ${ctx.week}`,
+      image: `/og/kategori/${slug}.png`,
+      imageAlt: `${cat.label} på tilbud i uge ${ctx.week}`,
+    });
   });
 }
 
@@ -531,7 +558,7 @@ export async function getWeeklyBest(db: Db): Promise<WeeklyBestDTO> {
       store: { href: `/butik/${st.slug}`, label: st.name },
       offers: real.filter((o) => o.store.id === st.id).slice(0, 3).map(toSeoOffer),
     })).filter((s) => s.offers.length);
-    return {
+    return finish({
       kind: 'weekly',
       indexable: real.length >= 5,
       summary:
@@ -550,7 +577,7 @@ export async function getWeeklyBest(db: Db): Promise<WeeklyBestDTO> {
         path: '/ugens-bedste-tilbud',
         noindex: real.length < 5,
       }),
-    } satisfies WeeklyBestDTO;
+    } satisfies WeeklyBestDTO, { offers: real.slice(0, 30).map(toSeoOffer), listName: `Ugens bedste tilbud i uge ${ctx.week}` });
   });
 }
 
@@ -566,7 +593,7 @@ export async function getMethodPage(db: Db): Promise<MethodPageDTO> {
       sql`SELECT count(*)::int AS n FROM offers o JOIN stores s ON s.id = o.store_id
           WHERE ${activeChainSql} AND o.valid_to > now() - make_interval(days => ${WINDOW_DAYS})`,
     );
-    return {
+    return finish({
       kind: 'method',
       offersAnalyzed: analyzed?.n ?? 0,
       dataSince: ctx.since.toISOString(),
@@ -580,6 +607,6 @@ export async function getMethodPage(db: Db): Promise<MethodPageDTO> {
         description: `Sådan regner Tilbudsradar prisen om pr. kg og liter, og hvornår et tilbud er "reelt": mindst ${TRUST_THRESHOLDS.realPct} % under varens gennemsnitspris de sidste ${TRUST_THRESHOLDS.windowDays} dage.`,
         path: '/metode',
       }),
-    } satisfies MethodPageDTO;
+    } satisfies MethodPageDTO, {});
   });
 }

@@ -94,6 +94,11 @@ export function createApp(ctx: AppContext): express.Express {
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use('/api', logProxyChainOnce);
+  // API-svar er data til appen, ikke sider – de skal aldrig i søgeresultaterne.
+  app.use('/api', (_req, res, next) => {
+    res.set('X-Robots-Tag', 'noindex');
+    next();
+  });
   app.use('/api', limiter({ windowMs: 60_000, limit: env.isTest ? 10_000 : 300 }));
   app.use('/api', plainQuery);
   app.use('/api', optionalAuth);

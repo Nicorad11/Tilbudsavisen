@@ -8,6 +8,7 @@ import { createStripeClient } from './services/billing';
 import { cleanupPageViews } from './services/analytics';
 import { runBillingCron } from './services/billingCron';
 import { openBillingIfNeeded } from './services/launch';
+import { createIndexNowNotifier } from './services/seo/indexNow';
 
 const { database, scrape } = await bootstrap();
 const stripe = createStripeClient();
@@ -22,6 +23,10 @@ const server = app.listen(env.PORT, () => {
   log.info(`API kører på http://localhost:${env.PORT}`);
 });
 
+// Efter nye tilbud: sitemaps og datasider beregnes (cachen varmes op), og ændrede sider meldes til IndexNow.
+scrape.onIngested(
+  createIndexNowNotifier(database.db, { key: env.INDEXNOW_KEY, appUrl: env.APP_URL, isProd: env.isProd, log: log.child('indexnow') }),
+);
 scrape.schedule();
 cron.schedule(
   '0 4 * * *',

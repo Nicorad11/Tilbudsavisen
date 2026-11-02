@@ -89,6 +89,7 @@ export async function toOfferDTOs(db: Db, rows: OfferRow[]): Promise<OfferDTO[]>
     productId: r.product_id,
     store: { id: r.store_id, name: r.store_name, color: r.store_color, logoUrl: r.store_logo },
     title: r.title,
+    brand: r.brand,
     description: r.description,
     normalizedName: r.normalized_name,
     category: r.category,

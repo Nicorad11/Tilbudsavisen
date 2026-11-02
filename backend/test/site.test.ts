@@ -44,7 +44,9 @@ describe('SEO og statiske sider', () => {
   it('private app-sider får noindex, ukendte sider får 404', async () => {
     expect(seoTags('/app/konto')).toContain('noindex');
     expect(seoTags('/app/betaling/gennemfoert')).toContain('noindex');
-    expect(seoTags('/app/sog')).not.toContain('noindex');
+    // Appen er en tom skal for crawlere – indholdet ligger på datasiderne.
+    expect(seoTags('/app/sog')).toContain('<meta name="robots" content="noindex,follow" />');
+    expect(seoTags('/priser')).toContain('<meta name="robots" content="max-image-preview:large, max-snippet:-1" />');
 
     const missing = await request(app).get('/findes-ikke');
     expect(missing.status).toBe(404);

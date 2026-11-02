@@ -117,7 +117,7 @@ export function createSsr(options: { db: Db; module: SsrModule; template: string
   async function build(url: string, queries: PrefetchedQuery[]): Promise<SsrPage> {
     const pathname = cleanPath(url);
     const { html, meta, state } = options.module.render(url, queries);
-    const resolved = meta ?? seoForPath(pathname);
+    const resolved = meta ?? seoForPath(pathname, { appUrl: env.APP_URL, instagramUrl: env.VITE_INSTAGRAM_URL });
     const head = [
       renderHeadTags(resolved, env.APP_URL),
       options.configTag,

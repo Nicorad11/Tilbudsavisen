@@ -48,6 +48,18 @@ const schema = z.object({
    * Standard: til på Render (RENDER=true), ellers fra.
    */
   TRUST_CF_CONNECTING_IP: z.enum(['true', 'false', '1', '0']).optional(),
+  /** Valgfri bekræftelse af ejerskab i Google Search Console og Bing Webmaster Tools (indholdet af content="…"). */
+  GOOGLE_SITE_VERIFICATION: optional,
+  BING_SITE_VERIFICATION: optional,
+  /**
+   * IndexNow (Bing, Yandex m.fl.): en tilfældig nøgle på 8–128 tegn (a–z, 0–9, -). Nøglefilen
+   * serveres på /{nøgle}.txt, og ændrede sider meldes efter hver hentning af aviserne.
+   */
+  INDEXNOW_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim() ? v.trim() : null))
+    .refine((v) => v === null || /^[a-zA-Z0-9-]{8,128}$/.test(v), 'INDEXNOW_KEY skal være 8–128 tegn: a–z, A–Z, 0–9 eller -'),
   /**
    * SameSite for refresh-cookien. Strict virker, fordi cookien kun sendes til /api/auth fra
    * appens egne fetch-kald – aldrig ved selve sideskiftet tilbage fra Stripe eller et mail-link.

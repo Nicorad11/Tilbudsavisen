@@ -134,7 +134,7 @@ describe('server-renderede datasider', () => {
     expect(page.status).toBe(200);
     expect(h1(page.html)).toBe(`Smør på tilbud i uge ${week}`);
     expect(page.html).toContain('<link rel="canonical" href="https://tilbudsradar.test/tilbud/smoer" />');
-    expect(page.html).not.toContain('name="robots"');
+    expect(page.html).toContain('<meta name="robots" content="max-image-preview:large, max-snippet:-1" />');
     expect(page.html).toContain('Lige nu er der 4 tilbud på smør i 4 kæder.');
     expect(page.html).toContain('Billigst pr. kg er MILBONA Letsaltet smør hos Lidl: 44,22 kr/kg.');
     expect(page.html).toContain('<table');
@@ -154,7 +154,7 @@ describe('server-renderede datasider', () => {
   it('/tilbud/citroner: under grænsen – 200 med noindex og "sidst på tilbud"', async () => {
     const page = await render('/tilbud/citroner');
     expect(page.status).toBe(200);
-    expect(page.html).toContain('<meta name="robots" content="noindex" />');
+    expect(page.html).toContain('<meta name="robots" content="noindex,follow" />');
     expect(page.html).toContain(`Citroner er ikke på tilbud i uge ${week}.`);
     expect(page.html).toContain('Sidst var det Citroner hos Lidl til 4,00 kr');
   });
@@ -163,7 +163,7 @@ describe('server-renderede datasider', () => {
     expect((await render('/tilbud/bananer')).status).toBe(404);
     const unknown = await render('/tilbud/findes-ikke');
     expect(unknown.status).toBe(404);
-    expect(unknown.html).toContain('<meta name="robots" content="noindex" />');
+    expect(unknown.html).toContain('<meta name="robots" content="noindex,follow" />');
   });
 
   it('/tilbud: alle varer med data, A–Å', async () => {
@@ -184,7 +184,7 @@ describe('server-renderede datasider', () => {
     expect(h1(lidl.html)).toBe(`Lidl tilbud i uge ${week}`);
     expect(lidl.html).toContain('Tilbudsradar er ikke tilknyttet Lidl.');
     // Færre end 10 tilbud: siden findes, men er ikke i indekset.
-    expect(lidl.html).toContain('<meta name="robots" content="noindex" />');
+    expect(lidl.html).toContain('<meta name="robots" content="noindex,follow" />');
     expect((await render('/butik/coop')).status).toBe(404);
   });
 
@@ -203,7 +203,7 @@ describe('server-renderede datasider', () => {
     const method = await render('/metode');
     expect(method.status).toBe(200);
     expect(method.html).toContain('mindst 10 % under gennemsnittet');
-    expect(method.html).not.toContain('name="robots"');
+    expect(method.html).toContain('<meta name="robots" content="max-image-preview:large, max-snippet:-1" />');
   });
 });
 

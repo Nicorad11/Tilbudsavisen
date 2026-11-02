@@ -1,4 +1,5 @@
-import { PLAN } from './billing';
+import { PLAN, TERMS_VERSION } from './billing';
+import { breadcrumbJsonLd, organizationJsonLd, websiteJsonLd, type SiteInfo } from './jsonLd';
 
 /**
  * Titler og beskrivelser pr. side. Serveren indsætter dem i HTML'en (så
@@ -32,8 +33,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Fortryd aftale | Tilbudsradar',
     description: 'Fortryd dit abonnement på Tilbudsradar inden for 14 dage.',
   },
-  '/app': { title: 'Ugens tilbud | Tilbudsradar', description: DEFAULT_DESCRIPTION },
-  '/app/sog': { title: 'Søg i ugens tilbudsaviser | Tilbudsradar', description: DEFAULT_DESCRIPTION },
+  // Appen er en tom skal for crawlere – indholdet ligger på datasiderne (/tilbud …). noindex,follow samler signalerne dér.
+  '/app': { title: 'Ugens tilbud | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
+  '/app/sog': { title: 'Søg i ugens tilbudsaviser | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
   '/app/lister': { title: 'Indkøbslister | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
   '/app/kvitteringer': { title: 'Kvitteringer | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
   '/app/alarmer': { title: 'Prisalarmer | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true },
@@ -65,7 +67,41 @@ export interface PublicConfig {
 export const CONFIG_ELEMENT_ID = 'tr-config';
 
 /** Sider i sitemap.xml. */
-export const SITEMAP_PATHS = ['/', '/priser', '/app', '/app/sog', '/om', '/handelsbetingelser', '/privatlivspolitik', '/cookies'];
+/** Faste sider i sitemap-pages.xml (datasiderne har deres egne sitemaps). */
+export const SITEMAP_PATHS = [
+  '/',
+  '/tilbud',
+  '/butikker',
+  '/ugens-bedste-tilbud',
+  '/metode',
+  '/priser',
+  '/om',
+  '/fortryd',
+  '/handelsbetingelser',
+  '/privatlivspolitik',
+  '/cookies',
+];
+
+/** Seneste indholdsændring på de faste sider (lastmod i sitemap). Forsiden og hubs følger dataene. */
+export const STATIC_LASTMOD: Record<string, string> = {
+  '/priser': '2026-11-02',
+  '/om': '2026-11-02',
+  '/metode': '2026-11-02',
+  '/fortryd': '2026-11-02',
+  '/handelsbetingelser': TERMS_VERSION,
+  '/privatlivspolitik': '2026-11-02',
+  '/cookies': '2026-11-02',
+};
+
+/** Brødkrumme-navne for de faste sider. */
+const STATIC_CRUMBS: Record<string, string> = {
+  '/priser': 'Priser',
+  '/om': 'Om Tilbudsradar',
+  '/fortryd': 'Fortryd aftale',
+  '/handelsbetingelser': 'Handelsbetingelser',
+  '/privatlivspolitik': 'Privatlivspolitik',
+  '/cookies': 'Cookies',
+};
 
 /** Stien uden afsluttende skråstreg ("/" for forsiden). */
 export const cleanPath = (path: string) => path.replace(/\/+$/, '') || '/';
@@ -96,12 +132,25 @@ export interface SeoMeta extends PageMeta {
 export const DEFAULT_OG_IMAGE = '/og-image.png';
 const DEFAULT_OG_ALT = 'Tilbudsradar – find ugens bedste tilbud';
 
-/** Meta for de faste sider ud fra stien (forside, priser, juridiske sider og 404). */
-export function seoForPath(path: string): SeoMeta {
+/**
+ * Meta for de faste sider ud fra stien (forside, priser, juridiske sider og 404).
+ * Med `site` får siderne også strukturerede data: forsiden Organization og
+ * WebSite, de øvrige faste sider en brødkrumme.
+ */
+export function seoForPath(path: string, site?: SiteInfo): SeoMeta {
   const clean = cleanPath(path);
   const meta = metaForPath(clean);
-  return meta.notFound ? meta : { ...meta, path: clean };
+  if (meta.notFound) return meta;
+  const result: SeoMeta = { ...meta, path: clean };
+  if (site && clean === '/') result.jsonLd = [organizationJsonLd(site), websiteJsonLd(site)];
+  else if (site && STATIC_CRUMBS[clean]) {
+    result.jsonLd = [breadcrumbJsonLd([{ href: '/', label: 'Forside' }, { href: clean, label: STATIC_CRUMBS[clean]! }], site.appUrl)];
+  }
+  return result;
 }
+
+/** Indekserbare sider må vise store billeder og fulde uddrag; resten er noindex men følger links. */
+export const robotsContent = (meta: Pick<SeoMeta, 'noindex'>) => (meta.noindex ? 'noindex,follow' : 'max-image-preview:large, max-snippet:-1');
 
 export const absoluteUrl = (appUrl: string, pathOrUrl: string) => (/^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${appUrl}${pathOrUrl}`);
 
@@ -119,7 +168,7 @@ export function renderHeadTags(meta: SeoMeta, appUrl: string): string {
     `<title>${escapeHtml(meta.title)}</title>`,
     `<meta name="description" content="${escapeHtml(meta.description)}" />`,
     url ? `<link rel="canonical" href="${escapeHtml(url)}" />` : '',
-    meta.noindex ? '<meta name="robots" content="noindex" />' : '',
+    `<meta name="robots" content="${robotsContent(meta)}" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${SITE_NAME}" />`,
     `<meta property="og:locale" content="da_DK" />`,

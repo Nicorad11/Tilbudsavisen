@@ -12,6 +12,7 @@ import type { SeoMeta } from './seo';
 export interface SeoOffer {
   id: number;
   title: string;
+  brand: string | null;
   store: StoreRef;
   offerPrice: number;
   originalPrice: number | null;

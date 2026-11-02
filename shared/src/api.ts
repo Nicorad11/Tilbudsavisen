@@ -53,6 +53,7 @@ export interface OfferDTO {
   productId: number | null;
   store: StoreRef;
   title: string;
+  brand: string | null;
   description: string | null;
   normalizedName: string;
   category: string;

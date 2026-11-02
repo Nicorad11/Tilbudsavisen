@@ -1,4 +1,4 @@
-import { absoluteUrl, DEFAULT_OG_IMAGE, jsonForScript, seoForPath, type SeoMeta } from '@tilbudsradar/shared';
+import { absoluteUrl, DEFAULT_OG_IMAGE, jsonForScript, robotsContent, seoForPath, type SeoMeta } from '@tilbudsradar/shared';
 import { createContext, useContext, useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { CONFIG } from './config';
@@ -41,9 +41,7 @@ function applyMeta(meta: SeoMeta): void {
     setMeta('meta[property="og:url"]', 'content', url, property('og:url'));
   } else canonical?.remove();
 
-  const robots = document.head.querySelector('meta[name="robots"]');
-  if (meta.noindex && !robots) document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'robots', content: 'noindex' }));
-  if (!meta.noindex && robots) robots.remove();
+  setMeta('meta[name="robots"]', 'content', robotsContent(meta), () => Object.assign(document.createElement('meta'), { name: 'robots' }));
 
   // Strukturerede data følger siden (de udføres ikke, så CSP'en er uberørt).
   for (const el of document.head.querySelectorAll('script[data-tr-jsonld]')) el.remove();
@@ -65,7 +63,7 @@ function applyMeta(meta: SeoMeta): void {
  */
 export function useSeo(meta?: SeoMeta | null): void {
   const { pathname } = useLocation();
-  const resolved = meta === null ? null : (meta ?? seoForPath(pathname));
+  const resolved = meta === null ? null : (meta ?? seoForPath(pathname, { appUrl: CONFIG.appUrl, instagramUrl: CONFIG.instagramUrl }));
   const collector = useContext(HeadContext);
   if (collector && resolved) collector.meta = resolved;
   // Nøglen dækker hele meta-objektet, så et nyt objekt med samme indhold ikke giver et nyt kald.

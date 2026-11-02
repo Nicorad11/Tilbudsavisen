@@ -67,7 +67,7 @@ describe('server-renderede offentlige sider', () => {
       expect(page.html).toMatch(/<a [^>]*href="\/handelsbetingelser"/);
       const canonical = url === '/' ? 'https://tilbudsradar.test/' : `https://tilbudsradar.test${url}`;
       expect(page.html).toContain(`<link rel="canonical" href="${canonical}" />`);
-      expect(page.html).not.toContain('name="robots"');
+      expect(page.html).toContain('<meta name="robots" content="max-image-preview:large, max-snippet:-1" />');
       expect(page.html).not.toContain('<title>Standard</title>');
       // Konfiguration og query-data til hydrering ligger som JSON – ikke som kode, der udføres.
       expect(page.html).toContain('<script id="tr-config" type="application/json">');
@@ -93,7 +93,7 @@ describe('server-renderede offentlige sider', () => {
   it('ukendt side: 404 med noindex og uden canonical', async () => {
     const page = await ssr.render('/findes-ikke');
     expect(page.status).toBe(404);
-    expect(page.html).toContain('<meta name="robots" content="noindex" />');
+    expect(page.html).toContain('<meta name="robots" content="noindex,follow" />');
     expect(page.html).not.toContain('rel="canonical"');
     expect(visibleText(page.html)).toContain('Siden findes ikke');
   });

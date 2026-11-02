@@ -35,6 +35,8 @@ export class ScrapeManager {
   private readonly active = new Set<string>();
   private readonly tasks: ScheduledTask[] = [];
   private storesSyncRunning = false;
+  /** Kaldes efter hver kørsel, der gav nye tilbud (fx IndexNow og opvarmning af datasiderne). */
+  private readonly afterIngest: (() => Promise<void>)[] = [];
 
   constructor(
     private readonly db: Db,
@@ -100,6 +102,11 @@ export class ScrapeManager {
     );
   }
 
+  /** Registrerer en opgave, der kører efter hver hentning med nye tilbud. Fejl logges og stopper intet. */
+  onIngested(task: () => Promise<void>): void {
+    this.afterIngest.push(task);
+  }
+
   /** Starter kørsler i baggrunden. Returnerer de kilder der faktisk blev startet. */
   async start(trigger: Trigger, ids?: string[]): Promise<string[]> {
     const scrapers = (await this.enabledScrapers(ids)).filter((s) => !this.active.has(s.id));
@@ -111,6 +118,9 @@ export class ScrapeManager {
           if (n) this.log.info(`${n} nye watchlist-notifikationer`);
         } catch (err) {
           this.log.error('Watchlist-tjek fejlede', { err: errorMessage(err) });
+        }
+        for (const task of this.afterIngest) {
+          await task().catch((err: unknown) => this.log.warn('Opgave efter hentning fejlede', { err: errorMessage(err) }));
         }
       }
     });

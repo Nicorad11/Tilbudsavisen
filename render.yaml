@@ -76,3 +76,5 @@ services:
       #   ANTHROPIC_API_KEY                                          – kvitteringer med Claude
       #   SENTRY_DSN, VITE_SENTRY_DSN, VITE_PLAUSIBLE_DOMAIN         – drift
       #   SLACK_WEBHOOK_URL, ALERT_EMAIL_TO                          – scraper-alarmer
+      #   INDEXNOW_KEY                                               – søgemaskiner (se docs/SEO.md)
+      #   GOOGLE_SITE_VERIFICATION, BING_SITE_VERIFICATION           – valgfri, hvis ikke DNS
