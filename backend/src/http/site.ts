@@ -3,6 +3,7 @@ import path from 'node:path';
 import { CONFIG_ELEMENT_ID, metaForPath, SITE_NAME, SITEMAP_PATHS, type PublicConfig } from '@tilbudsradar/shared';
 import express, { type Express, type Request } from 'express';
 import { env } from '../env';
+import { requestHost } from './canonical';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -60,7 +61,7 @@ export function configTag(): string {
 }
 
 /** Admin-appen ligger på sit eget værtsnavn (admin.tilbudsradaren.dk – under udvikling admin.localhost). */
-export const isAdminHost = (req: Request) => req.hostname.startsWith('admin.');
+export const isAdminHost = (req: Request) => requestHost(req).startsWith('admin.');
 
 export function robotsTxt(): string {
   return [

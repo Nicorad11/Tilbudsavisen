@@ -9,6 +9,7 @@ import { sentryEnabled } from '../instrument';
 import type { StripeClient } from '../services/billing';
 import type { ScrapeManager } from '../services/scrapeJobs';
 import { optionalAuth } from './auth';
+import { canonicalHost } from './canonical';
 import { logProxyChainOnce, trustProxy } from './clientIp';
 import { errorHandler, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
@@ -61,6 +62,8 @@ export function createApp(ctx: AppContext): express.Express {
   // ("trust proxy: 1") gav Cloudflares skiftende IP'er som klient-IP, så brugerne delte kvoter.
   app.set('trust proxy', trustProxy);
   app.disable('x-powered-by');
+  // Ét domæne: tilbudsradar.onrender.com og www sendes videre til APP_URL (kun i produktion).
+  if (env.isProd) app.use(canonicalHost(env.APP_URL));
   app.use(
     helmet({
       contentSecurityPolicy: contentSecurityPolicy(),
