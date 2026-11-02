@@ -3,12 +3,14 @@ import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { emailTokens } from '../db/schema';
 
-export type TokenPurpose = 'verify_email' | 'reset_password' | 'change_email';
+export type TokenPurpose = 'verify_email' | 'reset_password' | 'change_email' | 'withdraw';
 
 export const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
   verify_email: 48 * 3_600_000,
   change_email: 48 * 3_600_000,
   reset_password: 3_600_000,
+  // Fortrydelsen regnes fra indsendelsen – linket skal bare virke længe nok til at blive brugt.
+  withdraw: 7 * 24 * 3_600_000,
 };
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -48,6 +50,11 @@ export async function consumeEmailToken(db: Db, token: string, purpose: TokenPur
     )
     .returning();
   return row ?? null;
+}
+
+/** Gør et brugt token gyldigt igen – når handlingen bag det fejlede, så linket kan prøves igen. */
+export async function restoreEmailToken(db: Db, id: number): Promise<void> {
+  await db.update(emailTokens).set({ usedAt: null }).where(eq(emailTokens.id, id));
 }
 
 /** Hvornår der sidst blev sendt et link – bruges til at undgå mailbomber. */

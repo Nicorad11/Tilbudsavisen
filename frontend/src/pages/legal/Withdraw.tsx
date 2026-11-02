@@ -52,8 +52,17 @@ export function Withdraw() {
       <Section title="Sådan fungerer det">
         <p>
           Du kan fortryde dit abonnement inden for {WITHDRAWAL_DAYS} dage fra den dag, du tegnede det, uden at give en grund. Abonnementet
-          stopper med det samme, og vi refunderer hele det beløb, du har betalt. Er første betaling endnu ikke trukket, trækkes der intet.
+          stopper, og vi refunderer hele det beløb, du har betalt. Er første betaling endnu ikke trukket, trækkes der intet.
         </p>
+        {!isMember && (
+          <p>
+            Er du logget ind, stopper abonnementet med det samme. Ellers sender vi en mail til kontoens e-mail, hvor du bekræfter med ét klik,
+            at det er dig – så ingen andre kan fortryde dit abonnement. Fristen regnes fra det tidspunkt, du sender fortrydelsen her.{' '}
+            <Link to="/app/konto" className="text-ink underline">
+              Log ind
+            </Link>
+          </p>
+        )}
         {isMember && access.withdrawableUntil && (
           <p className="rounded-2xl bg-lime/45 px-4 py-3 text-ink">Du kan fortryde dit abonnement til og med {formatLongDate(access.withdrawableUntil)}.</p>
         )}
@@ -74,14 +83,24 @@ export function Withdraw() {
             <span className="grid size-12 place-items-center rounded-full bg-lime">
               <CheckCircle2 className="size-6" />
             </span>
-            <h2 className="text-[24px] tracking-[-0.03em] text-ink">Vi har modtaget din fortrydelse</h2>
+            <h2 className="text-[24px] tracking-[-0.03em] text-ink">{submit.data.status === 'check_email' ? 'Tjek din e-mail' : 'Vi har modtaget din fortrydelse'}</h2>
             <p>Indsendt {dateTime.format(new Date(submit.data.submittedAt))}.</p>
-            <p>
-              {submit.data.refundDkk > 0
-                ? `Vi refunderer ${submit.data.refundDkk.toFixed(2).replace('.', ',')} kr. til det betalingsmiddel, du betalte med.`
-                : 'Vi behandler din fortrydelse og vender tilbage, hvis vi mangler noget.'}{' '}
-              Vi har sendt en kvittering til {email}.
-            </p>
+            {submit.data.status === 'check_email' ? (
+              <p>
+                Vi har sendt en kvittering til {email}. Hører e-mailen til et abonnement, der kan fortrydes, er der en knap i mailen, hvor du
+                bekræfter, at det er dig – først da stopper vi abonnementet og refunderer det betalte. Fristen regnes fra tidspunktet ovenfor.
+                Kan du ikke finde mailen, så tjek spam, eller skriv til {COMPANY.email}.
+              </p>
+            ) : (
+              <p>
+                {submit.data.status === 'processed'
+                  ? submit.data.refundDkk > 0
+                    ? `Abonnementet er stoppet, og vi refunderer ${submit.data.refundDkk.toFixed(2).replace('.', ',')} kr. til det betalingsmiddel, du betalte med.`
+                    : 'Abonnementet er stoppet. Der var ikke trukket nogen betaling, så der trækkes intet.'
+                  : 'Vi behandler din fortrydelse og vender tilbage, hvis vi mangler noget.'}{' '}
+                Vi har sendt en kvittering til {email}.
+              </p>
+            )}
           </div>
         ) : (
           <form

@@ -1,7 +1,7 @@
-import type { AuthResponse, BillingStatusDTO, UserDTO } from '@tilbudsradar/shared';
+import type { AuthResponse, BillingStatusDTO, UserDTO, WithdrawalResponse } from '@tilbudsradar/shared';
 import { PLAN } from '@tilbudsradar/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, CircleX, KeyRound, Loader2, MailCheck } from 'lucide-react';
+import { CheckCircle2, CircleX, KeyRound, Loader2, MailCheck, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Card, TextInput } from '../components/ui/primitives';
@@ -125,6 +125,70 @@ export function VerifyEmail() {
       <Link to={loggedIn ? '/app' : '/app/konto'}>
         <Button tone="dark">{loggedIn ? 'Til appen' : 'Log ind'}</Button>
       </Link>
+    </FlowCard>
+  );
+}
+
+/* ---------------- Bekræft fortrydelse ---------------- */
+
+const withdrawnAt = new Intl.DateTimeFormat('da-DK', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Copenhagen',
+});
+
+/**
+ * Linket fra mailen efter en fortrydelse uden login. Kræver et klik – mailprogrammer
+ * åbner links af sig selv for at tjekke dem, og det må ikke stoppe et abonnement.
+ */
+export function ConfirmWithdrawal() {
+  const [params] = useSearchParams();
+  const token = params.get('token') ?? '';
+  const qc = useQueryClient();
+  const confirm = useMutation({
+    mutationFn: () => api<WithdrawalResponse>('/billing/withdraw/confirm', { method: 'POST', body: { token } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['me'] });
+      void qc.invalidateQueries({ queryKey: ['billing'] });
+    },
+  });
+
+  if (!token || confirm.isError) {
+    return (
+      <FlowCard icon={<CircleX className="size-6" />} title="Linket virker ikke">
+        <p>{confirm.error instanceof ApiError ? confirm.error.message : 'Linket mangler eller er ugyldigt. Åbn det fra mailen igen.'}</p>
+        <Link to="/fortryd">
+          <Button tone="dark">Til Fortryd aftale</Button>
+        </Link>
+      </FlowCard>
+    );
+  }
+  if (confirm.isSuccess) {
+    const r = confirm.data;
+    return (
+      <FlowCard icon={<CheckCircle2 className="size-6" />} title={r.status === 'processed' ? 'Din fortrydelse er gennemført' : 'Vi har modtaget din bekræftelse'}>
+        <p>Fortrydelsen gælder fra {withdrawnAt.format(new Date(r.submittedAt))}.</p>
+        <p>
+          {r.status === 'processed'
+            ? r.refundDkk > 0
+              ? `Abonnementet er stoppet, og vi refunderer ${r.refundDkk.toFixed(2).replace('.', ',')} kr. til det betalingsmiddel, du betalte med.`
+              : 'Abonnementet er stoppet. Der var ikke trukket nogen betaling, så der trækkes intet.'
+            : 'Vi kunne ikke stoppe abonnementet automatisk, så vi behandler fortrydelsen manuelt og vender tilbage.'}{' '}
+          Du har fået en kvittering på e-mail.
+        </p>
+      </FlowCard>
+    );
+  }
+  return (
+    <FlowCard icon={<Undo2 className="size-6" />} title="Bekræft din fortrydelse">
+      <p>Når du bekræfter, stopper vi dit Tilbudsradar-abonnement og refunderer det, du har betalt. Fristen regnes fra det tidspunkt, du sendte fortrydelsen.</p>
+      <Button tone="dark" size="lg" className="w-full" loading={confirm.isPending} onClick={() => confirm.mutate()}>
+        Bekræft fortrydelse
+      </Button>
+      <p className="text-[13px] text-muted">Har du ikke selv bedt om at fortryde, så luk siden. Der sker intet, før du trykker på knappen.</p>
     </FlowCard>
   );
 }

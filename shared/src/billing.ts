@@ -118,4 +118,10 @@ export interface WithdrawalResponse {
   submittedAt: string;
   /** Beløb der refunderes (kr), 0 hvis der endnu ikke er betalt. */
   refundDkk: number;
+  /**
+   * processed: abonnementet er stoppet. received: registreret til manuel behandling.
+   * check_email: sendt uden login – en mail med kvittering og vejledning er sendt
+   * (svaret er det samme, uanset om e-mailen hører til en konto).
+   */
+  status: 'processed' | 'received' | 'check_email';
 }

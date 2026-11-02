@@ -1,5 +1,5 @@
 import { PLAN, TERMS_VERSION } from '@tilbudsradar/shared';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { queryOne, type Db } from '../db/client';
 import { stripeEvents, users, withdrawals } from '../db/schema';
@@ -7,12 +7,15 @@ import { env, log } from '../env';
 import { HttpError } from '../http/errors';
 import { accessFor } from './auth';
 import {
+  appLink,
   paymentFailedMail,
   subscriptionCanceledMail,
   subscriptionStartedMail,
+  withdrawalConfirmMail,
   withdrawalReceiptMail,
 } from './emails';
 import { sendMail } from './mailer';
+import { consumeEmailToken, createEmailToken, lastTokenSentAt, restoreEmailToken } from './tokens';
 
 /** Den del af Stripe-klienten vi bruger – så testene kan give en falsk klient. */
 export type StripeClient = Pick<
@@ -272,53 +275,84 @@ async function refundSubscription(stripe: StripeClient, subscriptionId: string):
 }
 
 /**
- * "Fortryd aftale" (forbrugeraftaleloven § 20 a): stopper abonnementet med det
- * samme, refunderer det betalte og sender en kvittering på e-mail. Kan
- * kontoen ikke matches, registreres fortrydelsen til manuel behandling.
+ * "Fortryd aftale" (forbrugeraftaleloven § 20 a). Tre veje:
+ *
+ * - Logget ind: abonnementet stoppes og refunderes med det samme (`withdrawSubscription`).
+ * - Uden login (`requestWithdrawal`): fortrydelsen registreres med tidspunktet, og
+ *   kontoens e-mail får en kvittering med et bekræftelseslink. Først når kontoens ejer
+ *   bekræfter (`confirmWithdrawal`), stoppes og refunderes abonnementet – ellers kunne
+ *   alle, der kender en kundes e-mail, opsige og refundere kundens abonnement.
+ *   Fristen regnes fra indsendelsen, ikke fra bekræftelsen.
+ * - Kan kontoen ikke matches, eller er fristen udløbet, registreres fortrydelsen til
+ *   manuel behandling, og der sker intet automatisk.
+ *
+ * Statusser i `withdrawals`: processed, pending (Stripe ikke sat op), manual,
+ * unconfirmed (venter på bekræftelse) og superseded (afløst af en anden fortrydelse).
  */
+
+/** Stopper abonnementet i Stripe og refunderer det betalte. Kun for en bekræftet konto. */
+async function stopAndRefund(db: Db, stripe: StripeClient | null, user: UserRow, now: Date): Promise<{ status: 'processed' | 'pending'; refundDkk: number }> {
+  if (!stripe || !user.subscriptionId) return { status: 'pending', refundDkk: 0 };
+  try {
+    await stripe.subscriptions.cancel(user.subscriptionId, { prorate: false, invoice_now: false });
+  } catch (err) {
+    if ((err as { code?: string }).code !== 'resource_missing') {
+      // Allerede stoppet ved et tidligere forsøg, hvor refunderingen fejlede? Så fortsæt.
+      const current = await stripe.subscriptions.retrieve(user.subscriptionId).catch(() => null);
+      if (current?.status !== 'canceled') throw err;
+    }
+  }
+  const refundDkk = await refundSubscription(stripe, user.subscriptionId);
+  await db
+    .update(users)
+    .set({
+      subscriptionStatus: 'canceled',
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: now,
+      paymentFailedAt: null,
+      subscriptionEventAt: now,
+    })
+    .where(eq(users.id, user.id));
+  // Fortrydelser, der venter på bekræftelse, er nu overflødige.
+  await db
+    .update(withdrawals)
+    .set({ status: 'superseded' })
+    .where(and(eq(withdrawals.userId, user.id), eq(withdrawals.status, 'unconfirmed')));
+  return { status: 'processed', refundDkk };
+}
+
+/** Kvittering til forbrugeren og – når der ikke er stoppet noget automatisk – besked til os. */
+async function sendWithdrawalMails(
+  to: string[],
+  receipt: { name: string; submittedAt: Date; accountEmail: string | null; refundDkk: number; matched: boolean },
+  status: string,
+  verified: boolean,
+) {
+  for (const address of new Set(to.map((a) => a.toLowerCase()))) await sendMail(withdrawalReceiptMail(address, receipt));
+  if (!receipt.matched) {
+    await sendMail({
+      ...withdrawalReceiptMail(env.CONTACT_EMAIL, receipt),
+      subject: `Fortrydelse til manuel behandling (${status}${verified ? '' : ', afsender ikke logget ind – identitet ikke bekræftet'})`,
+    });
+  }
+}
+
+/** Logget ind: kontoen er bekræftet, så abonnementet stoppes og refunderes med det samme. */
 export async function withdrawSubscription(
   db: Db,
   stripe: StripeClient | null,
-  input: { user: UserRow | null; name: string; email: string },
+  input: { user: UserRow; name: string; email: string },
   now = new Date(),
 ): Promise<{ submittedAt: Date; refundDkk: number; matched: boolean }> {
-  const user =
-    input.user ??
-    (await findUserByEmail(db, input.email)) ??
-    null;
-  const withdrawable = user && accessFor(user, now).withdrawableUntil;
-
-  let refundDkk = 0;
-  let status = 'manual';
-  if (user && withdrawable && user.subscriptionId) {
-    if (stripe) {
-      try {
-        await stripe.subscriptions.cancel(user.subscriptionId, { prorate: false, invoice_now: false });
-      } catch (err) {
-        if ((err as { code?: string }).code !== 'resource_missing') throw err;
-      }
-      refundDkk = await refundSubscription(stripe, user.subscriptionId);
-      status = 'processed';
-      await db
-        .update(users)
-        .set({
-          subscriptionStatus: 'canceled',
-          cancelAtPeriodEnd: false,
-          currentPeriodEnd: now,
-          paymentFailedAt: null,
-          subscriptionEventAt: now,
-        })
-        .where(eq(users.id, user.id));
-    } else {
-      status = 'pending';
-    }
-  }
+  const { user } = input;
+  const withdrawable = Boolean(user.subscriptionId && accessFor(user, now).withdrawableUntil);
+  const { status, refundDkk } = withdrawable ? await stopAndRefund(db, stripe, user, now) : { status: 'manual', refundDkk: 0 };
 
   await db.insert(withdrawals).values({
-    userId: user?.id ?? null,
+    userId: user.id,
     name: input.name,
     email: input.email,
-    subscriptionId: user?.subscriptionId ?? null,
+    subscriptionId: user.subscriptionId ?? null,
     status,
     refundDkk,
     submittedAt: now,
@@ -326,16 +360,102 @@ export async function withdrawSubscription(
   log.info('Fortrydelse modtaget', { status, refundDkk });
 
   const matched = status === 'processed';
-  const receipt = { name: input.name, submittedAt: now, accountEmail: user?.email ?? null, refundDkk, matched };
-  await sendMail(withdrawalReceiptMail(input.email, receipt));
-  if (user?.email && user.email !== input.email.toLowerCase()) await sendMail(withdrawalReceiptMail(user.email, receipt));
-  if (!matched) {
-    await sendMail({
-      ...withdrawalReceiptMail(env.CONTACT_EMAIL, receipt),
-      subject: `Fortrydelse til manuel behandling (${status})`,
-    });
-  }
+  const receipt = { name: input.name, submittedAt: now, accountEmail: user.email ?? null, refundDkk, matched };
+  await sendWithdrawalMails([input.email, ...(user.email ? [user.email] : [])], receipt, status, true);
   return { submittedAt: now, refundDkk, matched };
+}
+
+/** Mindst så lang tid mellem to bekræftelsesmails til samme konto (mod mailbomber). */
+const WITHDRAW_MAIL_INTERVAL_MS = 2 * 60_000;
+
+/**
+ * Uden login: registrerer fortrydelsen med tidspunktet. Har kontoen med e-mailen et
+ * abonnement, der kan fortrydes, får kontoens e-mail en kvittering med et
+ * bekræftelseslink – intet stoppes, før det er bekræftet. Svaret er det samme,
+ * uanset om e-mailen findes.
+ */
+export async function requestWithdrawal(db: Db, input: { name: string; email: string }, now = new Date()): Promise<{ submittedAt: Date }> {
+  const user = await findUserByEmail(db, input.email);
+  if (user?.email && user.subscriptionId && accessFor(user, now).withdrawableUntil) {
+    await db.insert(withdrawals).values({
+      userId: user.id,
+      name: input.name,
+      email: input.email,
+      subscriptionId: user.subscriptionId,
+      status: 'unconfirmed',
+      refundDkk: 0,
+      submittedAt: now,
+    });
+    log.info('Fortrydelse uden login afventer bekræftelse');
+    const last = await lastTokenSentAt(db, user.id, 'withdraw');
+    if (!last || now.getTime() - last.getTime() > WITHDRAW_MAIL_INTERVAL_MS) {
+      const token = await createEmailToken(db, user.id, 'withdraw', user.email);
+      const link = appLink(`/app/bekraeft-fortrydelse?token=${encodeURIComponent(token)}`);
+      await sendMail(withdrawalConfirmMail(user.email, { name: input.name, submittedAt: now, link }));
+    }
+    return { submittedAt: now };
+  }
+
+  // Ingen konto med et abonnement, der kan fortrydes: til manuel behandling.
+  await db.insert(withdrawals).values({
+    userId: user?.id ?? null,
+    name: input.name,
+    email: input.email,
+    subscriptionId: user?.subscriptionId ?? null,
+    status: 'manual',
+    refundDkk: 0,
+    submittedAt: now,
+  });
+  log.info('Fortrydelse modtaget', { status: 'manual', refundDkk: 0 });
+  const receipt = { name: input.name, submittedAt: now, accountEmail: user?.email ?? null, refundDkk: 0, matched: false };
+  await sendWithdrawalMails([input.email], receipt, 'manual', false);
+  return { submittedAt: now };
+}
+
+/**
+ * Bekræftelseslinket fra mailen: stopper og refunderer abonnementet for den første
+ * fortrydelse, der venter. Fristen vurderes ud fra indsendelsen. Fejler Stripe,
+ * virker linket igen, så det kan prøves en gang til.
+ */
+export async function confirmWithdrawal(
+  db: Db,
+  stripe: StripeClient | null,
+  token: string,
+  now = new Date(),
+): Promise<{ submittedAt: Date; refundDkk: number; matched: boolean }> {
+  const link = await consumeEmailToken(db, token, 'withdraw');
+  if (!link) {
+    throw new HttpError(400, 'Linket er udløbet eller allerede brugt. Send fortrydelsen igen på /fortryd, eller skriv til os.');
+  }
+  try {
+    const [first] = await db
+      .select()
+      .from(withdrawals)
+      .where(and(eq(withdrawals.userId, link.userId), eq(withdrawals.status, 'unconfirmed')))
+      .orderBy(asc(withdrawals.submittedAt))
+      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, link.userId)).limit(1);
+    if (!first || !user) throw new HttpError(409, 'Fortrydelsen er allerede behandlet.');
+
+    // Samme abonnement som ved indsendelsen, og indsendt inden fristen.
+    const withdrawable = user.subscriptionId === first.subscriptionId && Boolean(accessFor(user, first.submittedAt).withdrawableUntil);
+    const { status, refundDkk } = withdrawable ? await stopAndRefund(db, stripe, user, now) : { status: 'manual', refundDkk: 0 };
+    await db.update(withdrawals).set({ status, refundDkk }).where(eq(withdrawals.id, first.id));
+    // Flere indsendelser før bekræftelsen gælder som én.
+    await db
+      .update(withdrawals)
+      .set({ status: 'superseded' })
+      .where(and(eq(withdrawals.userId, user.id), eq(withdrawals.status, 'unconfirmed')));
+    log.info('Fortrydelse bekræftet', { status, refundDkk });
+
+    const matched = status === 'processed';
+    const receipt = { name: first.name, submittedAt: first.submittedAt, accountEmail: user.email ?? null, refundDkk, matched };
+    await sendWithdrawalMails([user.email ?? first.email], receipt, status, true);
+    return { submittedAt: first.submittedAt, refundDkk, matched };
+  } catch (err) {
+    if (!(err instanceof HttpError)) await restoreEmailToken(db, link.id);
+    throw err;
+  }
 }
 
 async function findUserByEmail(db: Db, email: string): Promise<UserRow | null> {

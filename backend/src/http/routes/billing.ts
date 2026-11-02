@@ -11,7 +11,9 @@ import {
   createCheckoutSession,
   createPortalSession,
   handleStripeEvent,
+  confirmWithdrawal,
   receiptScansThisMonth,
+  requestWithdrawal,
   withdrawSubscription,
 } from '../../services/billing';
 import type { AppContext } from '../app';
@@ -73,7 +75,10 @@ export function billingRoutes({ db, stripe }: AppContext): Router {
     res.json({ url: await createPortalSession(stripe, await loadUser(userId(req))) } satisfies UrlResponse);
   });
 
-  /** "Fortryd aftale" – virker både for indloggede og via e-mail på /fortryd. */
+  /**
+   * "Fortryd aftale" – virker både for indloggede og uden login på /fortryd.
+   * Uden login stoppes intet, før kontoens ejer har bekræftet via linket i mailen.
+   */
   r.post('/withdraw', limiter, async (req, res) => {
     const body = parse(
       z.object({
@@ -86,8 +91,28 @@ export function billingRoutes({ db, stripe }: AppContext): Router {
       req.body,
     );
     const user = req.auth && !req.auth.guest ? await loadUser(req.auth.sub) : null;
-    const result = await withdrawSubscription(db, stripe, { user, name: body.name, email: body.email });
-    res.status(201).json({ submittedAt: result.submittedAt.toISOString(), refundDkk: result.refundDkk } satisfies WithdrawalResponse);
+    if (user) {
+      const result = await withdrawSubscription(db, stripe, { user, name: body.name, email: body.email });
+      res.status(201).json({
+        submittedAt: result.submittedAt.toISOString(),
+        refundDkk: result.refundDkk,
+        status: result.matched ? 'processed' : 'received',
+      } satisfies WithdrawalResponse);
+      return;
+    }
+    const result = await requestWithdrawal(db, { name: body.name, email: body.email });
+    res.status(201).json({ submittedAt: result.submittedAt.toISOString(), refundDkk: 0, status: 'check_email' } satisfies WithdrawalResponse);
+  });
+
+  /** Bekræftelseslinket fra mailen efter en fortrydelse uden login. */
+  r.post('/withdraw/confirm', limiter, async (req, res) => {
+    const { token } = parse(z.object({ token: z.string().min(10).max(200) }), req.body);
+    const result = await confirmWithdrawal(db, stripe, token);
+    res.json({
+      submittedAt: result.submittedAt.toISOString(),
+      refundDkk: result.refundDkk,
+      status: result.matched ? 'processed' : 'received',
+    } satisfies WithdrawalResponse);
   });
 
   return r;

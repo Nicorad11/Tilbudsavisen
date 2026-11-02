@@ -53,6 +53,7 @@ export function robotsTxt(): string {
     'Disallow: /app/betaling/',
     'Disallow: /app/nulstil-adgangskode',
     'Disallow: /app/bekraeft-email',
+    'Disallow: /app/bekraeft-fortrydelse',
     '',
     `Sitemap: ${env.APP_URL}/sitemap.xml`,
     '',

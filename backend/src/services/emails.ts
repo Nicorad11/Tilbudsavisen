@@ -356,6 +356,34 @@ export function withdrawalReceiptMail(
   };
 }
 
+/**
+ * Fortrydelse sendt uden login: kvittering for indsendelsen til kontoens
+ * e-mail med en knap, så kun kontoens ejer kan sætte den i gang.
+ */
+export function withdrawalConfirmMail(to: string, opts: { name: string; submittedAt: Date; link: string }): Mail {
+  return {
+    to,
+    ...render({
+      subject: 'Bekræft din fortrydelse – Tilbudsradar',
+      preheader: 'Vi har modtaget din fortrydelse. Bekræft den med ét klik.',
+      title: 'Bekræft, at du vil fortryde',
+      paragraphs: [
+        ['Indsendt: ', { strong: formatDateTime(opts.submittedAt) }],
+        ['Navn: ', { strong: opts.name }],
+        ['Aftale: ', { strong: `Tilbudsradar-abonnement på kontoen ${to}` }],
+        'Indhold: Jeg ønsker at gøre min fortrydelsesret gældende og fortryde aftalen om abonnementet.',
+        'Fortrydelsen blev sendt uden at være logget ind. Klik på knappen for at bekræfte, at det er dig – så stopper vi abonnementet og refunderer det, du har betalt.',
+      ],
+      button: { label: 'Bekræft fortrydelse', url: opts.link },
+      after: [
+        'Fristen regnes fra tidspunktet ovenfor, også hvis du bekræfter senere. Linket virker i 7 dage.',
+        'Har du ikke selv bedt om at fortryde, kan du se bort fra denne mail. Der sker intet med dit abonnement, før du bekræfter.',
+      ],
+      note: 'Denne mail er din kvittering for, at vi har modtaget din fortrydelse (forbrugeraftalelovens § 20 a). Gem den gerne.',
+    }),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Prisalarm                                                          */
 /* ------------------------------------------------------------------ */

@@ -6,9 +6,9 @@ import Stripe from 'stripe';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabase, type Database } from '../src/db/client';
-import { receiptScans, users } from '../src/db/schema';
+import { receiptScans, users, withdrawals } from '../src/db/schema';
 import { createApp } from '../src/http/app';
-import type { StripeClient } from '../src/services/billing';
+import { confirmWithdrawal, requestWithdrawal, type StripeClient } from '../src/services/billing';
 import { runBillingCron } from '../src/services/billingCron';
 import { testOutbox } from '../src/services/mailer';
 import { ScrapeManager } from '../src/services/scrapeJobs';
@@ -423,7 +423,7 @@ describe('abonnement', () => {
       trialEndsAt: new Date(Date.now() - DAY),
     });
     const res = await request(app).post('/api/billing/withdraw').set(a.auth).send({ name: 'Anna Hansen', email: a.email }).expect(201);
-    expect(res.body.refundDkk).toBe(49);
+    expect(res.body).toMatchObject({ status: 'processed', refundDkk: 49 });
     expect(stripe.calls.map((c) => c.method)).toEqual(expect.arrayContaining(['subscriptions.cancel', 'refunds.create']));
     const receipt = mailTo(a.email).find((m) => /Kvittering for din fortrydelse/.test(m.subject))!;
     expect(receipt.text).toMatch(/Anna Hansen/);
@@ -435,9 +435,101 @@ describe('abonnement', () => {
     await setUser(b.user.id, { subscriptionId: 'sub_old', subscriptionStatus: 'active', subscriptionStartedAt: new Date(Date.now() - 20 * DAY) });
     stripe.calls.length = 0;
     const late = await request(app).post('/api/billing/withdraw').set(b.auth).send({ name: 'Bo', email: b.email }).expect(201);
-    expect(late.body.refundDkk).toBe(0);
+    expect(late.body).toMatchObject({ status: 'received', refundDkk: 0 });
     expect(stripe.calls.some((c) => c.method === 'subscriptions.cancel')).toBe(false);
     expect(mailTo('kontakt@tilbudsradar.test').some((m) => /manuel behandling/.test(m.subject))).toBe(true);
+  });
+
+  /** Et abonnement, der kan fortrydes (tegnet for `daysAgo` dage siden). */
+  const withdrawable = (id: string, sub: string, daysAgo = 3) =>
+    setUser(id, {
+      stripeCustomerId: `cus_${sub}`,
+      subscriptionId: sub,
+      subscriptionStatus: 'active',
+      subscriptionStartedAt: new Date(Date.now() - daysAgo * DAY),
+      currentPeriodEnd: new Date(Date.now() + 27 * DAY),
+    });
+  const confirmMail = (to: string) => mailTo(to).find((m) => /Bekræft din fortrydelse/.test(m.subject));
+
+  it('"Fortryd aftale" uden login: intet stoppes, før kontoens ejer har bekræftet via mailen', async () => {
+    const a = await register();
+    await withdrawable(a.user.id, 'sub_anon');
+
+    // En fremmed, der kender kundens e-mail, kan ikke stoppe abonnementet.
+    const res = await request(app).post('/api/billing/withdraw').send({ name: 'En Anden', email: a.email }).expect(201);
+    expect(res.body).toMatchObject({ status: 'check_email', refundDkk: 0 });
+    expect(stripe.calls).toHaveLength(0);
+    expect((await dbUser(a.user.id)).subscriptionStatus).toBe('active');
+
+    // Kun kontoens e-mail får linket – og mailen er også kvitteringen for indsendelsen.
+    const mail = confirmMail(a.email)!;
+    expect(mail.text).toMatch(/Indsendt:/);
+    expect(mail.text).toMatch(/Der sker intet med dit abonnement, før du bekræfter/);
+    expect(mail.html).toContain('https://tilbudsradar.test/app/bekraeft-fortrydelse?token=');
+    expect(testOutbox.some((m) => /Kvittering for din fortrydelse/.test(m.subject))).toBe(false);
+
+    // Kontoens ejer bekræfter: stoppes og refunderes – tidspunktet er indsendelsen.
+    const token = linkToken(mail.text);
+    const confirmed = await request(app).post('/api/billing/withdraw/confirm').send({ token }).expect(200);
+    expect(confirmed.body).toEqual({ status: 'processed', refundDkk: 49, submittedAt: res.body.submittedAt });
+    expect(stripe.calls.map((c) => c.method)).toEqual(expect.arrayContaining(['subscriptions.cancel', 'refunds.create']));
+    expect((await dbUser(a.user.id)).subscriptionStatus).toBe('canceled');
+    expect(mailTo(a.email).some((m) => /Kvittering for din fortrydelse/.test(m.subject))).toBe(true);
+
+    // Linket virker kun én gang.
+    await request(app).post('/api/billing/withdraw/confirm').send({ token }).expect(400);
+  });
+
+  it('uden login: samme svar for ukendte e-mails – til manuel behandling og markeret som ubekræftet', async () => {
+    const res = await request(app).post('/api/billing/withdraw').send({ name: 'Nogen', email: 'findes.ikke@example.dk' }).expect(201);
+    expect(res.body).toMatchObject({ status: 'check_email', refundDkk: 0 });
+    expect(stripe.calls).toHaveLength(0);
+    expect(mailTo('findes.ikke@example.dk').some((m) => /Kvittering for din fortrydelse/.test(m.subject))).toBe(true);
+    const notice = mailTo('kontakt@tilbudsradar.test').find((m) => /manuel behandling/.test(m.subject))!;
+    expect(notice.subject).toMatch(/identitet ikke bekræftet/);
+  });
+
+  it('uden login: fristen regnes fra indsendelsen, ikke fra bekræftelsen', async () => {
+    const a = await register();
+    await withdrawable(a.user.id, 'sub_frist', 13.5);
+    await requestWithdrawal(database.db, { name: 'Anna', email: a.email });
+    // Bekræftet to dage senere – efter fristen – men indsendt inden.
+    const result = await confirmWithdrawal(database.db, stripe.client, linkToken(confirmMail(a.email)!.text), new Date(Date.now() + 2 * DAY));
+    expect(result).toMatchObject({ matched: true, refundDkk: 49 });
+  });
+
+  it('uden login: fejler Stripe ved bekræftelsen, virker linket igen', async () => {
+    const a = await register();
+    await withdrawable(a.user.id, 'sub_retry');
+    await request(app).post('/api/billing/withdraw').send({ name: 'Anna', email: a.email }).expect(201);
+    const token = linkToken(confirmMail(a.email)!.text);
+    const refunds = stripe.client.refunds as { create: unknown };
+    const create = refunds.create;
+    refunds.create = () => Promise.reject(new Error('Stripe svarer ikke'));
+    await request(app).post('/api/billing/withdraw/confirm').send({ token }).expect(500);
+    refunds.create = create;
+    const retry = await request(app).post('/api/billing/withdraw/confirm').send({ token }).expect(200);
+    expect(retry.body.status).toBe('processed');
+  });
+
+  it('fortryder kunden logget ind, mens en fortrydelse uden login venter, bliver linket overflødigt', async () => {
+    const a = await register();
+    await withdrawable(a.user.id, 'sub_both');
+    await request(app).post('/api/billing/withdraw').send({ name: 'Anna', email: a.email }).expect(201);
+    const token = linkToken(confirmMail(a.email)!.text);
+    const loggedIn = await request(app).post('/api/billing/withdraw').set(a.auth).send({ name: 'Anna', email: a.email }).expect(201);
+    expect(loggedIn.body.status).toBe('processed');
+    await request(app).post('/api/billing/withdraw/confirm').send({ token }).expect(409);
+    expect(stripe.calls.filter((c) => c.method === 'refunds.create')).toHaveLength(1);
+    const rows = await database.db.select().from(withdrawals).where(eq(withdrawals.userId, a.user.id));
+    expect(rows.map((r) => r.status).sort()).toEqual(['processed', 'superseded']);
+  });
+
+  it('mange fortrydelser uden login giver ikke en mail hver gang', async () => {
+    const a = await register();
+    await withdrawable(a.user.id, 'sub_spam');
+    for (let i = 0; i < 3; i++) await request(app).post('/api/billing/withdraw').send({ name: 'Spam', email: a.email }).expect(201);
+    expect(mailTo(a.email).filter((m) => /Bekræft din fortrydelse/.test(m.subject))).toHaveLength(1);
   });
 });
 

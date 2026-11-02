@@ -22,6 +22,7 @@ const Alerts = page(() => import('./pages/Alerts'), 'Alerts');
 const Account = page(() => import('./pages/Account'), 'Account');
 const ResetPassword = page(() => import('./pages/AccountFlows'), 'ResetPassword');
 const VerifyEmail = page(() => import('./pages/AccountFlows'), 'VerifyEmail');
+const ConfirmWithdrawal = page(() => import('./pages/AccountFlows'), 'ConfirmWithdrawal');
 const CheckoutSuccess = page(() => import('./pages/AccountFlows'), 'CheckoutSuccess');
 const CheckoutCanceled = page(() => import('./pages/AccountFlows'), 'CheckoutCanceled');
 
@@ -116,6 +117,7 @@ export function App({ pages }: { pages: PublicPages }) {
         <Route path="konto" element={<Account />} />
         <Route path="nulstil-adgangskode" element={<ResetPassword />} />
         <Route path="bekraeft-email" element={<VerifyEmail />} />
+        <Route path="bekraeft-fortrydelse" element={<ConfirmWithdrawal />} />
         <Route path="betaling/gennemfoert" element={<CheckoutSuccess />} />
         <Route path="betaling/afbrudt" element={<CheckoutCanceled />} />
         <Route path="*" element={<NotFound home="/app" />} />

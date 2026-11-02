@@ -83,8 +83,8 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
       paragraphs: [
         `Du har ${WITHDRAWAL_DAYS} dages fortrydelsesret, når du tegner et abonnement. Fristen løber fra den dag, aftalen indgås (når betalingen i Stripe er gennemført).`,
         `Du fortryder nemmest med knappen "Fortryd aftale" under Konto eller på ${c.appUrl}/fortryd. Du kan også sende os en utvetydig erklæring på e-mail til ${c.email}, eventuelt med fortrydelsesformularen nedenfor. Du skal ikke begrunde din beslutning. Fristen er overholdt, hvis du sender din fortrydelse, inden fristen udløber.`,
-        'Bruger du "Fortryd aftale", sender vi straks en kvittering på e-mail med indholdet af din fortrydelse og tidspunktet for indsendelsen.',
-        'Fortryder du, stopper abonnementet med det samme, og vi refunderer hele det beløb, du har betalt for abonnementet, senest 14 dage efter vi har modtaget din fortrydelse. Refunderingen sker til det betalingsmiddel, du betalte med. Er den første betaling endnu ikke trukket, trækkes der intet.',
+        'Bruger du "Fortryd aftale", sender vi straks en kvittering på e-mail med indholdet af din fortrydelse og tidspunktet for indsendelsen. Er du ikke logget ind, sender vi kvitteringen til kontoens e-mail med en knap, hvor du bekræfter, at det er dig – så ingen andre kan fortryde dit abonnement. Fristen regnes fra indsendelsen, også hvis du bekræfter senere.',
+        'Fortryder du, stopper abonnementet med det samme (uden login: når du har bekræftet), og vi refunderer hele det beløb, du har betalt for abonnementet, senest 14 dage efter vi har modtaget din fortrydelse. Refunderingen sker til det betalingsmiddel, du betalte med. Er den første betaling endnu ikke trukket, trækkes der intet.',
       ],
     },
     {
