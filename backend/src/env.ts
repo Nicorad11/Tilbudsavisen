@@ -45,8 +45,12 @@ const schema = z.object({
    * Standard: til på Render (RENDER=true), ellers fra.
    */
   TRUST_CF_CONNECTING_IP: z.enum(['true', 'false', '1', '0']).optional(),
-  /** Frontend og API på samme domæne → Lax. Kun "none" hvis de ligger på hver sit domæne. */
-  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  /**
+   * SameSite for refresh-cookien. Strict virker, fordi cookien kun sendes til /api/auth fra
+   * appens egne fetch-kald – aldrig ved selve sideskiftet tilbage fra Stripe eller et mail-link.
+   * Kun "none", hvis frontend og API ligger på hvert sit domæne.
+   */
+  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('strict'),
   ADMIN_EMAILS: z.string().default(''),
   SCRAPE_CRON: z.string().default('15 6,18 * * *'),
   STORES_CRON: z.string().default('30 3 * * 1'),

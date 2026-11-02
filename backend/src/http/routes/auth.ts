@@ -1,7 +1,7 @@
 import type { AuthResponse } from '@tilbudsradar/shared';
 import { TERMS_VERSION } from '@tilbudsradar/shared';
 import { and, eq, ne } from 'drizzle-orm';
-import { Router, type CookieOptions, type Request, type Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
   adminEvents,
@@ -21,6 +21,7 @@ import { env } from '../../env';
 import {
   hashPassword,
   issueRefreshToken,
+  refreshTokenOwner,
   revokeAllForUser,
   revokeRefreshToken,
   roleForEmail,
@@ -42,18 +43,12 @@ import { sendMail, sendMailInBackground } from '../../services/mailer';
 import { consumeEmailToken, createEmailToken, lastTokenSentAt } from '../../services/tokens';
 import { claimTrial } from '../../services/trial';
 import type { AppContext } from '../app';
-import { REFRESH_COOKIE, requireAccount, requireAuth, userId } from '../auth';
+import { REFRESH_COOKIE, refreshCookieOptions, requireAccount, requireAuth, userId } from '../auth';
 import { HttpError, parse } from '../errors';
 import { limiter as rateLimiter, perEmailLimiter } from '../rateLimit';
 
-const cookieOptions = (expires: Date): CookieOptions => ({
-  httpOnly: true,
-  secure: env.isProd || env.COOKIE_SAMESITE === 'none',
-  sameSite: env.COOKIE_SAMESITE,
-  path: '/api/auth',
-  expires,
-});
-const clearCookieOptions = (): CookieOptions => ({ path: '/api/auth', secure: env.isProd, sameSite: env.COOKIE_SAMESITE });
+const cookieOptions = (expires: Date) => refreshCookieOptions(expires);
+const clearCookieOptions = () => refreshCookieOptions();
 
 const email = z
   .email('Ugyldig e-mail')
@@ -239,6 +234,15 @@ export function authRoutes({ db, stripe }: AppContext): Router {
         .where(eq(users.id, row.userId))
         .returning();
       if (!updated) throw new HttpError(404, 'Brugeren findes ikke');
+      // Ny e-mail lukker alle sessioner (som ved ny adgangskode). Klikkes linket i en browser,
+      // der allerede er logget ind på kontoen, forbliver netop den logget ind.
+      const current = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+      const keepThisBrowser = current ? (await refreshTokenOwner(db, current)) === row.userId : false;
+      await revokeAllForUser(db, row.userId);
+      if (keepThisBrowser) {
+        const refresh = await issueRefreshToken(db, row.userId);
+        res.cookie(REFRESH_COOKIE, refresh.token, cookieOptions(refresh.expiresAt));
+      }
       if (before?.email && before.email !== row.email) sendMailInBackground(emailChangedMail(before.email));
       // Kvitteringer fra Stripe skal gå til den nye adresse.
       if (before?.customer && stripe) await stripe.customers.update(before.customer, { email: row.email }).catch(() => undefined);

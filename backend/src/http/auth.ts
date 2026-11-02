@@ -1,4 +1,4 @@
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type { CookieOptions, NextFunction, Request, RequestHandler, Response } from 'express';
 import { env, log } from '../env';
 import { verifyAccessToken, type AccessClaims } from '../services/auth';
 import { HttpError } from './errors';
@@ -10,6 +10,24 @@ declare module 'express-serve-static-core' {
 }
 
 export const REFRESH_COOKIE = 'tr_refresh';
+
+/**
+ * Refresh-cookien: HttpOnly (JavaScript kan ikke læse den), Secure i produktion,
+ * SameSite=Strict som standard og kun sendt til /api/auth. Samme indstillinger
+ * bruges, når den slettes – ellers sletter browseren den ikke.
+ */
+export function refreshCookieOptions(
+  expires?: Date,
+  config: { isProd: boolean; sameSite: CookieOptions['sameSite'] & string } = { isProd: env.isProd, sameSite: env.COOKIE_SAMESITE },
+): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: config.isProd || config.sameSite === 'none',
+    sameSite: config.sameSite,
+    path: '/api/auth',
+    ...(expires ? { expires } : {}),
+  };
+}
 
 /** Læser Bearer-token hvis det findes – kræver det ikke. */
 export const optionalAuth: RequestHandler = (req, _res, next) => {

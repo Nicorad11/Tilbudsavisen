@@ -102,6 +102,12 @@ export async function revokeRefreshToken(db: Db, token: string): Promise<void> {
   await db.delete(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token)));
 }
 
+/** Hvem et gyldigt (ikke udløbet eller tilbagekaldt) refresh token tilhører – uden at rotere det. */
+export async function refreshTokenOwner(db: Db, token: string): Promise<string | null> {
+  const [row] = await db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token))).limit(1);
+  return row && !row.revokedAt && row.expiresAt.getTime() > Date.now() ? row.userId : null;
+}
+
 export async function revokeAllForUser(db: Db, userId: string): Promise<void> {
   await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
 }

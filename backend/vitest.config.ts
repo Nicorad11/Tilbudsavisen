@@ -14,6 +14,8 @@ export default defineConfig({
       // Enkeltmand uden CVR og moms – uafhængigt af en lokal .env.
       COMPANY_CVR: '',
       VAT_REGISTERED: 'false',
+      // Standardværdien – uafhængigt af en lokal .env.
+      COOKIE_SAMESITE: 'strict',
     },
   },
 });
