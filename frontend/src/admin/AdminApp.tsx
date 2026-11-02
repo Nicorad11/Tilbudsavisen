@@ -1,7 +1,7 @@
 import type { AuthResponse, ScrapeStatusDTO } from '@tilbudsradar/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowUpRight, Compass, Gauge, Loader2, LogOut, Radar, ShieldAlert, UsersRound } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Compass, Gauge, Loader2, LogOut, Radar, SearchCheck, ShieldAlert, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router';
 import { Wordmark } from '../components/layout/Wordmark';
@@ -12,6 +12,7 @@ import { useAuth, useUi } from '../lib/store';
 import { Customer } from './pages/Customer';
 import { Customers } from './pages/Customers';
 import { Overview } from './pages/Overview';
+import { Seo } from './pages/Seo';
 import { Sources } from './pages/Sources';
 
 type GateStatus = ScrapeStatusDTO & { adminOpen: boolean };
@@ -20,6 +21,7 @@ const NAV = [
   { to: '/', label: 'Overblik', icon: Gauge, end: true },
   { to: '/kunder', label: 'Kunder', icon: UsersRound, end: false },
   { to: '/kilder', label: 'Kilder', icon: Radar, end: false },
+  { to: '/seo', label: 'SEO', icon: SearchCheck, end: false },
 ];
 
 /**
@@ -136,6 +138,7 @@ function Shell({ adminOpen }: { adminOpen: boolean }) {
           <Route path="kunder" element={<Customers />} />
           <Route path="kunder/:id" element={<Customer />} />
           <Route path="kilder" element={<Sources />} />
+          <Route path="seo" element={<Seo />} />
           <Route
             path="*"
             element={

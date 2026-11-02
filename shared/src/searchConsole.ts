@@ -110,5 +110,100 @@ export interface GscOpportunitiesDTO {
   trend: { total: GscTrendRow; byType: GscTrendRow[] } | null;
   /** Titler, beskrivelser og interne links kræver server-renderingen. */
   snapshotAvailable: boolean;
-  thresholds: Record<string, number>;
+  thresholds: GscThresholds;
+}
+
+/** Tærsklerne i analysen (backend/src/services/seo/opportunities.ts). */
+export interface GscThresholds {
+  PERIOD_DAYS: number;
+  MIN_IMPRESSIONS_CTR: number;
+  LOW_CTR_FACTOR: number;
+  MIN_ROWS_FOR_MEDIAN: number;
+  NEAR_MIN_POSITION: number;
+  NEAR_MAX_POSITION: number;
+  MIN_IMPRESSIONS_NEAR: number;
+  MIN_IMPRESSIONS_MISSING: number;
+  MIN_OFFERS_MISSING: number;
+  CANNIBAL_MIN_IMPRESSIONS: number;
+  CANNIBAL_MIN_SHARE: number;
+  DEAD_AFTER_DAYS: number;
+}
+
+/* ---------------- Admin: overblik, indeksering og sitemaps ---------------- */
+
+export interface GscDay {
+  /** YYYY-MM-DD */
+  day: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface GscOverviewDTO {
+  setup: GscSetupStatus;
+  lastRun: GscRunStatus | null;
+  running: boolean;
+  generatedAt: string;
+  days: number;
+  country: GscCountry;
+  device: GscDevice;
+  /** Perioden med endelige tal – null, når der ingen data er endnu. */
+  period: { start: string; end: string; previousStart: string; previousEnd: string } | null;
+  current: GscTotals | null;
+  previous: GscTotals | null;
+  byDay: GscDay[];
+  /** Foreløbige tal for dagene efter de endelige (kan stadig ændre sig). */
+  fresh: GscDay[];
+  topQueries: (GscTotals & { query: string; page: string })[];
+  topPages: (GscTotals & { page: string })[];
+  discover: (GscTotals & { page: string })[];
+  images: (GscTotals & { query: string })[];
+}
+
+export interface GscInspectionProblem {
+  code: string;
+  label: string;
+}
+
+export interface GscInspectionRow {
+  url: string;
+  path: string;
+  inSitemap: boolean;
+  inspectedAt: string | null;
+  verdict: string | null;
+  coverageState: string | null;
+  robotsTxtState: string | null;
+  indexingState: string | null;
+  pageFetchState: string | null;
+  lastCrawlTime: string | null;
+  googleCanonical: string | null;
+  userCanonical: string | null;
+  crawledAs: string | null;
+  error: string | null;
+  problems: GscInspectionProblem[];
+}
+
+export interface GscIndexingDTO {
+  setup: GscSetupStatus;
+  rows: GscInspectionRow[];
+  counts: { inSitemap: number; inspected: number; indexed: number; withProblems: number };
+  quota: { usedToday: number; limit: number };
+}
+
+export interface GscSitemapRow {
+  path: string;
+  lastSubmitted: string | null;
+  lastDownloaded: string | null;
+  isPending: boolean;
+  isIndex: boolean;
+  errors: number;
+  warnings: number;
+  submitted: number;
+  fetchedAt: string;
+}
+
+export interface GscSitemapsDTO {
+  setup: GscSetupStatus;
+  rows: GscSitemapRow[];
 }

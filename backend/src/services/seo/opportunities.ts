@@ -8,6 +8,7 @@ import type {
   GscOpportunitiesDTO,
   GscPageType,
   GscTotals,
+  GscThresholds,
   GscTrendRow,
 } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
@@ -62,7 +63,7 @@ export const DEAD_AFTER_DAYS = 28;
 /** Højst så mange punkter pr. liste. */
 export const MAX_ITEMS = 25;
 
-export const THRESHOLDS = {
+export const THRESHOLDS: GscThresholds = {
   PERIOD_DAYS,
   MIN_IMPRESSIONS_CTR,
   LOW_CTR_FACTOR,

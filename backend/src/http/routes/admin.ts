@@ -12,9 +12,11 @@ import { adminAudit } from '../adminAudit';
 import { adminGuard, adminOpen } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
 import { adminCustomerRoutes } from './adminCustomers';
+import { adminSeoRoutes } from './adminSeo';
 
 /** Admin-appen: overblik, kunder og styring af scraping-kilder (status, feature-flags, manuel kørsel og mapping). */
-export function adminRoutes({ db, scrape, stripe }: AppContext): Router {
+export function adminRoutes(ctx: AppContext): Router {
+  const { db, scrape, stripe } = ctx;
   const r = Router();
   r.use(adminGuard(db));
   r.use(adminAudit(db));
@@ -31,6 +33,9 @@ export function adminRoutes({ db, scrape, stripe }: AppContext): Router {
 
   /** Kunder: søg, se og redigér. */
   r.use('/users', adminCustomerRoutes({ db, scrape, stripe }));
+
+  /** SEO: data fra Google Search Console (docs/SEARCH_CONSOLE.md). */
+  r.use('/seo', adminSeoRoutes(ctx));
 
   /** Feature-flag pr. kæde – slår alle kædens kilder fra (fx hvis kæden beder om det). */
   r.patch('/stores/:id', async (req, res) => {
