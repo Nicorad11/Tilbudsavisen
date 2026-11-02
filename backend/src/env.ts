@@ -197,7 +197,41 @@ export const log: Logger = createAppLogger('api', {
   level: env.isTest ? 'error' : 'info',
 });
 
-if (env.isProd && [raw.COMPANY_NAME, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
+/**
+ * Firmaoplysningerne på siden, i betingelserne og i e-mails kommer fra COMPANY_NAME,
+ * COMPANY_ADDRESS og COMPANY_CVR. Mangler de, vises "[UDFYLD …]" – med vilje synligt.
+ */
+export function companyProblems(c: {
+  name: string;
+  address: string;
+  cvr: string | null;
+  vatRegistered: boolean;
+  billingEnabled: boolean;
+}): string[] {
+  const problems: string[] = [];
+  const missing = [
+    c.name.includes('[UDFYLD') && 'COMPANY_NAME',
+    c.address.includes('[UDFYLD') && 'COMPANY_ADDRESS',
+  ].filter(Boolean);
+  if (c.billingEnabled && missing.length) {
+    problems.push(
+      `Betaling er slået til, men ${missing.join(' og ')} mangler. E-handelsloven § 7 kræver sælgerens navn og ` +
+        'geografiske adresse på siden – den viser nu "[UDFYLD …]". Sæt dem i Render → Environment.',
+    );
+  }
+  if (c.vatRegistered && !c.cvr) problems.push('VAT_REGISTERED=true, men COMPANY_CVR er tom – en momsregistreret virksomhed har et CVR-nummer.');
+  return problems;
+}
+
+const company = {
+  name: raw.COMPANY_NAME,
+  address: raw.COMPANY_ADDRESS,
+  cvr: raw.COMPANY_CVR,
+  vatRegistered: raw.VAT_REGISTERED,
+  billingEnabled: env.billingEnabled,
+};
+if (!env.isTest) for (const problem of companyProblems(company)) log.error(problem);
+if (env.isProd && !env.billingEnabled && [raw.COMPANY_NAME, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
   log.warn('Navn og adresse (COMPANY_NAME, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
 }
 if (env.isProd && !raw.VITE_INSTAGRAM_URL) log.warn('VITE_INSTAGRAM_URL er ikke sat (eller er ikke https://) – Instagram-linket vises ikke.');

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_ELEMENT_ID, metaForPath, SITE_NAME, SITEMAP_PATHS, type PublicConfig } from '@tilbudsradar/shared';
 import express, { type Express, type Request } from 'express';
-import { env } from '../env';
+import { env, log } from '../env';
 import { requestHost } from './canonical';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -94,7 +94,30 @@ const LEGACY_PATH = /^\/(?:sog|lister|kvitteringer|alarmer|konto)(?:\/.*)?$/;
  * hjemmesiden på hoveddomænet og admin-appen (admin.html) på admin-domænet.
  * Hjemmesiden udleverer aldrig admin.html, og admin-domænet viser kun admin-appen.
  */
+/**
+ * Hvornår security.txt udløber (RFC 9116: højst et år frem). Forny datoen,
+ * inden den passerer – serveren advarer i loggen, når den er overskredet.
+ */
+export const SECURITY_TXT_EXPIRES = '2027-11-02T00:00:00.000Z';
+
+/** /.well-known/security.txt – hvor sikkerhedsfund kan meldes. */
+export function securityTxt(): string {
+  return [
+    `Contact: mailto:${env.CONTACT_EMAIL}`,
+    `Expires: ${SECURITY_TXT_EXPIRES}`,
+    'Preferred-Languages: da, en',
+    `Canonical: ${env.APP_URL}/.well-known/security.txt`,
+    '',
+  ].join('\n');
+}
+
 export function mountSite(app: Express, distDir = env.FRONTEND_DIST): void {
+  if (Date.now() > Date.parse(SECURITY_TXT_EXPIRES)) {
+    log.warn(`security.txt udløb ${SECURITY_TXT_EXPIRES.slice(0, 10)} – forny SECURITY_TXT_EXPIRES i backend/src/http/site.ts.`);
+  }
+  app.get('/.well-known/security.txt', (_req, res) => {
+    res.type('text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=86400').send(securityTxt());
+  });
   app.get(LEGACY_PATH, (req, res, next) => (isAdminHost(req) ? next() : res.redirect(301, `/app${req.originalUrl}`)));
   app.get('/robots.txt', (req, res) => {
     res

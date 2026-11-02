@@ -1,3 +1,4 @@
+import { scrubSentryEvent } from '@tilbudsradar/shared';
 import { CONFIG } from './config';
 
 /**
@@ -19,11 +20,8 @@ export async function initMonitoring(): Promise<void> {
     tracesSampleRate: 0,
     // Ingen sessionsmåling – den kræver ikke lagring, men vi har ikke brug for den.
     integrations: (defaults) => defaults.filter((i) => i.name !== 'BrowserSession'),
-    beforeSend(event) {
-      delete event.user;
-      if (event.request?.url) event.request.url = event.request.url.replace(/token=[^&]+/g, 'token=[fjernet]');
-      return event;
-    },
+    // Ingen login-headere, cookies, adgangskoder, tokens eller e-mailadresser – heller ikke i URL'er og breadcrumbs.
+    beforeSend: (event) => scrubSentryEvent(event),
   });
 }
 

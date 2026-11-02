@@ -127,6 +127,7 @@ Dit eget live-abonnement fra 27/10 kan bruges til 7 og 9. **Opsig det før 10/11
 - [ ] Uventede API-fejl (500, fx afvisninger fra Stripe) sendes ikke til Sentry – de står kun i Render → *Logs* (søg efter `fejlede`). Overvej at sende dem til Sentry, så du får en mail.
 - [ ] Følg Anthropic-forbruget de første uger, når nøglen er sat, og justér `RECEIPT_SCANS_PER_MONTH`.
 - [ ] Ændres betingelserne væsentligt: hæv `TERMS_VERSION` i `shared/src/billing.ts` (nye abonnementer skal acceptere den nye version) og giv eksisterende kunder besked med rimeligt varsel.
+- [ ] Forny `SECURITY_TXT_EXPIRES` i `backend/src/http/site.ts` inden **2. november 2027** (`/.well-known/security.txt` skal have en udløbsdato højst et år frem). Serveren advarer i loggen, når datoen er passeret.
 - Hver push til `main` deployer automatisk. Brugere med en åben, gammel fane får den nye version ved næste klik (siden genindlæses én gang).
 
 ## 9. Moms

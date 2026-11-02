@@ -7,3 +7,4 @@ export * from './billing';
 export * from './legal';
 export * from './seo';
 export * from './admin';
+export * from './privacy';

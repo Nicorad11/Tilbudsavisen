@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import helmet from 'helmet';
 import type { Db } from '../db/client';
 import { env } from '../env';
@@ -11,7 +11,7 @@ import type { ScrapeManager } from '../services/scrapeJobs';
 import { optionalAuth } from './auth';
 import { canonicalHost } from './canonical';
 import { logProxyChainOnce, trustProxy } from './clientIp';
-import { errorHandler, notFoundHandler } from './errors';
+import { errorHandler, HttpError, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { analyticsRoutes } from './routes/analytics';
@@ -56,12 +56,25 @@ function contentSecurityPolicy() {
   };
 }
 
+/**
+ * Query-parametre skal være almindelig tekst. Gentagne nøgler (?q=a&q=b giver en liste)
+ * og nøgler med klammer (?q[$ne]=x) afvises, før en route eller et Zod-schema ser dem.
+ */
+const plainQuery: RequestHandler = (req, _res, next) => {
+  for (const [key, value] of Object.entries(req.query)) {
+    if (typeof value !== 'string' || /[[\]]/.test(key)) return next(new HttpError(400, 'Ugyldige parametre'));
+  }
+  next();
+};
+
 export function createApp(ctx: AppContext): express.Express {
   const app = express();
   // Kun Renders interne proxyer og Cloudflare er betroede (se clientIp.ts). Et fast antal hop
   // ("trust proxy: 1") gav Cloudflares skiftende IP'er som klient-IP, så brugerne delte kvoter.
   app.set('trust proxy', trustProxy);
   app.disable('x-powered-by');
+  // "simple" (Node's querystring) laver aldrig indlejrede objekter af ?a[b]=c – se også plainQuery.
+  app.set('query parser', 'simple');
   // Ét domæne: tilbudsradar.onrender.com og www sendes videre til APP_URL (kun i produktion).
   if (env.isProd) app.use(canonicalHost(env.APP_URL));
   app.use(
@@ -81,10 +94,12 @@ export function createApp(ctx: AppContext): express.Express {
   app.use(cookieParser());
   app.use('/api', logProxyChainOnce);
   app.use('/api', limiter({ windowMs: 60_000, limit: env.isTest ? 10_000 : 300 }));
+  app.use('/api', plainQuery);
   app.use('/api', optionalAuth);
 
+  // Offentlig og uden driftsdetaljer – om scraping kører, står i /api/admin/status.
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, time: new Date().toISOString(), scraping: ctx.scrape.isRunning() });
+    res.json({ ok: true, time: new Date().toISOString() });
   });
   app.use('/api/auth', authRoutes(ctx));
   app.use('/api/billing', billingRoutes(ctx));
