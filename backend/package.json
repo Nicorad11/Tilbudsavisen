@@ -15,6 +15,7 @@
     "ingest": "tsx src/scripts/ingest.ts",
     "reprocess": "tsx src/scripts/reprocess.ts",
     "seo:candidates": "tsx src/scripts/seoCandidates.ts",
+    "seo:report": "tsx src/scripts/seoReport.ts",
     "stripe:setup": "tsx src/scripts/stripeSetup.ts"
   },
   "dependencies": {

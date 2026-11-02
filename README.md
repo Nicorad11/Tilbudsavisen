@@ -52,6 +52,7 @@ Abonnementet ændres ikke i admin – det sker i Stripe Dashboard (link fra kund
 | `npm run db:seed-demo` | **Demo-data:** 180 dages syntetisk prishistorik (markeret i UI'et). Fjern med `npm run db:seed-demo -- --clear` |
 | `npm run db:generate` | Generér en ny migration efter ændringer i `backend/src/db/schema.ts` |
 | `npm run stripe:setup` | Opretter produkt, pris (49 kr/md), kundeportal og webhook i Stripe – idempotent. `-- --tax` opretter også en 25 % momssats |
+| `npm run seo:report` | SEO-rapport fra Google Search Console til `docs/seo-report.md` (se [docs/SEARCH_CONSOLE.md](docs/SEARCH_CONSOLE.md)). `-- --no-sync` bruger kun data i databasen |
 | `npm run seo:candidates -w backend` | Varetyper med mange tilbud, som ingen vare på `/tilbud/{vare}` dækker endnu (se [docs/SEO.md](docs/SEO.md)) |
 | `npm run build` / `npm start` | Produktionsbuild; backend serverer også den byggede frontend og server-renderer de offentlige sider |
 
@@ -220,6 +221,7 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 | POST/GET/DELETE | `/api/receipts`, `/api/receipts/:id` | Gem og tjek en kvittering mod aviserne; oversigt og sletning |
 | GET/PATCH/POST | `/api/admin/status`, `/api/admin/stores/:id`, `/api/admin/sources/:id`, `/api/admin/scrape` | Kilder og feature-flags |
 | GET | `/api/admin/overview?days=30` | Overblik: brugere, besøg og drift |
+| GET/POST | `/api/admin/seo/status`, `/overview?days=&country=&device=`, `/opportunities`, `/indexing`, `/sitemaps`, `POST /sync`, `POST /inspect` | Google Search Console: data, muligheder, indeksering, "Hent data nu" og "Inspicér URL" |
 | GET/PATCH/DELETE | `/api/admin/users?q=&filter=&sort=&page=`, `/api/admin/users/:id` | Kunder: søg, se, ret prøveperiode og e-mailbekræftelse, slet |
 | POST | `/api/admin/users/:id/change-email`, `/resend-verification`, `/password-reset`, `/logout` | Kunder: mails til kunden og log ud overalt |
 
@@ -256,6 +258,7 @@ Testkort: `4242 4242 4242 4242`, en fremtidig udløbsdato og en vilkårlig CVC. 
 - **Datasider** bygget på egne data: `/tilbud` og `/tilbud/{vare}` (ca. 160 kuraterede varer i `shared/src/seoTerms.ts`), `/butikker` og `/butik/{kæde}`, `/kategori/{kategori}`, `/ugens-bedste-tilbud`, `/indsigt` og `/metode`. En side indekseres kun, når der er data nok – ellers `noindex` eller 404.
 - Sitemap-indeks med rigtig `lastmod`, én `robots.txt`-gruppe, 301 til kanoniske adresser, JSON-LD (brødkrummer, produktlister med pris), delingsbilleder pr. side (`/og/…png`), IndexNow efter hver hentning (`INDEXNOW_KEY`) og `/llms.txt`.
 - Alt om arkitektur, indekseringsregler, hvordan man tilføjer en vare og skridtene efter deploy står i [docs/SEO.md](docs/SEO.md).
+- **Google Search Console:** søgedata, indekseringsstatus og sitemaps hentes dagligt ind i databasen og vises i admin → SEO med KPI'er, top søgeord og sider samt optimeringsmuligheder (lav klikrate, tæt på side 1, manglende varesider, kannibalisering, døde sider). `npm run seo:report` skriver en rapport, Claude Code kan arbejde ud fra. Opsætning: [docs/SEARCH_CONSOLE.md](docs/SEARCH_CONSOLE.md).
 - Serveren giver også frontenden firmaoplysninger, Instagram, Plausible og Sentry ved hver sidevisning (`<script id="tr-config" type="application/json">`), så de styres af miljøvariabler uden et nyt build.
 - PWA: `frontend/public/manifest.webmanifest`, ikoner i `frontend/public/icons/` og en service worker (`sw.js`), der kun cacher statiske filer – aldrig API-svar eller login.
 - Forsiden indlæses først; appens sider og grafbiblioteket hentes, når de bruges.

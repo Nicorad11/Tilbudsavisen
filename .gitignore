@@ -8,3 +8,5 @@ dist/
 scrapers/out/
 coverage/
 .DS_Store
+# Lokal SEO-rapport fra npm run seo:report
+docs/seo-report.md

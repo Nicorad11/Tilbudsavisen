@@ -25,7 +25,8 @@
     "db:seed-demo": "npm run db:seed-demo -w backend --",
     "ingest": "npm run ingest -w backend --",
     "reprocess": "npm run reprocess -w backend",
-    "stripe:setup": "npm run stripe:setup -w backend --"
+    "stripe:setup": "npm run stripe:setup -w backend --",
+    "seo:report": "npm run seo:report -w backend --"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

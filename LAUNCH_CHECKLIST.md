@@ -145,7 +145,10 @@ Server-rendering, datasider og sitemaps er live siden 2. november 2026. Detaljer
 
 - [x] Første deploy 2/11 fulgt: alle offentlige sider server-renderes med tekst, links og JSON-LD, delingsbillederne tegnes på Render, og der er ingen fejl i konsollen.
 - [ ] Sæt `INDEXNOW_KEY` i Render (fx et nyt UUID), og tjek at `/{nøgle}.txt` svarer med nøglen. Efter næste hentning står `[indexnow]` i loggen.
-- [ ] Google Search Console: domæne-ejendom for `tilbudsradaren.dk`, bekræftet med en TXT-post hos DNS.services. Indsend `https://tilbudsradaren.dk/sitemap.xml`, og bed om indeksering af `/`, `/tilbud`, `/tilbud/smoer` og `/indsigt`.
+- [x] Google Search Console: domæne-ejendom `sc-domain:tilbudsradaren.dk` oprettet, og `https://tilbudsradaren.dk/sitemap.xml` indsendt 2/11 – læst med status "Succes" og 123 sider.
+- [ ] Bed om indeksering af `/`, `/tilbud`, `/tilbud/smoer` og `/indsigt` (URL-inspektion i Search Console).
+- [ ] Search Console i admin: opret service account og nøgle, giv den "Begrænset" adgang i Search Console, og sæt `GSC_SERVICE_ACCOUNT_JSON` og `GSC_SITE_URL=sc-domain:tilbudsradaren.dk` i Render. Trin for trin i [docs/SEARCH_CONSOLE.md](docs/SEARCH_CONSOLE.md). Tjek derefter admin → SEO → "Hent data nu".
+- [ ] Hver anden uge, når der er data: kør `npm run seo:report` og en optimeringsrunde ("Prompt B").
 - [ ] Bing Webmaster Tools: importér sitet fra Search Console, og indsend sitemapet (Bing bruges også af ChatGPT search og Copilot).
 - [ ] Rich Results Test på `/` og `/tilbud/smoer`.
 - [ ] Cloudflare: tjek at AI-crawlere ikke blokeres (*Security → Bots* og *AI Crawl Control*), og at Cloudflare ikke ændrer `robots.txt`.
