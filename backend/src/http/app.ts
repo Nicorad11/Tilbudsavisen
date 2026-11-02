@@ -8,6 +8,7 @@ import { env } from '../env';
 import { sentryEnabled } from '../instrument';
 import type { StripeClient } from '../services/billing';
 import type { ScrapeManager } from '../services/scrapeJobs';
+import type { SearchConsoleService } from '../services/searchConsole/service';
 import { optionalAuth } from './auth';
 import { canonicalHost } from './canonical';
 import { logProxyChainOnce, trustProxy } from './clientIp';
@@ -28,6 +29,8 @@ export interface AppContext {
   scrape: ScrapeManager;
   /** null når STRIPE_SECRET_KEY ikke er sat – betalingsendpoints svarer så 503. */
   stripe: StripeClient | null;
+  /** Search Console – udeladt i tests, der ikke bruger den (så oprettes den ud fra miljøvariablerne). */
+  searchConsole?: SearchConsoleService;
 }
 
 const originOf = (url: string | null | undefined) => {

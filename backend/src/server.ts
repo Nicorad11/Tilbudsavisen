@@ -1,4 +1,5 @@
 import './instrument';
+import { createNotifier } from '@tilbudsradar/scrapers';
 import cron from 'node-cron';
 import { bootstrap } from './bootstrap';
 import { env, log } from './env';
@@ -8,6 +9,7 @@ import { createStripeClient } from './services/billing';
 import { cleanupPageViews } from './services/analytics';
 import { runBillingCron } from './services/billingCron';
 import { openBillingIfNeeded } from './services/launch';
+import { searchConsoleService } from './services/searchConsole/service';
 import { createIndexNowNotifier } from './services/seo/indexNow';
 
 const { database, scrape } = await bootstrap();
@@ -17,7 +19,11 @@ if (!stripe) log.warn('STRIPE_SECRET_KEY er ikke sat – abonnementer er slået 
 await openBillingIfNeeded(database.db, env.billingEnabled).catch((err) =>
   log.error('Kunne ikke afslutte lanceringsperioden', { err: String(err) }),
 );
-const app = createApp({ db: database.db, scrape, stripe });
+const searchConsole = searchConsoleService(database.db, {
+  log: log.child('search-console'),
+  notifier: createNotifier(env.scraper, log.child('alert')),
+});
+const app = createApp({ db: database.db, scrape, stripe, searchConsole });
 
 const server = app.listen(env.PORT, () => {
   log.info(`API kører på http://localhost:${env.PORT}`);
@@ -41,6 +47,20 @@ if (env.BILLING_CRON) {
     env.BILLING_CRON,
     () => void runBillingCron(database.db).catch((err) => log.error('Mails om prøveperioden fejlede', { err: String(err) })),
     { timezone: 'Europe/Copenhagen', name: 'billing-mails' },
+  );
+}
+
+// Search Console: søgedata, indeksering og sitemaps hentes dagligt (docs/SEARCH_CONSOLE.md).
+const gsc = searchConsole.status();
+if (!gsc.configured) {
+  if (env.GSC_SERVICE_ACCOUNT_JSON || env.GSC_SITE_URL) log.warn(`Search Console er ikke sat op: ${gsc.reason}`);
+} else if (!cron.validate(env.GSC_CRON)) {
+  log.error(`GSC_CRON er ikke et gyldigt cron-udtryk: "${env.GSC_CRON}" – Search Console hentes kun manuelt fra admin.`);
+} else {
+  cron.schedule(
+    env.GSC_CRON,
+    () => void searchConsole.sync('cron').catch((err) => log.error('Search Console-synkronisering fejlede', { err: String(err) })),
+    { timezone: 'Europe/Copenhagen', name: 'search-console' },
   );
 }
 
