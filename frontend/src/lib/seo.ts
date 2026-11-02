@@ -60,14 +60,17 @@ function applyMeta(meta: SeoMeta): void {
  * Sidens titel, beskrivelse, canonical, robots, delingsbillede og strukturerede
  * data. Uden argument bruges de faste sider (`seoForPath`). Datasider giver
  * deres egen meta, bygget af de samme data som serveren brugte – så server og
- * browser altid sætter de samme tags.
+ * browser altid sætter de samme tags. `null` betyder "data er ikke hentet
+ * endnu": så røres tags ikke (ellers fik en ny side kortvarigt noindex).
  */
-export function useSeo(meta?: SeoMeta): void {
+export function useSeo(meta?: SeoMeta | null): void {
   const { pathname } = useLocation();
-  const resolved = meta ?? seoForPath(pathname);
+  const resolved = meta === null ? null : (meta ?? seoForPath(pathname));
   const collector = useContext(HeadContext);
-  if (collector) collector.meta = resolved;
+  if (collector && resolved) collector.meta = resolved;
   // Nøglen dækker hele meta-objektet, så et nyt objekt med samme indhold ikke giver et nyt kald.
   const key = JSON.stringify(resolved);
-  useEffect(() => applyMeta(resolved), [key]);
+  useEffect(() => {
+    if (resolved) applyMeta(resolved);
+  }, [key]);
 }

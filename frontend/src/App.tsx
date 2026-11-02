@@ -37,6 +37,13 @@ export interface PublicPages {
   Cookies: ComponentType;
   About: ComponentType;
   Withdraw: ComponentType;
+  TermHub: ComponentType;
+  Term: ComponentType;
+  StoresHub: ComponentType;
+  Store: ComponentType;
+  Category: ComponentType;
+  WeeklyBest: ComponentType;
+  Method: ComponentType;
 }
 
 /** Gamle stier (før appen flyttede til /app) – bevarer forespørgsel og anker, fx ?q= og UTM-parametre. */
@@ -80,6 +87,13 @@ export function App({ pages }: { pages: PublicPages }) {
         <Route path="cookies" element={<pages.Cookies />} />
         <Route path="om" element={<pages.About />} />
         <Route path="fortryd" element={<pages.Withdraw />} />
+        <Route path="tilbud" element={<pages.TermHub />} />
+        <Route path="tilbud/:slug" element={<pages.Term />} />
+        <Route path="butikker" element={<pages.StoresHub />} />
+        <Route path="butik/:slug" element={<pages.Store />} />
+        <Route path="kategori/:slug" element={<pages.Category />} />
+        <Route path="ugens-bedste-tilbud" element={<pages.WeeklyBest />} />
+        <Route path="metode" element={<pages.Method />} />
         <Route path="*" element={<PublicNotFound />} />
       </Route>
 

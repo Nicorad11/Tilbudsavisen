@@ -1,10 +1,30 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { cleanPath, jsonForScript, PAGE_META, renderHeadTags, seoForPath, type PublicConfig, type SeoMeta } from '@tilbudsradar/shared';
+import {
+  cleanPath,
+  jsonForScript,
+  PAGE_META,
+  renderHeadTags,
+  seoCategoryBySlug,
+  seoForPath,
+  seoStoreBySlug,
+  seoTermBySlug,
+  type PublicConfig,
+  type SeoMeta,
+} from '@tilbudsradar/shared';
 import type { Db } from '../db/client';
 import { env } from '../env';
 import { cached } from '../services/cache';
+import {
+  getCategoryPage,
+  getMethodPage,
+  getStorePage,
+  getStoresHub,
+  getTermHub,
+  getTermPage,
+  getWeeklyBest,
+} from '../services/seo/pages';
 import { getStats } from '../services/stats';
 
 /**
@@ -39,9 +59,45 @@ export const isServerRendered = (pathname: string) => !/^\/(app|api)(\/|$)/.test
 /** Som et API-svar: JSON frem og tilbage, så fx datoer er strenge præcis som i browseren. */
 const asJson = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-/** Data pr. side – samme nøgler som hooks i frontend/src/lib/hooks.ts. */
+/**
+ * Datasidernes loaders: stien under /api/seo og funktionen, der bygger siden.
+ * Query-nøglen er ['seo', ...stiens dele] – den samme som frontend/src/pages/seo/data.ts.
+ */
+const SEO_LOADERS: { pattern: RegExp; valid?: (slug: string) => boolean; load: (db: Db, slug: string) => Promise<unknown> }[] = [
+  { pattern: /^\/tilbud$/, load: (db) => getTermHub(db) },
+  { pattern: /^\/tilbud\/([^/]+)$/, valid: (s) => Boolean(seoTermBySlug(s)), load: (db, s) => getTermPage(db, s) },
+  { pattern: /^\/butikker$/, load: (db) => getStoresHub(db) },
+  { pattern: /^\/butik\/([^/]+)$/, valid: (s) => Boolean(seoStoreBySlug(s)), load: (db, s) => getStorePage(db, s) },
+  { pattern: /^\/kategori\/([^/]+)$/, valid: (s) => Boolean(seoCategoryBySlug(s)), load: (db, s) => getCategoryPage(db, s) },
+  { pattern: /^\/ugens-bedste-tilbud$/, load: (db) => getWeeklyBest(db) },
+  { pattern: /^\/metode$/, load: (db) => getMethodPage(db) },
+];
+
+export const seoQueryKey = (pathname: string) => ['seo', ...pathname.split('/').filter(Boolean)];
+
+/** Siden findes (forside, faste sider og datasider for varer, kæder og kategorier på listerne) og må caches. */
+export function isKnownPath(pathname: string): boolean {
+  if (STATIC_PUBLIC_PATHS.includes(pathname)) return true;
+  for (const route of SEO_LOADERS) {
+    const match = route.pattern.exec(pathname);
+    if (match) return !route.valid || route.valid(match[1] ?? '');
+  }
+  return false;
+}
+
+/**
+ * Data pr. side – samme nøgler som frontendens hooks. Ukendte varer, kæder og
+ * kategorier får data null, så siden renderes som 404 uden at vente på data.
+ */
 async function prefetch(db: Db, pathname: string): Promise<PrefetchedQuery[]> {
   if (pathname === '/') return [{ queryKey: ['stats'], data: asJson(await getStats(db)) }];
+  for (const route of SEO_LOADERS) {
+    const match = route.pattern.exec(pathname);
+    if (!match) continue;
+    const slug = match[1] ?? '';
+    const data = !route.valid || route.valid(slug) ? asJson(await route.load(db, slug)) : null;
+    return [{ queryKey: seoQueryKey(pathname), data }];
+  }
   return [];
 }
 
@@ -58,9 +114,9 @@ const SEO_BLOCK = /<!--seo-->[\s\S]*?<!--\/seo-->/;
 const ROOT = '<div id="root"></div>';
 
 export function createSsr(options: { db: Db; module: SsrModule; template: string; configTag: string }) {
-  async function build(url: string): Promise<SsrPage> {
+  async function build(url: string, queries: PrefetchedQuery[]): Promise<SsrPage> {
     const pathname = cleanPath(url);
-    const { html, meta, state } = options.module.render(url, await prefetch(options.db, pathname));
+    const { html, meta, state } = options.module.render(url, queries);
     const resolved = meta ?? seoForPath(pathname);
     const head = [
       renderHeadTags(resolved, env.APP_URL),
@@ -79,9 +135,11 @@ export function createSsr(options: { db: Db; module: SsrModule; template: string
      * data-version (nye tilbud nulstiller) og højst 10 minutter, så "gælder nu"
      * og lignende holder. Ukendte stier (404) caches ikke.
      */
-    render(pathname: string): Promise<SsrPage> {
+    async render(pathname: string): Promise<SsrPage> {
       const clean = cleanPath(pathname);
-      return STATIC_PUBLIC_PATHS.includes(clean) ? cached(`ssr:${clean}`, 10 * 60_000, () => build(clean)) : build(pathname);
+      // Data hentes først: kun kendte sider (forside, faste sider, varer, kæder og kategorier) caches.
+      if (isKnownPath(clean)) return cached(`ssr:${clean}`, 10 * 60_000, async () => build(clean, await prefetch(options.db, clean)));
+      return build(pathname, await prefetch(options.db, clean));
     },
   };
 }

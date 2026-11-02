@@ -23,6 +23,19 @@ export interface TrustInput {
   originalPrice: number | null;
 }
 
+/** Grænserne i vurderingen – også forklaret på /metode (backend/src/services/seo). */
+export const TRUST_THRESHOLDS = {
+  /** Mindst så mange % under 90-dages gennemsnittet = "reelt tilbud". */
+  realPct: 10,
+  /** Mindst så mange % under = "lille besparelse". */
+  okPct: 3,
+  /** Reklamerer kæden med mindst så mange % rabat … */
+  inflatedClaimPct: 15,
+  /** … men er prisen under så mange % under gennemsnittet, er førprisen måske opskrevet. */
+  inflatedMaxSavingsPct: 3,
+  windowDays: 90,
+} as const;
+
 const pct = (n: number) => `${Math.round(n)}%`;
 const kr = (n: number) => n.toFixed(2).replace('.', ',');
 
@@ -88,7 +101,7 @@ export function assessTrust(offer: TrustInput, history: HistoryAgg[]): TrustInfo
   const info = { ...base, avgUnitPrice90d: Math.round(basis.avg * 100) / 100, savingsPct: savings, samples: basis.n };
   const vs = `${kr(offer.unitPrice)} kr mod gns. ${kr(basis.avg)} kr (${basisLabel}, 90 dage)`;
 
-  if (claimed !== null && claimed >= 15 && savings < 3) {
+  if (claimed !== null && claimed >= TRUST_THRESHOLDS.inflatedClaimPct && savings < TRUST_THRESHOLDS.inflatedMaxSavingsPct) {
     return {
       ...info,
       level: 'inflated',
@@ -101,10 +114,10 @@ export function assessTrust(offer: TrustInput, history: HistoryAgg[]): TrustInfo
     if (savings <= -10) return { ...info, level: 'inflated', label: 'Dyrere end før', explanation: `Dyrere end ${basisLabel}: ${vs}.` };
     return { ...info, level: 'unknown', label: 'Som tidligere', explanation: `Samme niveau som ${basisLabel}: ${vs}.` };
   }
-  if (savings >= 10) {
+  if (savings >= TRUST_THRESHOLDS.realPct) {
     return { ...info, level: 'real', label: 'Reelt tilbud', explanation: `${pct(savings)} under ${basisLabel}: ${vs}.` };
   }
-  if (savings >= 3) {
+  if (savings >= TRUST_THRESHOLDS.okPct) {
     return { ...info, level: 'ok', label: 'Lille besparelse', explanation: `${pct(savings)} under ${basisLabel}: ${vs}.` };
   }
   return {

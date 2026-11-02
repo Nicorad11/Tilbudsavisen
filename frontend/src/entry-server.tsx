@@ -21,8 +21,23 @@ import { Privacy } from './pages/legal/Privacy';
 import { Terms } from './pages/legal/Terms';
 import { Withdraw } from './pages/legal/Withdraw';
 import { Pricing } from './pages/Pricing';
+import { CategoryPage, MethodPage, StorePage, StoresHubPage, TermHubPage, TermPage, WeeklyBestPage } from './pages/seo/SeoPages';
 
-const pages: PublicPages = { Pricing, Terms, Privacy, Cookies, About, Withdraw };
+const pages: PublicPages = {
+  Pricing,
+  Terms,
+  Privacy,
+  Cookies,
+  About,
+  Withdraw,
+  TermHub: TermHubPage,
+  Term: TermPage,
+  StoresHub: StoresHubPage,
+  Store: StorePage,
+  Category: CategoryPage,
+  WeeklyBest: WeeklyBestPage,
+  Method: MethodPage,
+};
 
 export interface PrefetchedQuery {
   queryKey: QueryKey;

@@ -18,6 +18,7 @@ import { analyticsRoutes } from './routes/analytics';
 import { billingRoutes, stripeWebhook } from './routes/billing';
 import { offerRoutes } from './routes/offers';
 import { receiptRoutes } from './routes/receipts';
+import { seoRoutes } from './routes/seo';
 import { userRoutes } from './routes/user';
 import { limiter } from './rateLimit';
 import { mountSite } from './site';
@@ -105,6 +106,7 @@ export function createApp(ctx: AppContext): express.Express {
   app.use('/api/billing', billingRoutes(ctx));
   app.use('/api/analytics', analyticsRoutes(ctx));
   app.use('/api/admin', adminRoutes(ctx));
+  app.use('/api/seo', seoRoutes(ctx));
   app.use('/api', offerRoutes(ctx));
   app.use('/api', userRoutes(ctx));
   app.use('/api', receiptRoutes(ctx));

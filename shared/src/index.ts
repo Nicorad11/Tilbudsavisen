@@ -8,3 +8,6 @@ export * from './legal';
 export * from './seo';
 export * from './admin';
 export * from './privacy';
+export * from './seoPages';
+export * from './seoTerms';
+export * from './slug';

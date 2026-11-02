@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Paywall } from '../components/billing/Paywall';
 import { OfferRow } from '../components/OfferCard';
 import { PulseRow, RadarRings } from '../components/ui/charts';
@@ -58,7 +59,9 @@ function AlertsPage() {
   const notes = useNotifications();
   const add = useAddWatch();
   const qc = useQueryClient();
-  const [query, setQuery] = useState('');
+  // Fra en vareside ("Få besked, når smør kommer på tilbud"): varen står klar i feltet.
+  const [params] = useSearchParams();
+  const [query, setQuery] = useState(() => params.get('vare')?.slice(0, 80) ?? '');
   const [price, setPrice] = useState('');
   const remove = useMutation({
     mutationFn: (id: number) => authed(`/watchlist/${id}`, { method: 'DELETE' }),
