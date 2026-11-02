@@ -52,7 +52,8 @@ Abonnementet ændres ikke i admin – det sker i Stripe Dashboard (link fra kund
 | `npm run db:seed-demo` | **Demo-data:** 180 dages syntetisk prishistorik (markeret i UI'et). Fjern med `npm run db:seed-demo -- --clear` |
 | `npm run db:generate` | Generér en ny migration efter ændringer i `backend/src/db/schema.ts` |
 | `npm run stripe:setup` | Opretter produkt, pris (49 kr/md), kundeportal og webhook i Stripe – idempotent. `-- --tax` opretter også en 25 % momssats |
-| `npm run build` / `npm start` | Produktionsbuild; backend serverer også den byggede frontend |
+| `npm run seo:candidates -w backend` | Varetyper med mange tilbud, som ingen vare på `/tilbud/{vare}` dækker endnu (se [docs/SEO.md](docs/SEO.md)) |
+| `npm run build` / `npm start` | Produktionsbuild; backend serverer også den byggede frontend og server-renderer de offentlige sider |
 
 > Med den indlejrede database kan kun én proces åbne den ad gangen. Stop `npm run dev`, før du kører `ingest`, `reprocess` eller `db:seed-demo`. Med en rigtig Postgres (`DATABASE_URL`) gælder det ikke.
 
@@ -203,7 +204,8 @@ Tilbuddets kr/enhed sammenlignes med gennemsnittet de sidste 90 dage. Grundlaget
 |---|---|---|
 | GET | `/api/search?q=&stores=&categories=&sort=unit\|price\|discount\|relevance&zip=&lat=&lng=&radius=` | Søgning på tværs af kæder |
 | GET | `/api/search/suggest?q=okse` | Forslag mens man skriver: varetyper med antal tilbud, kæder og laveste pris pr. enhed, plus kategorier |
-| GET | `/api/offers/top`, `/api/offers/:id` | Bedste tilbud; detalje med alternativer og community |
+| GET | `/api/offers/top`, `/api/offers/:id` | Bedste tilbud; detalje med alternativer, community og varesiden (`seoTerm`) |
+| GET | `/api/seo/forside`, `/tilbud`, `/tilbud/:vare`, `/butikker`, `/butik/:kæde`, `/kategori/:kategori`, `/ugens-bedste-tilbud`, `/indsigt`, `/metode` | Datasidernes indhold som JSON – til navigation i browseren (første visning er server-renderet) |
 | GET | `/api/products/:id/history?days=180` | Prishistorik |
 | GET | `/api/stats`, `/api/stores`, `/api/stores/nearby`, `/api/categories` | Oversigt |
 | POST | `/api/auth/register`, `/login`, `/refresh`, `/logout` | JWT + roterende refresh-cookie. `register` kræver `acceptTerms: true` og starter prøveperioden |
@@ -250,7 +252,10 @@ Testkort: `4242 4242 4242 4242`, en fremtidig udløbsdato og en vilkårlig CVC. 
 ## Offentlige sider, SEO og PWA
 
 - Landingsside, priser, om, juridiske sider og `/fortryd` ligger på roden. Selve appen ligger under `/app`, og de gamle adresser (`/sog`, `/konto` …) omdirigeres med 301.
-- Serveren indsætter titel, beskrivelse, canonical og Open Graph pr. side (`shared/src/seo.ts`), så delte links virker uden JavaScript. Ukendte adresser svarer 404, og private sider har `noindex`. `robots.txt` og `sitemap.xml` genereres ud fra `APP_URL`.
+- **Alle offentlige sider er server-renderede** og hydreres i browseren. Serveren henter data direkte fra services med samme query-nøgler som frontenden, så crawlere uden JavaScript ser den samme tekst, de samme links og den samme `<head>` som brugeren. `/app` renderes stadig i browseren og har `noindex,follow`. `npm run dev` er ren klient-rendering; SSR afprøves med `npm run build && npm start`.
+- **Datasider** bygget på egne data: `/tilbud` og `/tilbud/{vare}` (ca. 160 kuraterede varer i `shared/src/seoTerms.ts`), `/butikker` og `/butik/{kæde}`, `/kategori/{kategori}`, `/ugens-bedste-tilbud`, `/indsigt` og `/metode`. En side indekseres kun, når der er data nok – ellers `noindex` eller 404.
+- Sitemap-indeks med rigtig `lastmod`, én `robots.txt`-gruppe, 301 til kanoniske adresser, JSON-LD (brødkrummer, produktlister med pris), delingsbilleder pr. side (`/og/…png`), IndexNow efter hver hentning (`INDEXNOW_KEY`) og `/llms.txt`.
+- Alt om arkitektur, indekseringsregler, hvordan man tilføjer en vare og skridtene efter deploy står i [docs/SEO.md](docs/SEO.md).
 - Serveren giver også frontenden firmaoplysninger, Instagram, Plausible og Sentry ved hver sidevisning (`<script id="tr-config" type="application/json">`), så de styres af miljøvariabler uden et nyt build.
 - PWA: `frontend/public/manifest.webmanifest`, ikoner i `frontend/public/icons/` og en service worker (`sw.js`), der kun cacher statiske filer – aldrig API-svar eller login.
 - Forsiden indlæses først; appens sider og grafbiblioteket hentes, når de bruges.

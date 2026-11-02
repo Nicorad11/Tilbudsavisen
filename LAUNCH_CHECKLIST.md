@@ -19,6 +19,7 @@
 | Sælger | ⚠️ Enkeltmand uden CVR (aftalt med advokat og revisor). **Navn og adresse mangler stadig** på siden og i mails – et lovkrav nu, hvor der tages betaling |
 | Kontaktmail | ⏳ `kontakt@tilbudsradaren.dk` kan endnu ikke modtage mails |
 | Jurist | ⏳ Ikke gennemgået |
+| Søgemaskiner | ⏳ Server-rendering, datasider og sitemaps ligger på branchen `seo` – ikke i produktion endnu (se trin 10) |
 
 Rækkefølgen herunder er den anbefalede for det, der mangler.
 
@@ -137,6 +138,20 @@ Dit eget live-abonnement fra 27/10 kan bruges til 7 og 9. **Opsig det før 10/11
 - [ ] Når du bliver momsregistreret: sæt `COMPANY_CVR` og `VAT_REGISTERED=true` i Render, opret en inklusiv momssats på 25 % i Stripe (*Product catalog → Tax rates*) og sæt `STRIPE_TAX_RATE_ID`. Bemærk: 49 kr. inkl. moms giver 39,20 kr. efter moms – overvej prisen.
 - [ ] Sælger du til forbrugere i andre EU-lande for over 10.000 € om året, gælder deres moms (OSS). Appen er rettet mod Danmark.
 - [ ] Aftal bogføring med en revisor (Stripe-udbetalinger, gebyrer og refusioner).
+
+## 10. Søgemaskiner og AI-søgning
+
+Når branchen `seo` er gennemgået og flettet ind i `main` (server-renderede sider, datasider, sitemaps). Detaljer i [docs/SEO.md](docs/SEO.md#efter-deploy).
+
+- [ ] Følg første deploy: `https://tilbudsradaren.dk/tilbud/smoer` skal vise tekst uden JavaScript (*Vis kilde*), og `/og/tilbud/smoer.png` skal være et billede – ikke en omdirigering til `/og-image.png`.
+- [ ] Sæt `INDEXNOW_KEY` i Render (fx et nyt UUID), og tjek at `/{nøgle}.txt` svarer med nøglen. Efter næste hentning står `[indexnow]` i loggen.
+- [ ] Google Search Console: domæne-ejendom for `tilbudsradaren.dk`, bekræftet med en TXT-post hos DNS.services. Indsend `https://tilbudsradaren.dk/sitemap.xml`, og bed om indeksering af `/`, `/tilbud`, `/tilbud/smoer` og `/indsigt`.
+- [ ] Bing Webmaster Tools: importér sitet fra Search Console, og indsend sitemapet (Bing bruges også af ChatGPT search og Copilot).
+- [ ] Rich Results Test på `/` og `/tilbud/smoer`.
+- [ ] Cloudflare: tjek at AI-crawlere ikke blokeres (*Security → Bots* og *AI Crawl Control*), og at Cloudflare ikke ændrer `robots.txt`.
+- [ ] PageSpeed Insights på `/`, `/priser` og `/tilbud/smoer` – sammenlign med baseline i docs/SEO.md.
+- [ ] Gennemgå teksten på `/om` og `/metode` ("ingen annoncer eller betalte placeringer", "finansieres af abonnementer") – den skal passe på din forretning.
+- [ ] Opdater `STATIC_LASTMOD` i `shared/src/seo.ts`, når teksten på en fast side ændres.
 
 ---
 
