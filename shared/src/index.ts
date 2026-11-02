@@ -12,3 +12,4 @@ export * from './privacy';
 export * from './seoPages';
 export * from './seoTerms';
 export * from './slug';
+export * from './searchConsole';

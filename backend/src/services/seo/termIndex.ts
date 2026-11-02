@@ -32,6 +32,18 @@ function wordMatcher(q: string): ((haystack: string) => boolean) | null {
   return (haystack) => patterns.every((p) => p.test(haystack));
 }
 
+let textMatchers: { term: SeoTerm; matchers: ((haystack: string) => boolean)[] }[] | null = null;
+
+/**
+ * Varen på listen, som en tekst – fx et søgeord fra Google – handler om. Samme
+ * regel som på varesiderne: hvert ord i et af varens søgeord står som et helt ord.
+ */
+export function termForText(text: string): SeoTerm | null {
+  textMatchers ??= SEO_TERMS.map((term) => ({ term, matchers: term.queries.map(wordMatcher).filter((m) => m !== null) }));
+  const haystack = text.toLocaleLowerCase('da-DK');
+  return textMatchers.find((t) => t.matchers.some((m) => m(haystack)))?.term ?? null;
+}
+
 const haystackOf = (r: OfferRow) => `${r.title} ${r.brand ?? ''} ${r.normalized_name}`.toLocaleLowerCase('da-DK');
 const time = (v: Date | string) => (v instanceof Date ? v : new Date(v)).getTime();
 

@@ -6,6 +6,7 @@ import type { Db } from '../db/client';
 import { env, log } from '../env';
 import { llmsTxt } from '../services/seo/llmsTxt';
 import { OG_KINDS, renderInsightsOgImage, renderOgImage, type OgKind } from '../services/seo/ogImage';
+import { setPageRenderer } from '../services/seo/siteSnapshot';
 import { SITEMAP_NAMES, sitemapIndexXml, sitemaps, urlsetXml } from '../services/seo/sitemap';
 import { requestHost } from './canonical';
 import { createSsr, isServerRendered, loadSsrModule, type Ssr } from './ssr';
@@ -207,6 +208,8 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST, deps: { db?
           return null;
         })
     : Promise.resolve(null);
+  // Search Console-analysen læser titler og interne links fra de samme server-renderede sider.
+  void ssr.then((s) => setPageRenderer(s ? (p) => s.render(p) : null));
 
   const assets = express.static(distDir, {
     index: false,
