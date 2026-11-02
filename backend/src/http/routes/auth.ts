@@ -2,7 +2,6 @@ import type { AuthResponse } from '@tilbudsradar/shared';
 import { TERMS_VERSION } from '@tilbudsradar/shared';
 import { and, eq, ne } from 'drizzle-orm';
 import { Router, type CookieOptions, type Request, type Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import {
   adminEvents,
@@ -45,6 +44,7 @@ import { claimTrial } from '../../services/trial';
 import type { AppContext } from '../app';
 import { REFRESH_COOKIE, requireAccount, requireAuth, userId } from '../auth';
 import { HttpError, parse } from '../errors';
+import { limiter as rateLimiter, perEmailLimiter } from '../rateLimit';
 
 const cookieOptions = (expires: Date): CookieOptions => ({
   httpOnly: true,
@@ -84,11 +84,14 @@ const RESEND_INTERVAL_MS = 2 * 60_000;
 
 export function authRoutes({ db, stripe }: AppContext): Router {
   const r = Router();
-  const limit = (perMinute: number, windowMs = 60_000) =>
-    rateLimit({ windowMs, limit: env.isTest ? 1000 : perMinute, standardHeaders: 'draft-8', legacyHeaders: false });
+  const limit = (perMinute: number, windowMs = 60_000) => rateLimiter({ windowMs, limit: env.isTest ? 1000 : perMinute });
   const limiter = limit(20);
   // Mails med links: få pr. IP, så de ikke kan bruges til spam.
   const mailLimiter = limit(5, 15 * 60_000);
+  // Pr. e-mail, oven i grænsen pr. IP: gætteri på én kontos adgangskode fra mange IP'er.
+  // Ved login tæller kun mislykkede forsøg, så den rigtige ejer ikke spærres af sine egne logins.
+  const loginPerEmail = perEmailLimiter({ skipSuccessfulRequests: true });
+  const forgotPerEmail = perEmailLimiter();
 
   async function respond(res: Response, user: typeof users.$inferSelect, status = 200) {
     const refresh = await issueRefreshToken(db, user.id);
@@ -141,7 +144,7 @@ export function authRoutes({ db, stripe }: AppContext): Router {
     await respond(res, user, 201);
   });
 
-  r.post('/login', limiter, async (req, res) => {
+  r.post('/login', limiter, loginPerEmail, async (req, res) => {
     const { email: mail, password: pw } = parse(credentials, req.body);
     const [user] = await db.select().from(users).where(eq(users.email, mail)).limit(1);
     if (!user || !(await verifyPassword(pw, user.passwordHash))) {
@@ -181,7 +184,7 @@ export function authRoutes({ db, stripe }: AppContext): Router {
   /* ---------------- Glemt adgangskode ---------------- */
 
   /** Svarer altid ens og lige hurtigt, uanset om e-mailen findes (mailen sendes i baggrunden). */
-  r.post('/forgot-password', mailLimiter, async (req, res) => {
+  r.post('/forgot-password', mailLimiter, forgotPerEmail, async (req, res) => {
     const { email: mail } = parse(z.object({ email }), req.body);
     const [user] = await db.select().from(users).where(eq(users.email, mail)).limit(1);
     if (user && !user.isGuest) {

@@ -1,7 +1,6 @@
 import type { ReceiptCheckDTO, ReceiptOverviewDTO, ReceiptSummaryDTO } from '@tilbudsradar/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import express, { Router, type Request } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { query } from '../../db/client';
 import { receipts, receiptScans } from '../../db/schema';
@@ -15,6 +14,7 @@ import type { AppContext } from '../app';
 import { requireAuth, userId } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
 import { planGuard } from '../plan';
+import { limiter } from '../rateLimit';
 
 const monthName = new Intl.DateTimeFormat('da-DK', { month: 'long', timeZone: 'Europe/Copenhagen' });
 
@@ -71,12 +71,10 @@ export function receiptRoutes({ db }: AppContext): Router {
   }
 
   // Aflæsning koster CPU (tekstgenkendelse) eller et Claude-kald – begræns pr. bruger.
-  const scanLimit = rateLimit({
+  const scanLimit = limiter({
     windowMs: 60 * 60_000,
     limit: env.isTest ? 1000 : 40,
     keyGenerator: (req) => userId(req),
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
     message: { error: 'Du har scannet mange kvitteringer den seneste time. Prøv igen lidt senere.' },
   });
 

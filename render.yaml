@@ -35,6 +35,9 @@ services:
         value: https://tilbudsradaren.dk
       - key: CORS_ORIGINS
         value: https://tilbudsradaren.dk
+      # Klient-IP fra Cloudflare (al trafik til Render går gennem Cloudflare) – se backend/src/http/clientIp.ts.
+      - key: TRUST_CF_CONNECTING_IP
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: tilbudsradar-db

@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/node';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
-import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import type { Db } from '../db/client';
 import { env } from '../env';
@@ -10,6 +9,7 @@ import { sentryEnabled } from '../instrument';
 import type { StripeClient } from '../services/billing';
 import type { ScrapeManager } from '../services/scrapeJobs';
 import { optionalAuth } from './auth';
+import { logProxyChainOnce, trustProxy } from './clientIp';
 import { errorHandler, notFoundHandler } from './errors';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
@@ -18,6 +18,7 @@ import { billingRoutes, stripeWebhook } from './routes/billing';
 import { offerRoutes } from './routes/offers';
 import { receiptRoutes } from './routes/receipts';
 import { userRoutes } from './routes/user';
+import { limiter } from './rateLimit';
 import { mountSite } from './site';
 
 export interface AppContext {
@@ -56,7 +57,9 @@ function contentSecurityPolicy() {
 
 export function createApp(ctx: AppContext): express.Express {
   const app = express();
-  app.set('trust proxy', 1);
+  // Kun Renders interne proxyer og Cloudflare er betroede (se clientIp.ts). Et fast antal hop
+  // ("trust proxy: 1") gav Cloudflares skiftende IP'er som klient-IP, så brugerne delte kvoter.
+  app.set('trust proxy', trustProxy);
   app.disable('x-powered-by');
   app.use(
     helmet({
@@ -73,10 +76,8 @@ export function createApp(ctx: AppContext): express.Express {
 
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
-  app.use(
-    '/api',
-    rateLimit({ windowMs: 60_000, limit: env.isTest ? 10_000 : 300, standardHeaders: 'draft-8', legacyHeaders: false }),
-  );
+  app.use('/api', logProxyChainOnce);
+  app.use('/api', limiter({ windowMs: 60_000, limit: env.isTest ? 10_000 : 300 }));
   app.use('/api', optionalAuth);
 
   app.get('/api/health', (_req, res) => {

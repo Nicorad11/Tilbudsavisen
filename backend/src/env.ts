@@ -39,6 +39,12 @@ const schema = z.object({
   JWT_SECRET: z.string().default(DEV_SECRET),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
+  /**
+   * Klient-IP fra Cloudflares CF-Connecting-IP (rate limiting og statistik). Al trafik til
+   * Render går gennem Cloudflare, som afviser en CF-Connecting-IP sendt af klienten.
+   * Standard: til på Render (RENDER=true), ellers fra.
+   */
+  TRUST_CF_CONNECTING_IP: z.enum(['true', 'false', '1', '0']).optional(),
   /** Frontend og API på samme domæne → Lax. Kun "none" hvis de ligger på hver sit domæne. */
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   ADMIN_EMAILS: z.string().default(''),
@@ -173,6 +179,9 @@ export const env = {
   corsOrigins: raw.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   adminEmails: raw.ADMIN_EMAILS.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
   billingEnabled: Boolean(raw.STRIPE_SECRET_KEY && raw.STRIPE_PRICE_ID),
+  trustCloudflareIp: raw.TRUST_CF_CONNECTING_IP
+    ? raw.TRUST_CF_CONNECTING_IP === 'true' || raw.TRUST_CF_CONNECTING_IP === '1'
+    : process.env.RENDER === 'true',
   scraper: loadScraperConfig(),
 };
 

@@ -2,7 +2,6 @@ import type { BillingStatusDTO, UrlResponse, WithdrawalResponse } from '@tilbuds
 import { PLAN, TERMS_VERSION } from '@tilbudsradar/shared';
 import { eq } from 'drizzle-orm';
 import express, { Router, type RequestHandler } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import Stripe from 'stripe';
 import { z } from 'zod';
 import { users } from '../../db/schema';
@@ -18,10 +17,11 @@ import {
 import type { AppContext } from '../app';
 import { requireAccount, userId } from '../auth';
 import { HttpError, parse } from '../errors';
+import { limiter as rateLimiter } from '../rateLimit';
 
 export function billingRoutes({ db, stripe }: AppContext): Router {
   const r = Router();
-  const limiter = rateLimit({ windowMs: 60_000, limit: env.isTest ? 1000 : 10, standardHeaders: 'draft-8', legacyHeaders: false });
+  const limiter = rateLimiter({ windowMs: 60_000, limit: env.isTest ? 1000 : 10 });
 
   async function loadUser(id: string) {
     const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
