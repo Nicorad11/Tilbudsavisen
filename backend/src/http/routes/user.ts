@@ -133,10 +133,13 @@ export function userRoutes({ db }: AppContext): Router {
       }),
       req.body,
     );
-    await db
+    // Varen skal ligge på brugerens egen liste – ellers 404, ligesom for andres lister.
+    const [updated] = await db
       .update(shoppingListItems)
       .set(body)
-      .where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.listId, id)));
+      .where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.listId, id)))
+      .returning({ id: shoppingListItems.id });
+    if (!updated) throw notFound('Varen');
     await touch(id);
     res.status(204).end();
   });
@@ -144,7 +147,11 @@ export function userRoutes({ db }: AppContext): Router {
   r.delete('/lists/:id/items/:itemId', async (req, res) => {
     const { id, itemId } = parse(itemParams, req.params);
     await ownList(req, id);
-    await db.delete(shoppingListItems).where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.listId, id)));
+    const [deleted] = await db
+      .delete(shoppingListItems)
+      .where(and(eq(shoppingListItems.id, itemId), eq(shoppingListItems.listId, id)))
+      .returning({ id: shoppingListItems.id });
+    if (!deleted) throw notFound('Varen');
     await touch(id);
     res.status(204).end();
   });
@@ -184,13 +191,22 @@ export function userRoutes({ db }: AppContext): Router {
   r.patch('/watchlist/:id', requirePlan, async (req, res) => {
     const { id } = parse(idParam, req.params);
     const { targetPrice } = parse(z.object({ targetPrice: z.number().positive().max(100_000) }), req.body);
-    await db.update(watchlist).set({ targetPrice }).where(and(eq(watchlist.id, id), eq(watchlist.userId, userId(req))));
+    const [updated] = await db
+      .update(watchlist)
+      .set({ targetPrice })
+      .where(and(eq(watchlist.id, id), eq(watchlist.userId, userId(req))))
+      .returning({ id: watchlist.id });
+    if (!updated) throw notFound('Overvågningen');
     res.status(204).end();
   });
 
   r.delete('/watchlist/:id', async (req, res) => {
     const { id } = parse(idParam, req.params);
-    await db.delete(watchlist).where(and(eq(watchlist.id, id), eq(watchlist.userId, userId(req))));
+    const [deleted] = await db
+      .delete(watchlist)
+      .where(and(eq(watchlist.id, id), eq(watchlist.userId, userId(req))))
+      .returning({ id: watchlist.id });
+    if (!deleted) throw notFound('Overvågningen');
     res.status(204).end();
   });
 

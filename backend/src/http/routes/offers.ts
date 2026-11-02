@@ -178,7 +178,11 @@ export function offerRoutes({ db }: AppContext): Router {
 
   r.delete('/reports/:id', requireAuth, async (req, res) => {
     const { id } = parse(idParam, req.params);
-    await db.delete(communityReports).where(and(eq(communityReports.id, id), eq(communityReports.userId, userId(req))));
+    const [deleted] = await db
+      .delete(communityReports)
+      .where(and(eq(communityReports.id, id), eq(communityReports.userId, userId(req))))
+      .returning({ id: communityReports.id });
+    if (!deleted) throw notFound('Vurderingen');
     res.status(204).end();
   });
 
