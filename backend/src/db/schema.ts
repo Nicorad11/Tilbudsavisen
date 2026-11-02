@@ -607,3 +607,104 @@ export const adminAuditLog = pgTable(
   },
   (t) => [index('admin_audit_log_created_idx').on(t.createdAt), index('admin_audit_log_customer_idx').on(t.customerId, t.createdAt)],
 );
+
+/* ------------------------------------------------------------------ */
+/* Google Search Console (services/searchConsole)                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Søgeresultater pr. dag fra Search Console. `kind` er datasættet:
+ * query_page (dato, søgeord, side), total (dato), total_device (dato, enhed),
+ * page_device (dato, side, enhed), page (Discover: dato, side) og total_fresh
+ * (foreløbige totaler for de seneste dage). Tomme dimensioner er ''.
+ * `country` er 'all' (alle lande) eller 'dnk' (Danmark).
+ */
+export const gscMetrics = pgTable(
+  'gsc_metrics',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    date: date('date', { mode: 'string' }).notNull(),
+    kind: text('kind').notNull(),
+    searchType: text('search_type').notNull(),
+    country: text('country').notNull(),
+    query: text('query').notNull().default(''),
+    page: text('page').notNull().default(''),
+    device: text('device').notNull().default(''),
+    clicks: integer('clicks').notNull(),
+    impressions: integer('impressions').notNull(),
+    ctr: doublePrecision('ctr').notNull(),
+    position: doublePrecision('position').notNull(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('gsc_metrics_key_idx').on(t.date, t.kind, t.searchType, t.country, t.query, t.page, t.device),
+    index('gsc_metrics_kind_date_idx').on(t.kind, t.searchType, t.country, t.date),
+  ],
+);
+
+/** Indekseringsstatus pr. URL fra URL Inspection API – tjekkes i rotation, ældst først. */
+export const gscUrlInspections = pgTable(
+  'gsc_url_inspections',
+  {
+    url: text('url').primaryKey(),
+    /** Første gang URL'en var i vores sitemap. */
+    firstSeenAt: ts('first_seen_at').notNull().defaultNow(),
+    inSitemap: boolean('in_sitemap').notNull().default(true),
+    inspectedAt: ts('inspected_at'),
+    verdict: text('verdict'),
+    coverageState: text('coverage_state'),
+    robotsTxtState: text('robots_txt_state'),
+    indexingState: text('indexing_state'),
+    pageFetchState: text('page_fetch_state'),
+    lastCrawlTime: ts('last_crawl_time'),
+    googleCanonical: text('google_canonical'),
+    userCanonical: text('user_canonical'),
+    crawledAs: text('crawled_as'),
+    /** Fejl fra seneste forsøg (renset – aldrig nøgler). */
+    error: text('error'),
+  },
+  (t) => [index('gsc_url_inspections_inspected_idx').on(t.inspectedAt)],
+);
+
+/** Hvert kald til URL Inspection API – til kvoten pr. minut og pr. døgn. */
+export const gscInspectionCalls = pgTable(
+  'gsc_inspection_calls',
+  {
+    id: serial('id').primaryKey(),
+    calledAt: ts('called_at').notNull().defaultNow(),
+  },
+  (t) => [index('gsc_inspection_calls_at_idx').on(t.calledAt)],
+);
+
+/** Status pr. indsendt sitemap. */
+export const gscSitemaps = pgTable('gsc_sitemaps', {
+  path: text('path').primaryKey(),
+  lastSubmitted: ts('last_submitted'),
+  lastDownloaded: ts('last_downloaded'),
+  isPending: boolean('is_pending').notNull().default(false),
+  isIndex: boolean('is_index').notNull().default(false),
+  errors: integer('errors').notNull().default(0),
+  warnings: integer('warnings').notNull().default(0),
+  submitted: integer('submitted').notNull().default(0),
+  fetchedAt: ts('fetched_at').notNull().defaultNow(),
+});
+
+/** Hver synkronisering med Search Console – til statuslinjen i admin og alarm ved gentagne fejl. */
+export const gscSyncRuns = pgTable(
+  'gsc_sync_runs',
+  {
+    id: serial('id').primaryKey(),
+    startedAt: ts('started_at').notNull().defaultNow(),
+    finishedAt: ts('finished_at'),
+    trigger: text('trigger').notNull(),
+    /** running, success, partial eller failed. */
+    status: text('status').notNull().default('running'),
+    rows: integer('rows').notNull().default(0),
+    inspected: integer('inspected').notNull().default(0),
+    rangeStart: date('range_start', { mode: 'string' }),
+    rangeEnd: date('range_end', { mode: 'string' }),
+    /** Renset fejlbesked – aldrig nøgler. */
+    error: text('error'),
+  },
+  (t) => [index('gsc_sync_runs_started_idx').on(t.startedAt)],
+);

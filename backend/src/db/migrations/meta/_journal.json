@@ -57,6 +57,13 @@
       "when": 1793619554207,
       "tag": "0007_admin_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793632519543,
+      "tag": "0008_search_console",
+      "breakpoints": true
     }
   ]
 }

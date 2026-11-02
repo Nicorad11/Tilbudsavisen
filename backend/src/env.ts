@@ -61,6 +61,15 @@ const schema = z.object({
     .transform((v) => (v && v.trim() ? v.trim() : null))
     .refine((v) => v === null || /^[a-zA-Z0-9-]{8,128}$/.test(v), 'INDEXNOW_KEY skal være 8–128 tegn: a–z, A–Z, 0–9 eller -'),
   /**
+   * Google Search Console (docs/SEARCH_CONSOLE.md). Uden de to første er integrationen slået fra.
+   * GSC_SERVICE_ACCOUNT_JSON: service-accountens JSON-nøgle, base64-kodet. Logges og vises aldrig.
+   * GSC_SITE_URL: "sc-domain:tilbudsradaren.dk" (domæne-ejendom) eller "https://tilbudsradaren.dk/".
+   */
+  GSC_SERVICE_ACCOUNT_JSON: optional,
+  GSC_SITE_URL: optional,
+  /** Hvornår data hentes fra Search Console (dansk tid). */
+  GSC_CRON: z.string().default('40 7 * * *'),
+  /**
    * SameSite for refresh-cookien. Strict virker, fordi cookien kun sendes til /api/auth fra
    * appens egne fetch-kald – aldrig ved selve sideskiftet tilbage fra Stripe eller et mail-link.
    * Kun "none", hvis frontend og API ligger på hvert sit domæne.
