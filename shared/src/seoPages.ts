@@ -97,6 +97,14 @@ export interface StoreSummary {
   nextCatalogAt: string | null;
 }
 
+/** Forsidens links til datasiderne: populære varer på tilbud nu og kæderne. */
+export interface HomeLinksDTO {
+  week: number;
+  /** detail = laveste pris pr. enhed lige nu, fx "fra 44,22 kr/kg". */
+  popular: (SeoLink & { storeName: string | null })[];
+  stores: StoreSummary[];
+}
+
 export interface StoresHubDTO extends SeoPageBase {
   kind: 'storesHub';
   stores: StoreSummary[];

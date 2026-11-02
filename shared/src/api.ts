@@ -152,6 +152,8 @@ export interface OfferDetailResponse {
   offer: OfferDTO;
   alternatives: OfferDTO[];
   reports: CommunityReportDTO[];
+  /** Varesiden (/tilbud/{slug}), tilbuddet hører under – hvis der er en. */
+  seoTerm?: { slug: string; phrase: string } | null;
 }
 
 export interface StatsDTO {

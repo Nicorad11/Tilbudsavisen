@@ -1,3 +1,4 @@
+import { POPULAR_TERMS, SEO_CATEGORIES, SEO_STORES } from '@tilbudsradar/shared';
 import clsx from 'clsx';
 import { Instagram } from 'lucide-react';
 import { Link } from 'react-router';
@@ -7,11 +8,55 @@ import { Wordmark } from './Wordmark';
 /** Årstallet i dansk tid, så server og browser er enige omkring nytår. */
 const copyrightYear = new Intl.DateTimeFormat('da-DK', { year: 'numeric', timeZone: 'Europe/Copenhagen' });
 
-/** Footer på alle sider: juridiske sider, kontakt, Instagram, opsigelse og "Fortryd aftale". */
+/**
+ * Footer på alle sider: populære varer, kæder og kategorier (datasiderne), juridiske
+ * sider, kontakt, Instagram, opsigelse og "Fortryd aftale". Faste lister – ingen hentning.
+ */
 export function Footer({ className, appNav }: { className?: string; /** Plads til mobilmenuen i appen. */ appNav?: boolean }) {
   const link = 'text-ink-2 transition hover:text-ink';
   return (
     <footer className={clsx('border-t border-black/[0.07] pt-8 text-[13px]', appNav ? 'pb-28 md:pb-10' : 'pb-10', className)}>
+      <div className="mb-10 grid gap-8 border-b border-black/[0.07] pb-10 md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,1.5fr)]">
+        <nav aria-label="Populære varer">
+          <p className="text-muted">Populære varer på tilbud</p>
+          <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+            {POPULAR_TERMS.map((t) => (
+              <li key={t.slug}>
+                <Link to={`/tilbud/${t.slug}`} className={link}>
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link to="/tilbud" className="mt-3 inline-block text-ink underline underline-offset-4 hover:no-underline">
+            Alle varer A–Å
+          </Link>
+        </nav>
+        <nav aria-label="Tilbudsaviser">
+          <p className="text-muted">Tilbudsaviser</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {SEO_STORES.map((st) => (
+              <li key={st.slug}>
+                <Link to={`/butik/${st.slug}`} className={link}>
+                  {st.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <nav aria-label="Kategorier">
+          <p className="text-muted">Kategorier</p>
+          <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+            {SEO_CATEGORIES.map((c) => (
+              <li key={c.slug}>
+                <Link to={`/kategori/${c.slug}`} className={link}>
+                  {c.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
       <div className="grid gap-8 sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
         <div className="space-y-3">
           <Wordmark />
@@ -25,8 +70,11 @@ export function Footer({ className, appNav }: { className?: string; /** Plads ti
         </div>
         <nav aria-label="Tilbudsradar" className="flex flex-col gap-2">
           <p className="text-muted">Tilbudsradar</p>
-          <Link to="/app" className={link}>
-            Ugens tilbud
+          <Link to="/ugens-bedste-tilbud" className={link}>
+            Ugens bedste tilbud
+          </Link>
+          <Link to="/metode" className={link}>
+            Sådan vurderer vi tilbud
           </Link>
           <Link to="/priser" className={link}>
             Priser

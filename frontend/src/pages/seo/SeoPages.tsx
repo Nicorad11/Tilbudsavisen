@@ -356,6 +356,23 @@ export function MethodPage() {
             </li>
           </ul>
         </Section>
+        <Section title="Sådan samler vi varesiderne">
+          <p>
+            Hver vareside – fx{' '}
+            <Link to="/tilbud/smoer" className="text-ink underline">
+              smør på tilbud
+            </Link>{' '}
+            – viser de tilbud, hvor varens navn står som et helt ord i titlen, inden for varens kategori. Derfor kommer smørbar ikke med på siden
+            for smør, og leverpostej med bacon ikke på siden for bacon. Den laveste pris og den typiske tilbudspris beregnes ud fra de samme
+            tilbud de sidste {t.windowDays} dage. Har en vare for få tilbud til at sige noget sikkert, står det på siden.
+          </p>
+        </Section>
+        <Section title="Rækkefølge og uafhængighed">
+          <p>
+            Der er ingen annoncer eller betalte placeringer. Rækkefølgen afgøres kun af pris pr. enhed og den målte besparelse, og alle kæder
+            behandles ens. Tilbudsradar finansieres af abonnementer på appen.
+          </p>
+        </Section>
         <Section title="Hvem står bag">
           <p>
             Tilbudsradar er uafhængigt og ikke tilknyttet kæderne. Læs mere om, hvem der står bag, på{' '}

@@ -1,4 +1,4 @@
-import { PLAN } from '@tilbudsradar/shared';
+import { PLAN, seoStoreBySlug } from '@tilbudsradar/shared';
 import { ArrowRight, BadgeCheck, BellRing, Check, ChartLine, Instagram, ListChecks, ReceiptText, Search, ShieldAlert, Store, Minus } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
@@ -12,7 +12,7 @@ import { useAccess, useLaunch } from '../lib/access';
 import { track } from '../lib/analytics';
 import { COMPANY } from '../lib/company';
 import { useSeo } from '../lib/seo';
-import { useStats } from '../lib/hooks';
+import { useHomeLinks, useStats } from '../lib/hooks';
 import { storeColor } from '../lib/storeColors';
 
 const CHAINS = [
@@ -36,9 +36,11 @@ export function Landing() {
     <div className="space-y-24 pt-6 sm:space-y-28 lg:pt-12">
       <Hero />
       <Stats />
+      <PopularNow />
       <HowItWorks />
       <Features />
       <Difference />
+      <Chains />
       <section id="priser" className="scroll-mt-24">
         <Heading
           kicker="Pris"
@@ -151,6 +153,77 @@ function Stat({ value, suffix, label }: { value: string; suffix?: string; label:
       </span>
       <span className="pb-1 text-[14px] text-muted">{label}</span>
     </div>
+  );
+}
+
+const moreLink = 'inline-flex items-center gap-1.5 text-[14.5px] text-ink underline-offset-4 hover:underline';
+
+/** Populære varer på tilbud nu med laveste pris pr. enhed – links til varesiderne. */
+function PopularNow() {
+  const { data } = useHomeLinks();
+  if (!data?.popular.length) return null;
+  return (
+    <section>
+      <Heading kicker={`Uge ${data.week}`} title="Populære varer på tilbud lige nu">
+        Laveste pris pr. kilo, liter eller stk. på tværs af kæderne – opdateret hver dag.
+      </Heading>
+      <ul className="mt-8 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {data.popular.map((l) => (
+          <li key={l.href}>
+            <Link to={l.href} className="flex h-full flex-col rounded-[22px] bg-surface-2 px-5 py-4 shadow-soft transition hover:bg-raised">
+              <span className="text-[16px] tracking-[-0.01em] text-ink">{l.label}</span>
+              {l.detail && (
+                <span className="tabular mt-1 text-[13px] text-muted">
+                  {l.detail}
+                  {l.storeName && ` hos ${l.storeName}`}
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
+        <Link to="/tilbud" className={moreLink}>
+          Alle varer A–Å <ArrowRight className="size-4" />
+        </Link>
+        <Link to="/ugens-bedste-tilbud" className={moreLink}>
+          Ugens bedste tilbud <ArrowRight className="size-4" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** Kæderne med ugens antal tilbud – links til kædesiderne. */
+function Chains() {
+  const { data } = useHomeLinks();
+  if (!data) return null;
+  return (
+    <section>
+      <Heading kicker="Kæder" title={`Tilbudsaviserne i uge ${data.week}`}>
+        Hver kædes tilbud samlet på én side, med de største reelle besparelser øverst.
+      </Heading>
+      <ul className="mt-8 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+        {data.stores.map((st) => (
+          <li key={st.slug}>
+            <Link to={`/butik/${st.slug}`} className="flex h-full flex-col rounded-[22px] bg-surface-2 px-5 py-4 shadow-soft transition hover:bg-raised">
+              <span className="flex items-center gap-2 text-[16px] text-ink">
+                <span className="size-2.5 rounded-full" style={{ background: storeColor(seoStoreBySlug(st.slug)?.id ?? '', st.color) }} />
+                {st.name}
+              </span>
+              <span className="tabular mt-1 text-[13px] text-muted">
+                {st.offerCount} tilbud · {st.realCount} reelle
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-5">
+        <Link to="/butikker" className={moreLink}>
+          Alle kæder <ArrowRight className="size-4" />
+        </Link>
+      </div>
+    </section>
   );
 }
 

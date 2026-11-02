@@ -1,5 +1,6 @@
 import type {
   CategoryId,
+  HomeLinksDTO,
   ListOptimizationDTO,
   ListSummaryDTO,
   NotificationDTO,
@@ -58,6 +59,10 @@ export function useSearch(input: SearchInput, enabled = true) {
 
 export const useStats = () =>
   useQuery({ queryKey: ['stats'], queryFn: () => api<StatsDTO>('/stats'), refetchInterval: 60_000 });
+
+/** Forsidens populære varer og kæder – server-renderet med samme nøgle (backend/src/http/ssr.ts). */
+export const useHomeLinks = () =>
+  useQuery({ queryKey: ['seo', 'forside'], queryFn: () => api<HomeLinksDTO>('/seo/forside'), staleTime: 5 * 60_000 });
 
 export const useTopDeals = (limit = 12, stores?: string[]) =>
   useQuery({

@@ -1,4 +1,4 @@
-import type { SuggestResponse } from '@tilbudsradar/shared';
+import type { OfferDetailResponse, SuggestResponse } from '@tilbudsradar/shared';
 import { VISIBLE_CATEGORIES } from '@tilbudsradar/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { Router } from 'express';
@@ -15,6 +15,7 @@ import {
   searchProducts,
   topDeals,
 } from '../../services/offers';
+import { termForOffer } from '../../services/seo/termIndex';
 import { getStats } from '../../services/stats';
 import { suggestConcepts } from '../../services/suggest';
 import type { AppContext } from '../app';
@@ -113,7 +114,8 @@ export function offerRoutes({ db }: AppContext): Router {
     const { id } = parse(idParam, req.params);
     const detail = await getOfferDetail(db, id, req.auth?.sub ?? null);
     if (!detail) throw notFound('Tilbuddet');
-    res.json(detail);
+    const term = await termForOffer(db, id);
+    res.json({ ...detail, seoTerm: term ? { slug: term.slug, phrase: term.phrase } : null } satisfies OfferDetailResponse);
   });
 
   r.get('/products/search', async (req, res) => {

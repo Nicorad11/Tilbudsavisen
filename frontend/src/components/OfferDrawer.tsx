@@ -3,6 +3,7 @@ import { categoryLabel, PAID_FEATURES } from '@tilbudsradar/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
+  ArrowRight,
   BellPlus,
   ExternalLink,
   MessageSquareWarning,
@@ -13,8 +14,9 @@ import {
   X,
 } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useAccess, usePlanAction } from '../lib/access';
+import { track } from '../lib/analytics';
 import { authed, isPaywallError } from '../lib/api';
 import { formatDay, kr, packageSize, pct, unitLabel, validityLabel } from '../lib/format';
 import { useAddToList, useAddWatch, useOffer, usePriceHistory } from '../lib/hooks';
@@ -140,6 +142,17 @@ function DrawerBody({ id, onClose }: { id: number; onClose: () => void }) {
           </section>
 
           <TrustPanel offer={offer} />
+
+          {data.seoTerm && (
+            <Link
+              to={`/tilbud/${data.seoTerm.slug}`}
+              onClick={() => track('Dataside fra tilbud', { vare: data.seoTerm!.slug })}
+              className="card flex items-center justify-between gap-3 px-5 py-4 text-[15px] text-ink transition hover:bg-raised sm:px-6"
+            >
+              <span>Se alle tilbud på {data.seoTerm.phrase} i denne uge</span>
+              <ArrowRight className="size-4 shrink-0" />
+            </Link>
+          )}
 
           <section className="card p-5 sm:p-6">
             <h3 className="text-lg tracking-tight">Prishistorik</h3>

@@ -18,6 +18,7 @@ import { env } from '../env';
 import { cached } from '../services/cache';
 import {
   getCategoryPage,
+  getHomeLinks,
   getMethodPage,
   getStorePage,
   getStoresHub,
@@ -75,6 +76,9 @@ const SEO_LOADERS: { pattern: RegExp; valid?: (slug: string) => boolean; load: (
 
 export const seoQueryKey = (pathname: string) => ['seo', ...pathname.split('/').filter(Boolean)];
 
+/** Forsidens links til datasiderne – samme nøgle som frontend/src/pages/Landing.tsx. */
+export const HOME_LINKS_KEY = ['seo', 'forside'];
+
 /** Siden findes (forside, faste sider og datasider for varer, kæder og kategorier på listerne) og må caches. */
 export function isKnownPath(pathname: string): boolean {
   if (STATIC_PUBLIC_PATHS.includes(pathname)) return true;
@@ -90,7 +94,13 @@ export function isKnownPath(pathname: string): boolean {
  * kategorier får data null, så siden renderes som 404 uden at vente på data.
  */
 async function prefetch(db: Db, pathname: string): Promise<PrefetchedQuery[]> {
-  if (pathname === '/') return [{ queryKey: ['stats'], data: asJson(await getStats(db)) }];
+  if (pathname === '/') {
+    const [stats, links] = await Promise.all([getStats(db), getHomeLinks(db)]);
+    return [
+      { queryKey: ['stats'], data: asJson(stats) },
+      { queryKey: HOME_LINKS_KEY, data: asJson(links) },
+    ];
+  }
   for (const route of SEO_LOADERS) {
     const match = route.pattern.exec(pathname);
     if (!match) continue;

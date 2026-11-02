@@ -172,7 +172,10 @@ describe('server-renderede datasider', () => {
     expect(h1(page.html)).toBe('Dagligvarer på tilbud A–Å');
     expect(page.html).toMatch(/<a [^>]*href="\/tilbud\/smoer"/);
     expect(page.html).toMatch(/<a [^>]*href="\/tilbud\/citroner"/);
-    expect(page.html).not.toMatch(/href="\/tilbud\/bananer"/);
+    // Varer uden data er ikke på listen (footeren linker stadig til de populære varer).
+    const main = page.html.slice(page.html.indexOf('<main'), page.html.indexOf('</main>'));
+    expect(main).toMatch(/href="\/tilbud\/smoer"/);
+    expect(main).not.toMatch(/href="\/tilbud\/bananer"/);
   });
 
   it('kæder: /butikker og /butik/{kæde} – med uafhængighedserklæring', async () => {

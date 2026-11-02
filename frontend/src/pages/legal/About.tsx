@@ -19,6 +19,33 @@ export function About() {
           om dagen. Kædens egen pris i butikken gælder altid.
         </p>
       </Section>
+      <Section title="Sådan arbejder vi">
+        <p>
+          Hvert tilbud gemmes med pris, førpris, pakkestørrelse og gyldighed. Ud fra pakkestørrelsen regner vi prisen om pr. enhed, og vi
+          sammenligner med varens egne priser over tid – ikke med den førpris, kæden selv skriver. Hvordan vi gør, står i detaljer under{' '}
+          <Link to="/metode" className="text-ink underline">
+            metode
+          </Link>
+          .
+        </p>
+        <p>
+          Der er ingen annoncer eller betalte placeringer, og rækkefølgen afgøres kun af pris og målt besparelse. Tilbudsradar finansieres af
+          abonnementer på appen. Ugens tal kan alle se uden konto – fx{' '}
+          <Link to="/tilbud" className="text-ink underline">
+            alle varer på tilbud
+          </Link>
+          ,{' '}
+          <Link to="/ugens-bedste-tilbud" className="text-ink underline">
+            ugens bedste tilbud
+          </Link>{' '}
+          og{' '}
+          <Link to="/butikker" className="text-ink underline">
+            tilbudsaviserne pr. kæde
+          </Link>
+          .
+        </p>
+        <p>Finder du en fejl i en pris eller en vurdering, så skriv til os – så retter vi den.</p>
+      </Section>
       <Section title="Virksomheden">
         <Table
           head={['', '']}

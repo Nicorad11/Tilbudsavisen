@@ -19,6 +19,9 @@ export function PublicLayout() {
       <header className="sticky top-0 z-30 -mx-4 flex items-center gap-2 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6">
         <Wordmark to="/" />
         <nav className="ml-auto flex items-center gap-1" aria-label="Hovedmenu">
+          <NavLink to="/tilbud" className={nav}>
+            Tilbud
+          </NavLink>
           <NavLink to="/app/sog" className={nav}>
             Søg tilbud
           </NavLink>

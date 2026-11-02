@@ -4,6 +4,7 @@ import { CONFIG_ELEMENT_ID, renderHeadTags, seoForPath, SITEMAP_PATHS, STATIC_LA
 import express, { type Express, type Request, type RequestHandler } from 'express';
 import type { Db } from '../db/client';
 import { env, log } from '../env';
+import { llmsTxt } from '../services/seo/llmsTxt';
 import { OG_KINDS, renderOgImage, type OgKind } from '../services/seo/ogImage';
 import { SITEMAP_NAMES, sitemapIndexXml, sitemaps, urlsetXml } from '../services/seo/sitemap';
 import { requestHost } from './canonical';
@@ -135,6 +136,12 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST, deps: { db?
       .type('text/plain')
       .set('Cache-Control', 'public, max-age=3600')
       .send(isAdminHost(req) ? 'User-agent: *\nDisallow: /\n' : robotsTxt());
+  });
+
+  // Kort oversigt til AI-assistenter (llmstxt.org) – ikke på admin-domænet.
+  app.get('/llms.txt', (req, res, next) => {
+    if (isAdminHost(req)) return next();
+    res.type('text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(llmsTxt(env.APP_URL, env.CONTACT_EMAIL));
   });
 
   // IndexNow: nøglefilen beviser, at nøglen hører til domænet.

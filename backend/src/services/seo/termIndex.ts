@@ -155,3 +155,22 @@ async function buildIndex(db: Db): Promise<Map<string, TermSummary>> {
 export function termIndex(db: Db): Promise<Map<string, TermSummary>> {
   return cached('seo:term-index', 6 * 60 * 60 * 1000, () => buildIndex(db));
 }
+
+/**
+ * Den mest præcise vare på listen, et tilbud hører under – til linket "Se alle
+ * tilbud på …" i appen. Færrest tilbud vinder ("Kyllingebryst" frem for "Kylling").
+ * null, når tilbuddet ikke matcher en vare (eller er ældre end 90 dage).
+ */
+export async function termForOffer(db: Db, offerId: number): Promise<SeoTerm | null> {
+  const byOffer = await cached('seo:offer-terms', 6 * 60 * 60 * 1000, async () => {
+    const best = new Map<number, TermSummary>();
+    for (const s of (await termIndex(db)).values()) {
+      for (const r of s.rows) {
+        const prev = best.get(r.id);
+        if (!prev || s.rows.length < prev.rows.length) best.set(r.id, s);
+      }
+    }
+    return new Map([...best].map(([id, s]) => [id, s.term]));
+  });
+  return byOffer.get(offerId) ?? null;
+}

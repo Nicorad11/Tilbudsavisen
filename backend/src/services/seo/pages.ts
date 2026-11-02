@@ -1,6 +1,7 @@
 import type {
   BaseUnit,
   CategoryPageDTO,
+  HomeLinksDTO,
   MethodPageDTO,
   OfferDTO,
   SeoFaq,
@@ -16,7 +17,7 @@ import type {
   TrustCounts,
   WeeklyBestDTO,
 } from '@tilbudsradar/shared';
-import { breadcrumbJsonLd, isoWeek, itemListJsonLd, SEO_CATEGORIES, SEO_STORES, SEO_TERMS, seoCategoryBySlug, seoCategoryById, seoStoreById, seoStoreBySlug, seoTermBySlug, webPageJsonLd } from '@tilbudsradar/shared';
+import { breadcrumbJsonLd, isoWeek, itemListJsonLd, POPULAR_TERMS, SEO_CATEGORIES, SEO_STORES, SEO_TERMS, seoCategoryBySlug, seoCategoryById, seoStoreById, seoStoreBySlug, seoTermBySlug, webPageJsonLd } from '@tilbudsradar/shared';
 import { sql } from 'drizzle-orm';
 import { query, queryOne, type Db } from '../../db/client';
 import { env } from '../../env';
@@ -388,6 +389,27 @@ export async function getTermHub(db: Db): Promise<TermHubDTO> {
         path: '/tilbud',
       }),
     } satisfies TermHubDTO, {});
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Forsiden: populære varer og kæder                                  */
+/* ------------------------------------------------------------------ */
+
+/** Populære varer, der er på tilbud nu og har en side i søgemaskinerne, og de fem kæder. */
+export async function getHomeLinks(db: Db): Promise<HomeLinksDTO> {
+  return cached('seo:home', PAGE_TTL, async () => {
+    const [index, ctx] = await Promise.all([termIndex(db), context(db)]);
+    const popular = POPULAR_TERMS.map((t) => index.get(t.slug)!)
+      .filter((s) => s.indexable && s.active.length + s.upcoming.length > 0)
+      .slice(0, 12)
+      .map((s) => ({
+        href: `/tilbud/${s.term.slug}`,
+        label: s.term.label,
+        ...(s.cheapest && s.unit ? { detail: `fra ${kr(s.cheapest.unit_price!)} ${PER_UNIT[s.unit]}` } : {}),
+        storeName: s.cheapest?.store_name ?? null,
+      }));
+    return { week: ctx.week, popular, stores: await storeSummaries(db, ctx) };
   });
 }
 
