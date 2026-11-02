@@ -50,6 +50,13 @@
       "when": 1792269765935,
       "tag": "0006_offer_dedupe",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793619554207,
+      "tag": "0007_admin_audit_log",
+      "breakpoints": true
     }
   ]
 }

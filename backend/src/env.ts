@@ -39,6 +39,9 @@ const schema = z.object({
   JWT_SECRET: z.string().default(DEV_SECRET),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
+  /** Administratorer får kortere sessioner: kortere adgangstoken, og sessionen udløber efter så mange timers inaktivitet. */
+  ADMIN_ACCESS_TOKEN_TTL: z.string().default('5m'),
+  ADMIN_SESSION_HOURS: z.coerce.number().positive().max(24 * 30).default(12),
   /**
    * Klient-IP fra Cloudflares CF-Connecting-IP (rate limiting og statistik). Al trafik til
    * Render går gennem Cloudflare, som afviser en CF-Connecting-IP sendt af klienten.

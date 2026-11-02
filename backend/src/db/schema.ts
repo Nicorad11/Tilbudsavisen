@@ -582,3 +582,28 @@ export const adminEvents = pgTable(
   },
   (t) => [index('admin_events_user_idx').on(t.userId, t.createdAt)],
 );
+
+/**
+ * Revisionslog over alle administratorhandlinger: hvem, hvad, hvornår og
+ * hvilken kunde. Uden fremmednøgler, så sporet bevares, også når kunden eller
+ * administratoren slettes – kunden står kun som id, og e-mailadresser i
+ * detaljerne gemmes ikke.
+ */
+export const adminAuditLog = pgTable(
+  'admin_audit_log',
+  {
+    id: serial('id').primaryKey(),
+    createdAt: createdAt(),
+    adminId: uuid('admin_id'),
+    adminEmail: text('admin_email'),
+    /** Fx "PATCH /users/:id" eller "POST /scrape". */
+    action: text('action').notNull(),
+    /** Kunden handlingen gjaldt (null for kæder, kilder og scraping). */
+    customerId: uuid('customer_id'),
+    /** Andet mål, fx kæde- eller kilde-id. */
+    targetId: text('target_id'),
+    status: integer('status').notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  },
+  (t) => [index('admin_audit_log_created_idx').on(t.createdAt), index('admin_audit_log_customer_idx').on(t.customerId, t.createdAt)],
+);

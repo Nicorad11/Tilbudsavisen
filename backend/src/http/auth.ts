@@ -1,11 +1,16 @@
+import { eq } from 'drizzle-orm';
 import type { CookieOptions, NextFunction, Request, RequestHandler, Response } from 'express';
+import type { Db } from '../db/client';
+import { users } from '../db/schema';
 import { env, log } from '../env';
-import { verifyAccessToken, type AccessClaims } from '../services/auth';
+import { roleForEmail, verifyAccessToken, type AccessClaims } from '../services/auth';
 import { HttpError } from './errors';
 
 declare module 'express-serve-static-core' {
   interface Request {
     auth?: AccessClaims;
+    /** Sat af adminGuard: administratoren bag forespørgslen. */
+    admin?: { id: string; email: string | null };
   }
 }
 
@@ -56,19 +61,30 @@ export function requireAccount(req: Request, _res: Response, next: NextFunction)
 let warnedOpenAdmin = false;
 
 /**
- * Admin-endpoints (kilder, manuel scraping). I udvikling uden ADMIN_EMAILS er
- * de åbne, så projektet kan afprøves uden opsætning – det logges tydeligt.
+ * Rolle-tjek for alle /api/admin-endpoints – på serveren, ved hver forespørgsel.
+ * Ud over admin-rollen i adgangstokenet skal brugeren stadig findes og stå i
+ * ADMIN_EMAILS, så en fjernet administrator mister adgangen med det samme.
+ * Svarene siger ikke hvorfor: 401 uden login, ellers 403.
+ *
+ * I udvikling uden ADMIN_EMAILS er endpoints åbne, så projektet kan afprøves
+ * uden opsætning – det logges tydeligt.
  */
-export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
-  if (req.auth?.role === 'admin') return next();
-  if (!env.isProd && env.adminEmails.length === 0) {
-    if (!warnedOpenAdmin) {
-      log.warn('Admin-endpoints er åbne (development uden ADMIN_EMAILS). Sæt ADMIN_EMAILS før deploy.');
-      warnedOpenAdmin = true;
+export function adminGuard(db: Db): RequestHandler {
+  return async (req, _res, next) => {
+    if (adminOpen()) {
+      if (!warnedOpenAdmin) {
+        log.warn('Admin-endpoints er åbne (development uden ADMIN_EMAILS). Sæt ADMIN_EMAILS før deploy.');
+        warnedOpenAdmin = true;
+      }
+      return next();
     }
-    return next();
-  }
-  next(new HttpError(403, 'Kræver administratoradgang'));
+    if (!req.auth) return next(new HttpError(401, 'Ikke logget ind'));
+    if (req.auth.role !== 'admin' || req.auth.guest) return next(new HttpError(403, 'Ingen adgang'));
+    const [user] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, req.auth.sub)).limit(1);
+    if (!user || roleForEmail(user.email) !== 'admin') return next(new HttpError(403, 'Ingen adgang'));
+    req.admin = user;
+    next();
+  };
 }
 
 export function userId(req: Request): string {

@@ -89,7 +89,7 @@ export function authRoutes({ db, stripe }: AppContext): Router {
   const forgotPerEmail = perEmailLimiter();
 
   async function respond(res: Response, user: typeof users.$inferSelect, status = 200) {
-    const refresh = await issueRefreshToken(db, user.id);
+    const refresh = await issueRefreshToken(db, user.id, user.role);
     res.cookie(REFRESH_COOKIE, refresh.token, cookieOptions(refresh.expiresAt));
     const body: AuthResponse = { accessToken: signAccessToken(user), user: toUserDTO(user) };
     res.status(status).json(body);
@@ -162,8 +162,11 @@ export function authRoutes({ db, stripe }: AppContext): Router {
       res.clearCookie(REFRESH_COOKIE, clearCookieOptions());
       throw new HttpError(401, 'Sessionen er udløbet');
     }
-    const [user] = await db.select().from(users).where(eq(users.id, rotated.userId)).limit(1);
+    let [user] = await db.select().from(users).where(eq(users.id, rotated.userId)).limit(1);
     if (!user) throw new HttpError(401, 'Brugeren findes ikke længere');
+    // Rollen følger ADMIN_EMAILS ved hver fornyelse – ikke kun ved login.
+    const role = roleForEmail(user.email);
+    if (role !== user.role) user = (await db.update(users).set({ role }).where(eq(users.id, user.id)).returning())[0] ?? user;
     res.cookie(REFRESH_COOKIE, rotated.token, cookieOptions(rotated.expiresAt));
     const body: AuthResponse = { accessToken: signAccessToken(user), user: toUserDTO(user) };
     res.json(body);
@@ -240,7 +243,7 @@ export function authRoutes({ db, stripe }: AppContext): Router {
       const keepThisBrowser = current ? (await refreshTokenOwner(db, current)) === row.userId : false;
       await revokeAllForUser(db, row.userId);
       if (keepThisBrowser) {
-        const refresh = await issueRefreshToken(db, row.userId);
+        const refresh = await issueRefreshToken(db, row.userId, updated.role);
         res.cookie(REFRESH_COOKIE, refresh.token, cookieOptions(refresh.expiresAt));
       }
       if (before?.email && before.email !== row.email) sendMailInBackground(emailChangedMail(before.email));

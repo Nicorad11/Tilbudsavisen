@@ -40,7 +40,8 @@ export interface AccessClaims {
 export function signAccessToken(user: { id: string; role: string; isGuest: boolean }): string {
   const claims: AccessClaims = { sub: user.id, role: user.role === 'admin' ? 'admin' : 'user', guest: user.isGuest };
   return jwt.sign(claims, env.JWT_SECRET, {
-    expiresIn: env.ACCESS_TOKEN_TTL as SignOptions['expiresIn'],
+    // Administratorer får kortere adgangstokens (standard 5 min).
+    expiresIn: (claims.role === 'admin' ? env.ADMIN_ACCESS_TOKEN_TTL : env.ACCESS_TOKEN_TTL) as SignOptions['expiresIn'],
     issuer: 'tilbudsradar',
   });
 }
@@ -60,9 +61,14 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 /** Et netop roteret token må genbruges i kort tid (samtidige faner/requests). */
 const REUSE_GRACE_MS = 60_000;
 
-export async function issueRefreshToken(db: Db, userId: string): Promise<{ token: string; expiresAt: Date }> {
+/** Hvor længe en session holder uden brug: 30 dage for brugere, 12 timer for administratorer. */
+export function sessionLengthMs(role: string): number {
+  return role === 'admin' ? env.ADMIN_SESSION_HOURS * 60 * 60 * 1000 : env.REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000;
+}
+
+export async function issueRefreshToken(db: Db, userId: string, role = 'user'): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(48).toString('base64url');
-  const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + sessionLengthMs(role));
   await db.insert(refreshTokens).values({ userId, tokenHash: sha256(token), expiresAt });
   return { token, expiresAt };
 }
@@ -77,10 +83,13 @@ export async function rotateRefreshToken(
 ): Promise<{ userId: string; token: string; expiresAt: Date } | null> {
   const [row] = await db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token))).limit(1);
   if (!row) return null;
+  // Rollen beregnes ud fra den aktuelle ADMIN_EMAILS – en fjernet administrator får en almindelig session.
+  const [owner] = await db.select({ email: users.email }).from(users).where(eq(users.id, row.userId)).limit(1);
+  const role = roleForEmail(owner?.email ?? null);
   if (row.revokedAt) {
     // To faner der fornyer samtidig bruger samme cookie – det er ikke tyveri.
     if (Date.now() - row.revokedAt.getTime() < REUSE_GRACE_MS && row.expiresAt.getTime() > Date.now()) {
-      const next = await issueRefreshToken(db, row.userId);
+      const next = await issueRefreshToken(db, row.userId, role);
       return { userId: row.userId, ...next };
     }
     await revokeAllForUser(db, row.userId);
@@ -88,7 +97,7 @@ export async function rotateRefreshToken(
   }
   if (row.expiresAt.getTime() < Date.now()) return null;
   await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, row.id));
-  const next = await issueRefreshToken(db, row.userId);
+  const next = await issueRefreshToken(db, row.userId, role);
   await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, row.userId));
   return { userId: row.userId, ...next };
 }

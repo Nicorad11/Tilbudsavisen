@@ -38,7 +38,7 @@ afterAll(async () => {
 describe('admin: kunder', () => {
   it('kun administratorer kan se kunder', async () => {
     const kunde = await register('kunde1@example.dk');
-    await request(app).get('/api/admin/users').expect(403);
+    await request(app).get('/api/admin/users').expect(401);
     await request(app).get('/api/admin/users').set(kunde.auth).expect(403);
     await request(app).get(`/api/admin/users/${kunde.id}`).set(kunde.auth).expect(403);
     await request(app).get('/api/admin/users').set(admin).expect(200);

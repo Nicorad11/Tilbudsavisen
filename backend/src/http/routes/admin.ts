@@ -8,14 +8,16 @@ import { adminOverview } from '../../services/analytics';
 import { addManualAlias } from '../../services/matcher';
 import { bumpDataVersion } from '../../services/offers';
 import type { AppContext } from '../app';
-import { adminOpen, requireAdmin } from '../auth';
+import { adminAudit } from '../adminAudit';
+import { adminGuard, adminOpen } from '../auth';
 import { HttpError, notFound, parse } from '../errors';
 import { adminCustomerRoutes } from './adminCustomers';
 
 /** Admin-appen: overblik, kunder og styring af scraping-kilder (status, feature-flags, manuel kørsel og mapping). */
 export function adminRoutes({ db, scrape, stripe }: AppContext): Router {
   const r = Router();
-  r.use(requireAdmin);
+  r.use(adminGuard(db));
+  r.use(adminAudit(db));
 
   r.get('/status', async (_req, res) => {
     res.json({ ...(await scrape.status()), adminOpen: adminOpen() });
