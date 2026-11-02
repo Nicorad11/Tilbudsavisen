@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { env, log } from '../../env';
 import { HttpError } from '../../http/errors';
 import { ACTIVE_CHAIN_IDS } from '../scope';
+import { detectReceiptImage, MAX_RECEIPT_IMAGE_PIXELS } from './imageType';
 import { finalizeReceipt, localDateTimeToIso, parseReceiptText } from './parseText';
 
 /** Hvad en aflæsning kostede – gemmes pr. scanning, så omkostningen kan følges. */
@@ -27,13 +28,7 @@ export interface ScanUsage {
  * hver læser der faktisk kørte – også hvis den ikke fandt en kvittering.
  */
 export async function scanReceiptImage(buffer: Buffer, onUsage: (u: ScanUsage) => void = () => undefined): Promise<ParsedReceipt> {
-  let oriented: { data: Buffer; info: OutputInfo };
-  try {
-    // rotate() uden argument retter telefonens EXIF-orientering.
-    oriented = await sharp(buffer, { failOn: 'none' }).rotate().toBuffer({ resolveWithObject: true });
-  } catch {
-    throw new HttpError(415, 'Billedet kunne ikke læses. Brug et JPEG- eller PNG-billede.');
-  }
+  const oriented = await prepareReceiptImage(buffer);
 
   if (env.ANTHROPIC_API_KEY) {
     try {
@@ -46,6 +41,26 @@ export async function scanReceiptImage(buffer: Buffer, onUsage: (u: ScanUsage) =
   }
   onUsage({ method: 'ocr', model: null, inputTokens: 0, outputTokens: 0 });
   return readWithOcr(oriented.data, oriented.info.width);
+}
+
+/**
+ * Kontrollerer og normaliserer et uploadet billede: kun billedformater genkendt
+ * på indholdet (ikke Content-Type), højst MAX_RECEIPT_IMAGE_PIXELS pixels, og
+ * vendt efter telefonens EXIF-orientering. Resultatet har ingen metadata – sharp
+ * bevarer hverken EXIF eller GPS – og det er kun det, der sendes videre.
+ */
+export async function prepareReceiptImage(buffer: Buffer): Promise<{ data: Buffer; info: OutputInfo }> {
+  if (!detectReceiptImage(buffer)) {
+    throw new HttpError(415, 'Filen er ikke et billede. Brug et JPEG-, PNG- eller HEIC-billede af kvitteringen.');
+  }
+  try {
+    // rotate() uden argument retter telefonens EXIF-orientering.
+    return await sharp(buffer, { failOn: 'none', limitInputPixels: MAX_RECEIPT_IMAGE_PIXELS })
+      .rotate()
+      .toBuffer({ resolveWithObject: true });
+  } catch {
+    throw new HttpError(415, 'Billedet kunne ikke læses. Brug et JPEG- eller PNG-billede.');
+  }
 }
 
 /* ------------------------------------------------------------------ */

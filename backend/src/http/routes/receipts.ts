@@ -7,6 +7,7 @@ import { receipts, receiptScans } from '../../db/schema';
 import { env } from '../../env';
 import { receiptScansThisMonth } from '../../services/billing';
 import { checkReceipt } from '../../services/receipts/check';
+import { MAX_RECEIPT_IMAGE_BYTES } from '../../services/receipts/imageType';
 import { finalizeReceipt, parseReceiptText } from '../../services/receipts/parseText';
 import { scanReceiptImage, type ScanUsage } from '../../services/receipts/scan';
 import { ACTIVE_CHAIN_IDS } from '../../services/scope';
@@ -82,7 +83,9 @@ export function receiptRoutes({ db }: AppContext): Router {
     '/receipts/scan',
     requirePlan,
     scanLimit,
-    express.raw({ type: ['image/*', 'application/octet-stream'], limit: '15mb' }),
+    // Billedet behandles kun i hukommelsen og gemmes eller udleveres aldrig – svaret er altid JSON.
+    // Filtypen kontrolleres på indholdet i prepareReceiptImage, ikke på Content-Type.
+    express.raw({ type: ['image/*', 'application/octet-stream'], limit: MAX_RECEIPT_IMAGE_BYTES }),
     async (req, res) => {
       if (!Buffer.isBuffer(req.body) || !req.body.length) {
         throw new HttpError(400, 'Send billedet af kvitteringen som JPEG eller PNG.');
