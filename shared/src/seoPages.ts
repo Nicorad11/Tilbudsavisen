@@ -3,7 +3,7 @@ import type { BaseUnit } from './scraping';
 import type { SeoMeta } from './seo';
 
 /**
- * Datasiderne (/tilbud, /butik, /kategori, /ugens-bedste-tilbud, /metode).
+ * Datasiderne (/tilbud, /butik, /kategori, /ugens-bedste-tilbud, /indsigt, /metode).
  * Serveren bygger hele indholdet – også tekster, spørgsmål og svar og meta –
  * så den server-renderede HTML og browserens visning altid er ens.
  */
@@ -148,4 +148,65 @@ export interface MethodPageDTO extends SeoPageBase {
   offersAnalyzed: number;
   dataSince: string | null;
   thresholds: { realPct: number; okPct: number; inflatedClaimPct: number; inflatedMaxSavingsPct: number; windowDays: number };
+}
+
+/** Én kæde i en periode på /indsigt. */
+export interface InsightStore {
+  slug: string;
+  name: string;
+  color: string;
+  /** Tilbud, der har gældt i perioden. */
+  offers: number;
+  /** Heraf vurderet – resten har for lidt prishistorik. */
+  assessed: number;
+  counts: TrustCounts;
+  /** Andel reelle tilbud i % af kædens vurderede tilbud – null med for få vurderede. */
+  realShare: number | null;
+  /** Tilbud, hvor besparelsen er målt mod normalpriser (ikke kun tidligere tilbud). */
+  measured: number;
+  /** Gennemsnitlig målt besparelse i % – null med for få målinger. */
+  avgSavingsPct: number | null;
+  /** Tilbud med både en førpris fra kæden og en målt besparelse: rabatten kæden skriver vs. den målte. */
+  claimed: { n: number; claimedPct: number; measuredPct: number } | null;
+}
+
+export interface InsightPeriod {
+  key: 'week' | 'month';
+  /** "De sidste 7 dage", "De sidste 30 dage" eller "Siden 20. oktober". */
+  label: string;
+  from: string;
+  to: string;
+  offers: number;
+  /** Heraf vurderet – resten har for lidt prishistorik. */
+  assessed: number;
+  counts: TrustCounts;
+  /** Andel reelle tilbud i % af de vurderede. */
+  realShare: number;
+  stores: InsightStore[];
+  /** Kæden med flest reelle tilbud i perioden. */
+  mostReal: { slug: string; name: string; count: number } | null;
+}
+
+/** Et af ugens største prisfald: tilbudsprisen pr. enhed mod varens normalpris. */
+export interface PriceDrop {
+  title: string;
+  store: StoreRef;
+  unit: BaseUnit;
+  unitPrice: number;
+  normalUnitPrice: number;
+  savingsPct: number;
+  validTo: string;
+  /** Varesiden, hvis tilbuddet hører til en. */
+  term: SeoLink | null;
+}
+
+export interface InsightsDTO extends SeoPageBase {
+  kind: 'insights';
+  indexable: boolean;
+  /** Hovedtallet, fx { value: "26,4 %", text: "af de vurderede tilbud de sidste 7 dage var reelle" }. */
+  headline: { value: string; text: string };
+  summary: string;
+  periods: InsightPeriod[];
+  drops: PriceDrop[];
+  faq: SeoFaq[];
 }

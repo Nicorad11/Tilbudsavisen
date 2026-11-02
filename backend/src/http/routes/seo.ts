@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   getCategoryPage,
   getHomeLinks,
+  getInsights,
   getMethodPage,
   getStorePage,
   getStoresHub,
@@ -48,6 +49,9 @@ export function seoRoutes({ db }: AppContext): Router {
   });
   r.get('/ugens-bedste-tilbud', async (_req, res) => {
     res.json(await getWeeklyBest(db));
+  });
+  r.get('/indsigt', async (_req, res) => {
+    res.json(await getInsights(db));
   });
   r.get('/metode', async (_req, res) => {
     res.json(await getMethodPage(db));

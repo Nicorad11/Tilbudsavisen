@@ -23,6 +23,11 @@ export interface TrustInfo {
   /** Den besparelse kæden selv reklamerer med (vs. førpris). */
   claimedSavingsPct: number | null;
   samples: number;
+  /**
+   * Hvad besparelsen er målt mod: normalprisen i samme kæde, normalpriser i alle
+   * kæder eller – svagest – tidligere tilbudspriser. null = ikke målt.
+   */
+  basis: 'store' | 'chains' | 'offers' | null;
   explanation: string;
 }
 

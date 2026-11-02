@@ -43,6 +43,7 @@ export interface PublicPages {
   Store: ComponentType;
   Category: ComponentType;
   WeeklyBest: ComponentType;
+  Insights: ComponentType;
   Method: ComponentType;
 }
 
@@ -93,6 +94,7 @@ export function App({ pages }: { pages: PublicPages }) {
         <Route path="butik/:slug" element={<pages.Store />} />
         <Route path="kategori/:slug" element={<pages.Category />} />
         <Route path="ugens-bedste-tilbud" element={<pages.WeeklyBest />} />
+        <Route path="indsigt" element={<pages.Insights />} />
         <Route path="metode" element={<pages.Method />} />
         <Route path="*" element={<PublicNotFound />} />
       </Route>

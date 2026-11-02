@@ -6,7 +6,7 @@ import satori from 'satori';
 import type { Db } from '../../db/client';
 import { cached } from '../cache';
 import { TRUST_THRESHOLDS } from '../trust';
-import { getCategoryPage, getStorePage, getTermPage } from './pages';
+import { getCategoryPage, getInsights, getStorePage, getTermPage } from './pages';
 
 /**
  * Delingsbilleder (1200×630) til vare-, kæde- og kategorisider – fx
@@ -192,12 +192,36 @@ async function tree(db: Db, kind: OgKind, slug: string): Promise<El | null> {
   });
 }
 
+const pct1 = (n: number) => `${n.toLocaleString('da-DK', { maximumFractionDigits: 1 })} %`;
+
+/** /indsigt: hovedtallet og andelen af reelle tilbud pr. kæde de sidste 7 dage. */
+async function insightsTree(db: Db): Promise<El> {
+  const p = await getInsights(db);
+  const week = p.periods[0]!;
+  const stores = week.stores.filter((s) => s.realShare != null).sort((a, b) => b.realShare! - a.realShare!);
+  const max = Math.max(1, ...stores.map((s) => s.realShare!));
+  const rows: Row[] = stores.map((s, i) => ({ color: s.color, label: s.name, value: pct1(s.realShare!), share: s.realShare! / max, highlight: i === 0 }));
+  return layout({
+    kicker: `Uge ${p.week} · ${week.label.toLocaleLowerCase('da-DK')}`,
+    title: 'Hvor reelle er tilbuddene?',
+    highlight: `${pct1(week.realShare)} var reelle`,
+    detail: `af ${week.assessed.toLocaleString('da-DK')} vurderede tilbud i kædernes aviser`,
+    side: rows.length >= 2 ? card('Andel reelle af de vurderede', rows) : null,
+  });
+}
+
+const toPng = async (t: El) =>
+  new Resvg(await satori(t as unknown as Parameters<typeof satori>[0], { width: WIDTH, height: HEIGHT, fonts: fonts() })).render().asPng();
+
+/** PNG til /og/indsigt.png. */
+export function renderInsightsOgImage(db: Db): Promise<Buffer> {
+  return cached('og:indsigt', 6 * 60 * 60 * 1000, async () => toPng(await insightsTree(db)));
+}
+
 /** PNG til /og/{kind}/{slug}.png – null, hvis siden ikke findes. */
 export function renderOgImage(db: Db, kind: OgKind, slug: string): Promise<Buffer | null> {
   return cached(`og:${kind}:${slug}`, 6 * 60 * 60 * 1000, async () => {
     const t = await tree(db, kind, slug);
-    if (!t) return null;
-    const svg = await satori(t as unknown as Parameters<typeof satori>[0], { width: WIDTH, height: HEIGHT, fonts: fonts() });
-    return new Resvg(svg).render().asPng();
+    return t ? toPng(t) : null;
   });
 }

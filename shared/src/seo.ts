@@ -73,6 +73,7 @@ export const SITEMAP_PATHS = [
   '/tilbud',
   '/butikker',
   '/ugens-bedste-tilbud',
+  '/indsigt',
   '/metode',
   '/priser',
   '/om',

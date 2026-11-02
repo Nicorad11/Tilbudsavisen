@@ -228,7 +228,7 @@ export function TrustBreakdown({ counts, title = 'Er tilbuddene reelle?' }: { co
         {TRUST_ROWS.map((r) => (
           <li key={r.level} className="flex items-start gap-3 rounded-[22px] bg-surface-2 p-4 shadow-soft">
             <span className={clsx('tabular grid min-w-11 place-items-center rounded-full px-2 py-1 text-[15px] font-medium', TRUST_STYLE[r.level])}>
-              {counts[r.level]}
+              {counts[r.level].toLocaleString('da-DK')}
             </span>
             <span className="text-[14px] leading-snug text-ink-2">
               <span className="block text-ink">{r.label}</span>

@@ -19,6 +19,7 @@ import { cached } from '../services/cache';
 import {
   getCategoryPage,
   getHomeLinks,
+  getInsights,
   getMethodPage,
   getStorePage,
   getStoresHub,
@@ -71,6 +72,7 @@ const SEO_LOADERS: { pattern: RegExp; valid?: (slug: string) => boolean; load: (
   { pattern: /^\/butik\/([^/]+)$/, valid: (s) => Boolean(seoStoreBySlug(s)), load: (db, s) => getStorePage(db, s) },
   { pattern: /^\/kategori\/([^/]+)$/, valid: (s) => Boolean(seoCategoryBySlug(s)), load: (db, s) => getCategoryPage(db, s) },
   { pattern: /^\/ugens-bedste-tilbud$/, load: (db) => getWeeklyBest(db) },
+  { pattern: /^\/indsigt$/, load: (db) => getInsights(db) },
   { pattern: /^\/metode$/, load: (db) => getMethodPage(db) },
 ];
 

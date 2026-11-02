@@ -1,5 +1,7 @@
 import type {
   CategoryPageDTO,
+  InsightPeriod,
+  InsightsDTO,
   MethodPageDTO,
   StorePageDTO,
   StoresHubDTO,
@@ -293,6 +295,226 @@ export function WeeklyBestPage() {
   );
 }
 
+/* ---------------- /indsigt ---------------- */
+
+const pct1 = (n: number) => `${n.toLocaleString('da-DK', { maximumFractionDigits: 1 })} %`;
+const signedPct = (n: number) => (n < 0 ? `+${pct1(-n)}` : `−${pct1(n)}`);
+const dayMonthFmt = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'long', timeZone: TIME_ZONE });
+const periodDates = (p: InsightPeriod) => `${dayMonthFmt.format(new Date(p.from))} – ${dayMonthFmt.format(new Date(p.to))}`;
+
+/** Andel reelle tilbud pr. kæde som tabel med en tynd bjælke – tallet står altid ved siden af. */
+function ChainTable({ period }: { period: InsightPeriod }) {
+  const max = Math.max(1, ...period.stores.map((s) => s.realShare ?? 0));
+  return (
+    <div className="overflow-hidden rounded-[26px] bg-surface shadow-soft">
+      <table className="w-full text-left text-[14px]">
+        <caption className="sr-only">
+          Andel reelle tilbud pr. kæde, {lowerFirst(period.label)} ({periodDates(period)})
+        </caption>
+        <thead className="border-b border-black/[0.06] text-[12.5px] text-muted">
+          <tr>
+            <th scope="col" className="px-4 py-3 font-normal">
+              Kæde
+            </th>
+            <th scope="col" className="px-3 py-3 font-normal">
+              Andel reelle
+            </th>
+            <th scope="col" className="hidden px-3 py-3 text-right font-normal sm:table-cell">
+              Reelle / vurderede
+            </th>
+            <th scope="col" className="px-4 py-3 text-right font-normal">
+              Gns. pris mod normalpris
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {period.stores.map((s) => (
+            <tr key={s.slug} className="border-b border-black/[0.05] last:border-0">
+              <th scope="row" className="px-4 py-3 font-normal text-ink">
+                <Link to={`/butik/${s.slug}`} className="hover:underline">
+                  {s.name}
+                </Link>
+              </th>
+              <td className="px-3 py-3">
+                {s.realShare == null ? (
+                  <span className="text-[13px] text-muted">for få vurderede</span>
+                ) : (
+                  <span className="flex items-center gap-2.5">
+                    <span className="hidden h-2 w-24 overflow-hidden rounded-full bg-black/[0.06] sm:block" aria-hidden>
+                      <span className="block h-full rounded-full bg-ink" style={{ width: `${(s.realShare / max) * 100}%` }} />
+                    </span>
+                    <span className="tabular text-ink">{pct1(s.realShare)}</span>
+                  </span>
+                )}
+              </td>
+              <td className="tabular hidden px-3 py-3 text-right text-ink-2 sm:table-cell">
+                {s.counts.real} / {s.assessed}
+              </td>
+              <td className="tabular px-4 py-3 text-right text-ink-2">
+                {s.avgSavingsPct == null ? (
+                  <span className="text-[13px] text-muted">for få målinger</span>
+                ) : (
+                  <>
+                    {signedPct(s.avgSavingsPct)}
+                    <span className="block text-[12px] text-muted">{s.measured} målinger</span>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase('da-DK') + s.slice(1);
+
+export function InsightsPage() {
+  const { data } = useSeoPage<InsightsDTO>();
+  if (data === null) return <SeoNotFound />;
+  if (!data) return <SeoLoading />;
+  const [week, month] = data.periods as [InsightPeriod, InsightPeriod];
+  const claimed = week.stores.filter((s) => s.claimed);
+  return (
+    <Page>
+      <PageHead crumbs={data.breadcrumbs} kicker={`Indsigt · uge ${data.week}`} title="Hvor reelle er tilbuddene?" summary={data.summary} updatedAt={data.updatedAt} />
+
+      <section className="grid gap-3 sm:grid-cols-2" aria-label="Hovedtal">
+        {[week, month].map((p) => (
+          <div key={p.key} className="rounded-[26px] bg-surface-2 px-6 py-5 shadow-soft">
+            <p className="text-[13px] text-muted">
+              {p.label} · {periodDates(p)}
+            </p>
+            <p className="tabular mt-2 text-[44px] leading-none tracking-[-0.04em] text-ink">{pct1(p.realShare)}</p>
+            <p className="mt-2 text-[14px] text-ink-2">
+              af {p.assessed.toLocaleString('da-DK')} vurderede tilbud var reelle{p.mostReal ? ` · flest hos ${p.mostReal.name} (${p.mostReal.count})` : ''}
+            </p>
+            <p className="mt-1 text-[12.5px] text-muted">
+              {p.offers.toLocaleString('da-DK')} tilbud i alt – {(p.offers - p.assessed).toLocaleString('da-DK')} med for lidt prishistorik til en vurdering
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <Section title="Andel reelle tilbud pr. kæde">
+        <p className="max-w-[760px] text-[15px] leading-snug text-ink-2">
+          Reel betyder mindst 10 % under varens gennemsnitspris pr. enhed de sidste 90 dage. Andelen er regnet af de tilbud, vi kunne vurdere.
+          Sidste kolonne er tilbudsprisen mod varens normalpris i gennemsnit – for alle kædens tilbud, hvor vi har normalpriser at måle mod,
+          også dem, der ikke er billigere. Normalpriser har vi kun fra REMA 1000's webshop, så for de andre kæder er det REMA 1000's
+          normalpris for samme vare. Med under 20 vurderede tilbud eller målinger viser vi ikke et tal.
+        </p>
+        <h3 className="pt-2 text-[17px] text-ink">
+          {week.label} <span className="text-muted">· {periodDates(week)}</span>
+        </h3>
+        <ChainTable period={week} />
+        <h3 className="pt-4 text-[17px] text-ink">
+          {month.label} <span className="text-muted">· {periodDates(month)}</span>
+        </h3>
+        <ChainTable period={month} />
+      </Section>
+
+      {claimed.length > 0 && (
+        <Section title="Rabatten i avisen mod den målte besparelse">
+          <p className="max-w-[760px] text-[15px] leading-snug text-ink-2">
+            Tilbud med en førpris, {lowerFirst(week.label)}: den rabat, kæden skriver i avisen, ved siden af besparelsen målt mod varens egen
+            gennemsnitspris pr. enhed.
+          </p>
+          <div className="overflow-hidden rounded-[26px] bg-surface shadow-soft">
+            <table className="w-full text-left text-[14px]">
+              <caption className="sr-only">Rabat ifølge kæden og målt besparelse pr. kæde</caption>
+              <thead className="border-b border-black/[0.06] text-[12.5px] text-muted">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-normal">
+                    Kæde
+                  </th>
+                  <th scope="col" className="hidden px-3 py-3 text-right font-normal sm:table-cell">
+                    Tilbud
+                  </th>
+                  <th scope="col" className="px-3 py-3 text-right font-normal">
+                    Rabat i avisen
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-normal">
+                    Målt mod normalpris
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {claimed.map((s) => (
+                  <tr key={s.slug} className="border-b border-black/[0.05] last:border-0">
+                    <th scope="row" className="px-4 py-3 font-normal text-ink">
+                      {s.name}
+                    </th>
+                    <td className="tabular hidden px-3 py-3 text-right text-ink-2 sm:table-cell">{s.claimed!.n}</td>
+                    <td className="tabular px-3 py-3 text-right text-ink-2">−{pct1(s.claimed!.claimedPct)}</td>
+                    <td className="tabular px-4 py-3 text-right text-ink">{signedPct(s.claimed!.measuredPct)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
+      {data.drops.length > 0 && (
+        <Section title="Ugens største prisfald">
+          <p className="max-w-[760px] text-[15px] leading-snug text-ink-2">
+            Tilbud, der gælder nu, med den største besparelse mod kædens egen normalpris for varen pr. enhed. Normalpriser har vi kun fra
+            REMA 1000's webshop – de andre kæder offentliggør dem ikke. Besparelser over 60 % er udeladt: de skyldes oftest, at to
+            pakkestørrelser ikke kan sammenlignes.
+          </p>
+          <ol className="space-y-2">
+            {data.drops.map((d) => (
+              <li key={`${d.store.id}-${d.title}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[22px] bg-surface-2 px-5 py-4 shadow-soft">
+                <span className="min-w-0">
+                  <span className="block text-[15px] text-ink">{d.title}</span>
+                  <span className="text-[13px] text-muted">
+                    {d.store.name}
+                    {d.term && (
+                      <>
+                        {' · '}
+                        <Link to={d.term.href} className="underline hover:text-ink">
+                          alle tilbud på {d.term.label.toLocaleLowerCase('da-DK')}
+                        </Link>
+                      </>
+                    )}
+                  </span>
+                </span>
+                <span className="tabular text-right text-[14px] text-ink-2">
+                  {kr(d.unitPrice)} kr/{unitLabel(d.unit)} <span className="text-muted">mod {kr(d.normalUnitPrice)}</span>
+                  <span className="ml-2 rounded-full bg-lime px-2.5 py-0.5 text-[13px] font-medium text-ink">−{pct1(d.savingsPct)}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
+
+      <TrustBreakdown counts={week.counts} title={`${week.label}: alle tilbud fordelt på vurdering`} />
+      <QaList items={data.faq} />
+
+      <Section title="Om tallene">
+        <div className="max-w-[760px] space-y-3 text-[15px] leading-relaxed text-ink-2">
+          <p>
+            Tallene dækker alle tilbud fra kædernes tilbudsaviser, der har gældt i perioden – ikke næste uges avis. Hvert tilbud er vurderet
+            på samme måde som resten af Tilbudsradar: mod varens gennemsnitspris pr. enhed de sidste 90 dage. Mange varer har vi endnu for
+            lidt prishistorik på – de tæller med i det samlede antal, men ikke i andelene. Tilbud, hvor vi kun har tidligere tilbudspriser at
+            måle mod, tæller med i fordelingen, men ikke i gennemsnittene. Andele og gennemsnit vises først med mindst 20 tilbud bag.
+          </p>
+          <p>
+            Siden opdateres, hver gang nye aviser hentes.{' '}
+            <Link to="/metode" className="text-ink underline">
+              Sådan vurderer vi tilbuddene
+            </Link>
+            .
+          </p>
+        </div>
+      </Section>
+      <Independence chains={CHAINS} />
+    </Page>
+  );
+}
+
 /* ---------------- /metode ---------------- */
 
 export function MethodPage() {
@@ -323,6 +545,12 @@ export function MethodPage() {
             )}
           </p>
           <p>Kædens egen pris i butikken gælder altid. Finder du en fejl, så skriv til os – se kontaktoplysningerne på siden Om Tilbudsradar.</p>
+          <p>
+            Hvor mange af ugens tilbud der er reelle i hver kæde, kan du se under{' '}
+            <Link to="/indsigt" className="text-ink underline">
+              hvor reelle er tilbuddene?
+            </Link>
+          </p>
         </Section>
         <Section title="Pris pr. kilo, liter og stk.">
           <p>

@@ -189,6 +189,9 @@ function PopularNow() {
         <Link to="/ugens-bedste-tilbud" className={moreLink}>
           Ugens bedste tilbud <ArrowRight className="size-4" />
         </Link>
+        <Link to="/indsigt" className={moreLink}>
+          Hvor reelle er tilbuddene? <ArrowRight className="size-4" />
+        </Link>
       </div>
     </section>
   );

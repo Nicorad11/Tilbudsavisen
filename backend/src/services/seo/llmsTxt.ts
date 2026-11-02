@@ -32,6 +32,7 @@ export function llmsTxt(appUrl: string, contactEmail: string): string {
     '',
     '## Metode og afsender',
     '',
+    `- [Indsigt: hvor reelle er tilbuddene?](${url('/indsigt')}): andel reelle tilbud pr. kæde de sidste 7 og 30 dage, rabatten i avisen mod den målte og ugens største prisfald`,
     `- [Metode](${url('/metode')}): sådan beregnes pris pr. enhed, og hvornår et tilbud er reelt`,
     `- [Om Tilbudsradar](${url('/om')}): virksomheden bag og kontakt`,
     '',

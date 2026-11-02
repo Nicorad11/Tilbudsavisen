@@ -21,7 +21,7 @@ import { Privacy } from './pages/legal/Privacy';
 import { Terms } from './pages/legal/Terms';
 import { Withdraw } from './pages/legal/Withdraw';
 import { Pricing } from './pages/Pricing';
-import { CategoryPage, MethodPage, StorePage, StoresHubPage, TermHubPage, TermPage, WeeklyBestPage } from './pages/seo/SeoPages';
+import { CategoryPage, InsightsPage, MethodPage, StorePage, StoresHubPage, TermHubPage, TermPage, WeeklyBestPage } from './pages/seo/SeoPages';
 
 const pages: PublicPages = {
   Pricing,
@@ -36,6 +36,7 @@ const pages: PublicPages = {
   Store: StorePage,
   Category: CategoryPage,
   WeeklyBest: WeeklyBestPage,
+  Insights: InsightsPage,
   Method: MethodPage,
 };
 

@@ -62,6 +62,7 @@ export function assessTrust(offer: TrustInput, history: HistoryAgg[]): TrustInfo
     savingsPct: null,
     claimedSavingsPct: claimed,
     samples: 0,
+    basis: null,
   };
   if (offer.productId === null || offer.unitPrice === null) {
     return { ...base, level: 'unknown', label: 'Ukendt', explanation: 'Varen kunne ikke kobles til prishistorik endnu.' };
@@ -72,16 +73,20 @@ export function assessTrust(offer: TrustInput, history: HistoryAgg[]): TrustInfo
   const previousOffers = combine(history.filter((h) => h.is_offer && h.old));
 
   let basis: { avg: number; n: number } | null = null;
+  let basisKind: TrustInfo['basis'] = null;
   let basisLabel = '';
   let weak = false;
   if (sameStore && sameStore.n >= 2) {
     basis = sameStore;
+    basisKind = 'store';
     basisLabel = `normalprisen i ${offer.storeName}`;
   } else if (allStores && allStores.n >= 2) {
     basis = allStores;
+    basisKind = 'chains';
     basisLabel = 'normalpriser på tværs af kæder';
   } else if (previousOffers && previousOffers.n >= 3) {
     basis = previousOffers;
+    basisKind = 'offers';
     basisLabel = 'tidligere tilbudspriser';
     weak = true;
   }
@@ -98,7 +103,7 @@ export function assessTrust(offer: TrustInput, history: HistoryAgg[]): TrustInfo
   }
 
   const savings = Math.round(((basis.avg - offer.unitPrice) / basis.avg) * 1000) / 10;
-  const info = { ...base, avgUnitPrice90d: Math.round(basis.avg * 100) / 100, savingsPct: savings, samples: basis.n };
+  const info = { ...base, avgUnitPrice90d: Math.round(basis.avg * 100) / 100, savingsPct: savings, samples: basis.n, basis: basisKind };
   const vs = `${kr(offer.unitPrice)} kr mod gns. ${kr(basis.avg)} kr (${basisLabel}, 90 dage)`;
 
   if (claimed !== null && claimed >= TRUST_THRESHOLDS.inflatedClaimPct && savings < TRUST_THRESHOLDS.inflatedMaxSavingsPct) {

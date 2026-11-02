@@ -19,6 +19,7 @@ const loaders: Record<keyof PublicPages, Loader> = {
   Store: async () => (await import('./pages/seo/SeoPages')).StorePage,
   Category: async () => (await import('./pages/seo/SeoPages')).CategoryPage,
   WeeklyBest: async () => (await import('./pages/seo/SeoPages')).WeeklyBestPage,
+  Insights: async () => (await import('./pages/seo/SeoPages')).InsightsPage,
   Method: async () => (await import('./pages/seo/SeoPages')).MethodPage,
 };
 
@@ -41,6 +42,7 @@ const PAGE_FOR_PATH: [RegExp, keyof PublicPages][] = [
   [/^\/butik\/[^/]+$/, 'Store'],
   [/^\/kategori\/[^/]+$/, 'Category'],
   [/^\/ugens-bedste-tilbud$/, 'WeeklyBest'],
+  [/^\/indsigt$/, 'Insights'],
   [/^\/metode$/, 'Method'],
 ];
 

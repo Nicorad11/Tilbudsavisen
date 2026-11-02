@@ -2,8 +2,12 @@ import type {
   BaseUnit,
   CategoryPageDTO,
   HomeLinksDTO,
+  InsightPeriod,
+  InsightsDTO,
+  InsightStore,
   MethodPageDTO,
   OfferDTO,
+  PriceDrop,
   SeoFaq,
   SeoLink,
   SeoMeta,
@@ -25,7 +29,7 @@ import { cached } from '../cache';
 import { OFFER_SELECT, toOfferDTOs, type OfferRow } from '../offers';
 import { activeChainSql } from '../scope';
 import { TRUST_THRESHOLDS } from '../trust';
-import { termIndex, WINDOW_DAYS, type TermSummary } from './termIndex';
+import { termForOffer, termIndex, WINDOW_DAYS, type TermSummary } from './termIndex';
 
 /**
  * Indholdet på datasiderne. Hver sætning bygges af data – ingen fyldtekst.
@@ -630,5 +634,202 @@ export async function getMethodPage(db: Db): Promise<MethodPageDTO> {
         path: '/metode',
       }),
     } satisfies MethodPageDTO, {});
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* /indsigt                                                           */
+/* ------------------------------------------------------------------ */
+
+/** Mindst så mange målte tilbud, før et gennemsnit vises. */
+const MIN_MEASURED = 20;
+/** Vurderede tilbud: alle undtagen dem med for lidt prishistorik. */
+const assessedCount = (counts: TrustCounts) => counts.real + counts.ok + counts.inflated;
+const round1 = (n: number) => Math.round(n * 10) / 10;
+const share = (part: number, total: number) => (total ? round1((part / total) * 100) : 0);
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+/** "8,3 %" */
+const pct1 = (n: number) => `${n.toLocaleString('da-DK', { maximumFractionDigits: 1 })} %`;
+const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase('da-DK') + s.slice(1);
+
+/** Besparelsen, når den er målt mod normalpriser (ikke kun tidligere tilbud) og er troværdig. */
+const measuredSavings = (o: OfferDTO): number | null =>
+  o.trust.savingsPct != null && (o.trust.basis === 'store' || o.trust.basis === 'chains') && Math.abs(o.trust.savingsPct) <= PLAUSIBLE_SAVINGS_PCT
+    ? o.trust.savingsPct
+    : null;
+
+/** Rabatten kæden skriver mod den målte – for tilbud, der har begge. */
+function claimedVsMeasured(offers: OfferDTO[]): InsightStore['claimed'] {
+  const rows = offers.filter((o) => o.trust.claimedSavingsPct != null && measuredSavings(o) != null);
+  if (rows.length < MIN_MEASURED) return null;
+  return {
+    n: rows.length,
+    claimedPct: round1(mean(rows.map((o) => o.trust.claimedSavingsPct!))),
+    measuredPct: round1(mean(rows.map((o) => measuredSavings(o)!))),
+  };
+}
+
+/** Tilbud, der har gældt på et tidspunkt mellem `from` og nu (ikke næste uges). */
+async function offersSince(db: Db, from: Date): Promise<OfferDTO[]> {
+  const rows = await query<OfferRow>(
+    db,
+    sql`SELECT ${OFFER_SELECT} FROM offers o JOIN stores s ON s.id = o.store_id
+        WHERE s.enabled AND ${activeChainSql} AND o.valid_from <= now() AND o.valid_to > ${from.toISOString()}::timestamptz`,
+  );
+  return toOfferDTOs(db, rows);
+}
+
+function insightPeriod(key: InsightPeriod['key'], label: string, from: Date, to: Date, offers: OfferDTO[]): InsightPeriod {
+  const stores: InsightStore[] = SEO_STORES.map((st) => {
+    const mine = offers.filter((o) => o.store.id === st.id);
+    const counts = trustCounts(mine);
+    const measured = mine.map(measuredSavings).filter((v): v is number => v != null);
+    return {
+      slug: st.slug,
+      name: st.name,
+      color: mine[0]?.store.color ?? '#999',
+      offers: mine.length,
+      assessed: assessedCount(counts),
+      counts,
+      realShare: assessedCount(counts) >= MIN_MEASURED ? share(counts.real, assessedCount(counts)) : null,
+      measured: measured.length,
+      avgSavingsPct: measured.length >= MIN_MEASURED ? round1(mean(measured)) : null,
+      claimed: claimedVsMeasured(mine),
+    };
+  });
+  const counts = trustCounts(offers);
+  const top = [...stores].sort((a, b) => b.counts.real - a.counts.real)[0];
+  return {
+    key,
+    label,
+    from: from.toISOString(),
+    to: to.toISOString(),
+    offers: offers.length,
+    assessed: assessedCount(counts),
+    counts,
+    realShare: share(counts.real, assessedCount(counts)),
+    stores,
+    mostReal: top && top.counts.real > 0 ? { slug: top.slug, name: top.name, count: top.counts.real } : null,
+  };
+}
+
+/** "De sidste 7 dage" – eller "Siden 20. oktober", når vi har data for en kortere periode. */
+function periodLabel(days: number, ctx: Context): { from: Date; label: string } {
+  const wanted = new Date(ctx.now.getTime() - days * DAY);
+  return wanted.getTime() >= ctx.since.getTime()
+    ? { from: wanted, label: `De sidste ${days} dage` }
+    : { from: ctx.since, label: `Siden ${dayMonth.format(ctx.since)}` };
+}
+
+/**
+ * Ugens største prisfald: reelle tilbud, der gælder nu – kun målt mod kædens egen
+ * normalpris (det stærkeste grundlag; på tværs af kæder blandes pakkestørrelser lettere). Én pr. vare.
+ * Over 60 % er det oftest to pakkestørrelser, der ikke kan sammenlignes – de udelades.
+ */
+const DROP_MAX_PCT = 60;
+async function priceDrops(db: Db, offers: OfferDTO[], now: Date): Promise<PriceDrop[]> {
+  const seen = new Set<string>();
+  const drops: PriceDrop[] = [];
+  const candidates = offers.filter(
+    (o) =>
+      isActive(o, now) &&
+      o.trust.level === 'real' &&
+      o.trust.basis === 'store' &&
+      measuredSavings(o) != null &&
+      o.trust.savingsPct! <= DROP_MAX_PCT &&
+      o.unitPrice != null &&
+      o.unit,
+  );
+  for (const o of candidates.sort(bySavings)) {
+    const key = o.title.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const term = await termForOffer(db, o.id);
+    drops.push({
+      title: o.title,
+      store: o.store,
+      unit: o.unit!,
+      unitPrice: o.unitPrice!,
+      normalUnitPrice: o.trust.avgUnitPrice90d!,
+      savingsPct: o.trust.savingsPct!,
+      validTo: o.validTo,
+      term: term ? { href: `/tilbud/${term.slug}`, label: term.label } : null,
+    });
+    if (drops.length === 5) break;
+  }
+  return drops;
+}
+
+/**
+ * Hvor reelle er tilbuddene? Andel reelle tilbud pr. kæde, den målte besparelse
+ * mod den rabat, kæden skriver, og ugens største prisfald – for de sidste 7 og 30 dage.
+ */
+export async function getInsights(db: Db): Promise<InsightsDTO> {
+  return cached('seo:insights', PAGE_TTL, async () => {
+    const ctx = await context(db);
+    const w = periodLabel(7, ctx);
+    const m = periodLabel(30, ctx);
+    const monthOffers = await offersSince(db, m.from);
+    const weekOffers = monthOffers.filter((o) => time(o.validTo) > w.from.getTime());
+    const week = insightPeriod('week', w.label, w.from, ctx.now, weekOffers);
+    const month = insightPeriod('month', m.label, m.from, ctx.now, monthOffers);
+    const drops = await priceDrops(db, weekOffers, ctx.now);
+    const claimed = claimedVsMeasured(weekOffers);
+    const weekLower = lowerFirst(week.label);
+
+    const n = (v: number) => v.toLocaleString('da-DK');
+    let summary =
+      `${week.label} har ${listText(SEO_STORES.map((st) => st.name))} haft ${n(week.offers)} tilbud i deres aviser. ` +
+      `${n(week.assessed)} af dem kunne vi vurdere – resten er varer, vi endnu har for lidt prishistorik på. ` +
+      `${pct1(week.realShare)} af de vurderede var reelle: mindst ${TRUST_THRESHOLDS.realPct} % under varens gennemsnitspris de sidste ${TRUST_THRESHOLDS.windowDays} dage.`;
+    if (week.mostReal) summary += ` Flest reelle tilbud havde ${week.mostReal.name} (${week.mostReal.count}).`;
+    if (claimed) {
+      summary += ` På tilbud med en førpris skrev kæderne i gennemsnit ${pct1(claimed.claimedPct)} rabat – målt mod varernes egne priser var besparelsen ${pct1(claimed.measuredPct)}.`;
+    }
+
+    const faq: SeoFaq[] = [
+      {
+        q: 'Hvor mange tilbud i tilbudsaviserne er reelle?',
+        a: `${week.label}: ${n(week.counts.real)} af ${n(week.assessed)} vurderede tilbud (${pct1(week.realShare)}). ${month.label}: ${n(month.counts.real)} af ${n(month.assessed)} (${pct1(month.realShare)}). ${n(week.counts.unknown)} af de ${n(week.offers)} tilbud de sidste 7 dage kunne vi endnu ikke vurdere, fordi vi har for lidt prishistorik på varen.`,
+      },
+    ];
+    const ranked = week.stores.filter((st) => st.realShare != null).sort((a, b) => b.realShare! - a.realShare!);
+    if (week.mostReal && ranked[0]) {
+      faq.push({
+        q: 'Hvilken kæde har flest reelle tilbud?',
+        a: `${week.label} havde ${week.mostReal.name} flest reelle tilbud (${week.mostReal.count}). Som andel af kædens vurderede tilbud lå ${ranked[0].name} højest med ${pct1(ranked[0].realShare!)} (${ranked[0].counts.real} af ${ranked[0].assessed}).`,
+      });
+    }
+    if (claimed) {
+      faq.push({
+        q: 'Passer rabatten i tilbudsavisen?',
+        a: `Ikke altid. På ${claimed.n} tilbud med en førpris ${weekLower} skrev kæderne i gennemsnit ${pct1(claimed.claimedPct)} rabat. Målt mod varens egen gennemsnitspris pr. enhed de sidste ${TRUST_THRESHOLDS.windowDays} dage var besparelsen i gennemsnit ${pct1(claimed.measuredPct)}.`,
+      });
+    }
+
+    // Med i søgemaskinerne, når der er vurderede tilbud nok til at sige noget.
+    const indexable = week.assessed >= 50;
+    return finish(
+      {
+        kind: 'insights',
+        indexable,
+        headline: { value: pct1(week.realShare), text: `af de vurderede tilbud ${weekLower} var reelle` },
+        summary,
+        periods: [week, month],
+        drops,
+        faq,
+        generatedAt: ctx.generatedAt,
+        updatedAt: ctx.updatedAt,
+        week: ctx.week,
+        breadcrumbs: crumbs({ href: '/indsigt', label: 'Indsigt' }),
+        meta: meta({
+          title: fitTitle([`Hvor reelle er tilbuddene? Kæderne målt i uge ${ctx.week}`, `Hvor reelle er tilbuddene? Uge ${ctx.week} | Tilbudsradar`]),
+          description: `${pct1(week.realShare)} af de vurderede tilbud fra REMA 1000, Netto, føtex, Bilka og Lidl var reelle ${weekLower}. Se tallene pr. kæde og ugens største prisfald.`,
+          path: '/indsigt',
+          noindex: !indexable,
+        }),
+      } satisfies InsightsDTO,
+      { image: '/og/indsigt.png', imageAlt: `${pct1(week.realShare)} af de vurderede tilbud ${weekLower} var reelle` },
+    );
   });
 }

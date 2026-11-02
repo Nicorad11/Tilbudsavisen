@@ -5,7 +5,7 @@ import express, { type Express, type Request, type RequestHandler } from 'expres
 import type { Db } from '../db/client';
 import { env, log } from '../env';
 import { llmsTxt } from '../services/seo/llmsTxt';
-import { OG_KINDS, renderOgImage, type OgKind } from '../services/seo/ogImage';
+import { OG_KINDS, renderInsightsOgImage, renderOgImage, type OgKind } from '../services/seo/ogImage';
 import { SITEMAP_NAMES, sitemapIndexXml, sitemaps, urlsetXml } from '../services/seo/sitemap';
 import { requestHost } from './canonical';
 import { createSsr, isServerRendered, loadSsrModule, type Ssr } from './ssr';
@@ -169,11 +169,9 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST, deps: { db?
   });
 
   // Delingsbilleder til datasiderne. Findes siden ikke, eller fejler tegningen, bruges standardbilledet.
-  app.get(/^\/og\/([a-z]+)\/([a-z0-9-]{1,60})\.png$/, async (req, res, next) => {
-    const kind = req.params[0] as OgKind;
-    if (!db || isAdminHost(req) || !OG_KINDS.includes(kind)) return next();
+  const sendPng = async (req: Request, res: express.Response, render: () => Promise<Buffer | null>) => {
     try {
-      const png = await renderOgImage(db, kind, String(req.params[1]));
+      const png = await render();
       if (png) {
         res.type('image/png').set('Cache-Control', 'public, max-age=3600').send(png);
         return;
@@ -182,6 +180,12 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST, deps: { db?
       log.warn(`Delingsbillede ${req.path} kunne ikke tegnes`, { err: err instanceof Error ? err.message : String(err) });
     }
     res.redirect(302, '/og-image.png');
+  };
+  app.get('/og/indsigt.png', (req, res, next) => (!db || isAdminHost(req) ? next() : sendPng(req, res, () => renderInsightsOgImage(db))));
+  app.get(/^\/og\/([a-z]+)\/([a-z0-9-]{1,60})\.png$/, async (req, res, next) => {
+    const kind = req.params[0] as OgKind;
+    if (!db || isAdminHost(req) || !OG_KINDS.includes(kind)) return next();
+    await sendPng(req, res, () => renderOgImage(db, kind, String(req.params[1])));
   });
 
   const indexFile = path.join(distDir, 'index.html');

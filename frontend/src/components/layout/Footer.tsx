@@ -73,6 +73,9 @@ export function Footer({ className, appNav }: { className?: string; /** Plads ti
           <Link to="/ugens-bedste-tilbud" className={link}>
             Ugens bedste tilbud
           </Link>
+          <Link to="/indsigt" className={link}>
+            Hvor reelle er tilbuddene?
+          </Link>
           <Link to="/metode" className={link}>
             Sådan vurderer vi tilbud
           </Link>

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { query, type Db } from '../../db/client';
 import { cached } from '../cache';
 import { activeChainSql } from '../scope';
-import { getCategoryPage, getStorePage, getWeeklyBest } from './pages';
+import { getCategoryPage, getInsights, getStorePage, getWeeklyBest } from './pages';
 import { termIndex } from './termIndex';
 
 /**
@@ -34,7 +34,7 @@ const newestDay = (dates: (Date | string | null | undefined)[], fallback: string
 };
 
 async function build(db: Db): Promise<Sitemaps> {
-  const [index, weekly] = await Promise.all([termIndex(db), getWeeklyBest(db)]);
+  const [index, weekly, insights] = await Promise.all([termIndex(db), getWeeklyBest(db), getInsights(db)]);
   // Nyeste first_seen_at pr. kæde og kategori blandt de aktuelle tilbud.
   const latest = await query<{ store_id: string; category: string; at: Date }>(
     db,
@@ -65,7 +65,7 @@ async function build(db: Db): Promise<Sitemaps> {
     if (page?.indexable) kategorier.push({ path: `/kategori/${c.slug}`, lastmod: newestDay(latest.filter((r) => r.category === c.id).map((r) => r.at), overall) });
   }
 
-  const pages: SitemapEntry[] = SITEMAP_PATHS.filter((p) => p !== '/ugens-bedste-tilbud' || weekly.indexable).map((path) => ({
+  const pages: SitemapEntry[] = SITEMAP_PATHS.filter((p) => (p !== '/ugens-bedste-tilbud' || weekly.indexable) && (p !== '/indsigt' || insights.indexable)).map((path) => ({
     path,
     // Forsiden og oversigterne følger dataene; de øvrige faste sider har en fast dato.
     lastmod: STATIC_LASTMOD[path] ?? overall,
