@@ -19,7 +19,7 @@
 | Sælger | ⚠️ Enkeltmand uden CVR (aftalt med advokat og revisor). **Navn og adresse mangler stadig** på siden og i mails – et lovkrav nu, hvor der tages betaling |
 | Kontaktmail | ⏳ `kontakt@tilbudsradaren.dk` kan endnu ikke modtage mails |
 | Jurist | ⏳ Ikke gennemgået |
-| Søgemaskiner | ⏳ Server-rendering, datasider og sitemaps ligger på branchen `seo` – ikke i produktion endnu (se trin 10) |
+| Søgemaskiner | ✅ **Live siden 2/11:** server-renderede sider, datasider, `/indsigt` og sitemaps med 123 adresser. ⏳ Search Console, Bing og `INDEXNOW_KEY` mangler (trin 10) |
 
 Rækkefølgen herunder er den anbefalede for det, der mangler.
 
@@ -141,9 +141,9 @@ Dit eget live-abonnement fra 27/10 kan bruges til 7 og 9. **Opsig det før 10/11
 
 ## 10. Søgemaskiner og AI-søgning
 
-Når branchen `seo` er gennemgået og flettet ind i `main` (server-renderede sider, datasider, sitemaps). Detaljer i [docs/SEO.md](docs/SEO.md#efter-deploy).
+Server-rendering, datasider og sitemaps er live siden 2. november 2026. Detaljer i [docs/SEO.md](docs/SEO.md#efter-deploy).
 
-- [ ] Følg første deploy: `https://tilbudsradaren.dk/tilbud/smoer` skal vise tekst uden JavaScript (*Vis kilde*), og `/og/tilbud/smoer.png` skal være et billede – ikke en omdirigering til `/og-image.png`.
+- [x] Første deploy 2/11 fulgt: alle offentlige sider server-renderes med tekst, links og JSON-LD, delingsbillederne tegnes på Render, og der er ingen fejl i konsollen.
 - [ ] Sæt `INDEXNOW_KEY` i Render (fx et nyt UUID), og tjek at `/{nøgle}.txt` svarer med nøglen. Efter næste hentning står `[indexnow]` i loggen.
 - [ ] Google Search Console: domæne-ejendom for `tilbudsradaren.dk`, bekræftet med en TXT-post hos DNS.services. Indsend `https://tilbudsradaren.dk/sitemap.xml`, og bed om indeksering af `/`, `/tilbud`, `/tilbud/smoer` og `/indsigt`.
 - [ ] Bing Webmaster Tools: importér sitet fra Search Console, og indsend sitemapet (Bing bruges også af ChatGPT search og Copilot).
