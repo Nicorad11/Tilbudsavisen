@@ -3,14 +3,12 @@ import { PLAN } from '@tilbudsradar/shared';
 import { Outlet, NavLink, Link } from 'react-router';
 import clsx from 'clsx';
 import { useAccess, useLaunch } from '../../lib/access';
-import { useSeo } from '../../lib/seo';
 import { Button } from '../ui/primitives';
 import { Footer } from './Footer';
 import { Wordmark } from './Wordmark';
 
-/** Layout til de offentlige sider: landingsside, priser og juridiske sider. */
+/** Layout til de offentlige sider: landingsside, priser og juridiske sider. Hver side sætter selv sin meta (useSeo). */
 export function PublicLayout() {
-  useSeo();
   const { isMember } = useAccess();
   const launch = useLaunch();
   const nav = ({ isActive }: { isActive: boolean }) =>

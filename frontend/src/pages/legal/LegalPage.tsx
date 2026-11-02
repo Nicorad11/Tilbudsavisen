@@ -27,8 +27,9 @@ export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
       <table className="w-full min-w-[560px] text-left text-[13.5px]">
         <thead className="text-muted">
           <tr>
-            {head.map((h) => (
-              <th key={h} className="px-4 py-3 font-medium">
+            {head.map((h, i) => (
+              // Overskrifterne kan være tomme (fx på /om), så indekset er nøglen.
+              <th key={i} className="px-4 py-3 font-medium">
                 {h}
               </th>
             ))}

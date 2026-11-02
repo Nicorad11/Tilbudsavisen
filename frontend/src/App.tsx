@@ -4,6 +4,7 @@ import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-rou
 import { PublicLayout } from './components/layout/PublicLayout';
 import { PageViewTracker } from './components/PageViewTracker';
 import { Button, EmptyState } from './components/ui/primitives';
+import { useSeo } from './lib/seo';
 import { lazyWithReload } from './lib/updates';
 import { Landing } from './pages/Landing';
 
@@ -23,12 +24,20 @@ const ResetPassword = page(() => import('./pages/AccountFlows'), 'ResetPassword'
 const VerifyEmail = page(() => import('./pages/AccountFlows'), 'VerifyEmail');
 const CheckoutSuccess = page(() => import('./pages/AccountFlows'), 'CheckoutSuccess');
 const CheckoutCanceled = page(() => import('./pages/AccountFlows'), 'CheckoutCanceled');
-const Pricing = page(() => import('./pages/Pricing'), 'Pricing');
-const Terms = page(() => import('./pages/legal/Terms'), 'Terms');
-const Privacy = page(() => import('./pages/legal/Privacy'), 'Privacy');
-const Cookies = page(() => import('./pages/legal/Cookies'), 'Cookies');
-const About = page(() => import('./pages/legal/About'), 'About');
-const Withdraw = page(() => import('./pages/legal/Withdraw'), 'Withdraw');
+
+/**
+ * De offentlige sider, der server-renderes. Browseren får dem som lazy
+ * komponenter (publicPages.ts), serveren importerer dem direkte
+ * (entry-server.tsx) – træet er det samme, så React kan hydrere.
+ */
+export interface PublicPages {
+  Pricing: ComponentType;
+  Terms: ComponentType;
+  Privacy: ComponentType;
+  Cookies: ComponentType;
+  About: ComponentType;
+  Withdraw: ComponentType;
+}
 
 /** Gamle stier (før appen flyttede til /app) – bevarer forespørgsel og anker, fx ?q= og UTM-parametre. */
 function LegacyRedirect({ to }: { to: string }) {
@@ -52,20 +61,26 @@ function NotFound({ home }: { home: string }) {
   );
 }
 
-export function App() {
+/** 404 på de offentlige sider – serveren svarer med statuskode 404. */
+function PublicNotFound() {
+  useSeo();
+  return <NotFound home="/" />;
+}
+
+export function App({ pages }: { pages: PublicPages }) {
   return (
     <>
       <PageViewTracker />
       <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<Landing />} />
-        <Route path="priser" element={<Pricing />} />
-        <Route path="handelsbetingelser" element={<Terms />} />
-        <Route path="privatlivspolitik" element={<Privacy />} />
-        <Route path="cookies" element={<Cookies />} />
-        <Route path="om" element={<About />} />
-        <Route path="fortryd" element={<Withdraw />} />
-        <Route path="*" element={<NotFound home="/" />} />
+        <Route path="priser" element={<pages.Pricing />} />
+        <Route path="handelsbetingelser" element={<pages.Terms />} />
+        <Route path="privatlivspolitik" element={<pages.Privacy />} />
+        <Route path="cookies" element={<pages.Cookies />} />
+        <Route path="om" element={<pages.About />} />
+        <Route path="fortryd" element={<pages.Withdraw />} />
+        <Route path="*" element={<PublicNotFound />} />
       </Route>
 
       <Route

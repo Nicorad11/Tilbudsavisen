@@ -22,7 +22,7 @@ function adminHost(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react(), tailwindcss(), adminHost()],
   // Én .env i rodmappen til både backend og frontend (kun VITE_* når frontenden).
   envDir: '..',
@@ -32,13 +32,18 @@ export default defineConfig({
       '/api': { target: 'http://localhost:4000', changeOrigin: false },
     },
   },
-  build: {
-    chunkSizeWarningLimit: 900,
-    rollupOptions: {
-      input: {
-        main: fileURLToPath(new URL('./index.html', import.meta.url)),
-        admin: fileURLToPath(new URL('./admin.html', import.meta.url)),
+  // Server-renderingen (entry-server.tsx) bundtes helt selvstændigt, så den ikke afhænger af,
+  // hvilke pakker der ligger i node_modules i Docker-imaget (kun produktionspakker).
+  ssr: { noExternal: true },
+  build: isSsrBuild
+    ? { outDir: 'dist/server', emptyOutDir: true, copyPublicDir: false }
+    : {
+        chunkSizeWarningLimit: 900,
+        rollupOptions: {
+          input: {
+            main: fileURLToPath(new URL('./index.html', import.meta.url)),
+            admin: fileURLToPath(new URL('./admin.html', import.meta.url)),
+          },
+        },
       },
-    },
-  },
-});
+}));

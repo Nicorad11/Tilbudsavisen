@@ -11,6 +11,7 @@ import { Button, Pill } from '../components/ui/primitives';
 import { useAccess, useLaunch } from '../lib/access';
 import { track } from '../lib/analytics';
 import { COMPANY } from '../lib/company';
+import { useSeo } from '../lib/seo';
 import { useStats } from '../lib/hooks';
 import { storeColor } from '../lib/storeColors';
 
@@ -24,6 +25,7 @@ const CHAINS = [
 
 /** Offentlig forside for besøgende. Indloggede sendes direkte til appen. */
 export function Landing() {
+  useSeo();
   const { isMember } = useAccess();
   const launch = useLaunch();
   const { search } = useLocation();

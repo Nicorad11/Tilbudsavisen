@@ -1,9 +1,11 @@
 import { Instagram, Mail } from 'lucide-react';
 import { Link } from 'react-router';
 import { COMPANY } from '../../lib/company';
+import { useSeo } from '../../lib/seo';
 import { LegalPage, Section, Table } from './LegalPage';
 
 export function About() {
+  useSeo();
   return (
     <LegalPage kicker="Hvem står bag" title="Om Tilbudsradar">
       <Section title="Idéen">

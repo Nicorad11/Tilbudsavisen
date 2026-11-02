@@ -67,10 +67,75 @@ export const CONFIG_ELEMENT_ID = 'tr-config';
 /** Sider i sitemap.xml. */
 export const SITEMAP_PATHS = ['/', '/priser', '/app', '/app/sog', '/om', '/handelsbetingelser', '/privatlivspolitik', '/cookies'];
 
+/** Stien uden afsluttende skråstreg ("/" for forsiden). */
+export const cleanPath = (path: string) => path.replace(/\/+$/, '') || '/';
+
 export function metaForPath(path: string): PageMeta {
-  const clean = path.replace(/\/+$/, '') || '/';
+  const clean = cleanPath(path);
   if (PAGE_META[clean]) return PAGE_META[clean]!;
   // Ukendte /app-sider (betaling, nulstilling, kvitteringsdetaljer …) er private.
   if (clean.startsWith('/app/')) return { title: 'Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true };
   return { title: 'Siden findes ikke | Tilbudsradar', description: DEFAULT_DESCRIPTION, noindex: true, notFound: true };
+}
+
+/**
+ * Alt i <head> for én side. Serveren skriver det ind i HTML'en, og frontenden
+ * sætter de samme værdier ved navigation – så crawlere, delingslinks og
+ * brugere ser det samme.
+ */
+export interface SeoMeta extends PageMeta {
+  /** Kanonisk sti uden query. Mangler på 404-sider. */
+  path?: string;
+  /** Delingsbillede (rod-relativ eller absolut adresse). Standard: /og-image.png. */
+  image?: string;
+  imageAlt?: string;
+  /** Strukturerede data (schema.org), indsat som application/ld+json. */
+  jsonLd?: object[];
+}
+
+export const DEFAULT_OG_IMAGE = '/og-image.png';
+const DEFAULT_OG_ALT = 'Tilbudsradar – find ugens bedste tilbud';
+
+/** Meta for de faste sider ud fra stien (forside, priser, juridiske sider og 404). */
+export function seoForPath(path: string): SeoMeta {
+  const clean = cleanPath(path);
+  const meta = metaForPath(clean);
+  return meta.notFound ? meta : { ...meta, path: clean };
+}
+
+export const absoluteUrl = (appUrl: string, pathOrUrl: string) => (/^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${appUrl}${pathOrUrl}`);
+
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+/** JSON til et <script>-tag: "<" escapes, så værdier ikke kan lukke tagget. */
+export const jsonForScript = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c');
+
+/** <head>-tags for en side som HTML (serveren). */
+export function renderHeadTags(meta: SeoMeta, appUrl: string): string {
+  const url = meta.path ? absoluteUrl(appUrl, meta.path) : null;
+  const image = absoluteUrl(appUrl, meta.image ?? DEFAULT_OG_IMAGE);
+  const alt = meta.imageAlt ?? DEFAULT_OG_ALT;
+  return [
+    `<title>${escapeHtml(meta.title)}</title>`,
+    `<meta name="description" content="${escapeHtml(meta.description)}" />`,
+    url ? `<link rel="canonical" href="${escapeHtml(url)}" />` : '',
+    meta.noindex ? '<meta name="robots" content="noindex" />' : '',
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="${SITE_NAME}" />`,
+    `<meta property="og:locale" content="da_DK" />`,
+    `<meta property="og:title" content="${escapeHtml(meta.title)}" />`,
+    `<meta property="og:description" content="${escapeHtml(meta.description)}" />`,
+    url ? `<meta property="og:url" content="${escapeHtml(url)}" />` : '',
+    `<meta property="og:image" content="${escapeHtml(image)}" />`,
+    `<meta property="og:image:width" content="1200" />`,
+    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:alt" content="${escapeHtml(alt)}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${escapeHtml(meta.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(meta.description)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(image)}" />`,
+    ...(meta.jsonLd ?? []).map((data) => `<script type="application/ld+json" data-tr-jsonld>${jsonForScript(data)}</script>`),
+  ]
+    .filter(Boolean)
+    .join('\n    ');
 }

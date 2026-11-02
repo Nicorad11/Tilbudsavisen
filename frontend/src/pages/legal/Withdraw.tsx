@@ -8,9 +8,17 @@ import { Button, Card, TextInput } from '../../components/ui/primitives';
 import { formatLongDate, useAccess } from '../../lib/access';
 import { api, ApiError } from '../../lib/api';
 import { COMPANY } from '../../lib/company';
+import { useSeo } from '../../lib/seo';
 import { LegalPage, Section } from './LegalPage';
 
-const dateTime = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dateTime = new Intl.DateTimeFormat('da-DK', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Copenhagen',
+});
 
 /**
  * "Fortryd aftale" (forbrugeraftaleloven § 20 a): forbrugeren angiver navn,
@@ -18,6 +26,7 @@ const dateTime = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'long
  * bekræfter med en knap, der kun hedder "Bekræft fortrydelse".
  */
 export function Withdraw() {
+  useSeo();
   const { user, isMember, access } = useAccess();
   const qc = useQueryClient();
   const [step, setStep] = useState<'form' | 'confirm' | 'done'>('form');

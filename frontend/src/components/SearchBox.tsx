@@ -130,8 +130,10 @@ export function SearchBox({ value, onValueChange, onSearch, variant, placeholder
   const [focused, setFocused] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(-1);
-  // Læses også ved start: feltet kan have autofokus, før fokus-hændelsen når frem.
-  const [recent, setRecent] = useState<string[]>(readRecent);
+  // Læses også ved start (feltet kan have autofokus, før fokus-hændelsen når frem) – men først efter
+  // første render, så siden ser ens ud på serveren og i browseren.
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => setRecent(readRecent()), []);
   const suggest = useSuggest(value);
   const typed = value.trim();
 

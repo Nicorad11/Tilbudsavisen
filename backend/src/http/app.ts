@@ -110,7 +110,7 @@ export function createApp(ctx: AppContext): express.Express {
   app.use('/api', receiptRoutes(ctx));
   app.use('/api', notFoundHandler);
 
-  mountSite(app);
+  mountSite(app, undefined, { db: ctx.db });
 
   if (sentryEnabled) Sentry.setupExpressErrorHandler(app);
   app.use(errorHandler);

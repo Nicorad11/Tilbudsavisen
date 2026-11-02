@@ -4,8 +4,10 @@ import { useLaunch } from '../lib/access';
 import { Faq, FAQ } from '../components/marketing/Faq';
 import { PriceCard } from '../components/marketing/PriceCard';
 import { VAT } from '../lib/company';
+import { useSeo } from '../lib/seo';
 
 export function Pricing() {
+  useSeo();
   const launch = useLaunch();
   return (
     <div className="space-y-14 pt-6 lg:pt-12">

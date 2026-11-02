@@ -1,9 +1,11 @@
 import { TERMS_VERSION, termsSections } from '@tilbudsradar/shared';
 import { companyInfo } from '../../lib/company';
+import { useSeo } from '../../lib/seo';
 import { DraftNotice, LegalPage, Section } from './LegalPage';
 
 /** Handelsbetingelserne – samme tekst som vedhæftes ordrebekræftelsen (shared/src/legal.ts). */
 export function Terms() {
+  useSeo();
   const sections = termsSections(companyInfo);
   return (
     <LegalPage kicker={`Version ${TERMS_VERSION}`} title="Handelsbetingelser">

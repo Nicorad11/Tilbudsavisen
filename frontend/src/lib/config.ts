@@ -7,7 +7,8 @@ import { CONFIG_ELEMENT_ID, type PublicConfig } from '@tilbudsradar/shared';
  * Under udvikling med Vite bruges VITE_*-variablerne fra .env i rodmappen.
  */
 function injected(): Partial<PublicConfig> {
-  if (typeof document === 'undefined') return {};
+  // Under server-rendering sætter serveren konfigurationen, før appen indlæses (backend/src/http/ssr.ts).
+  if (typeof document === 'undefined') return (globalThis as { __TR_CONFIG__?: Partial<PublicConfig> }).__TR_CONFIG__ ?? {};
   try {
     return JSON.parse(document.getElementById(CONFIG_ELEMENT_ID)?.textContent || '{}') as Partial<PublicConfig>;
   } catch {

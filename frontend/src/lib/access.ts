@@ -98,5 +98,5 @@ export function useResendVerification() {
   });
 }
 
-const longDate = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+const longDate = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Copenhagen' });
 export const formatLongDate = (iso: string | null | undefined) => (iso ? longDate.format(new Date(iso)) : '–');

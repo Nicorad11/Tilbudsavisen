@@ -4,6 +4,9 @@ import { Link } from 'react-router';
 import { COMPANY } from '../../lib/company';
 import { Wordmark } from './Wordmark';
 
+/** Årstallet i dansk tid, så server og browser er enige omkring nytår. */
+const copyrightYear = new Intl.DateTimeFormat('da-DK', { year: 'numeric', timeZone: 'Europe/Copenhagen' });
+
 /** Footer på alle sider: juridiske sider, kontakt, Instagram, opsigelse og "Fortryd aftale". */
 export function Footer({ className, appNav }: { className?: string; /** Plads til mobilmenuen i appen. */ appNav?: boolean }) {
   const link = 'text-ink-2 transition hover:text-ink';
@@ -61,7 +64,7 @@ export function Footer({ className, appNav }: { className?: string; /** Plads ti
         </nav>
       </div>
       <p className="mt-8 text-[12px] leading-snug text-muted">
-        © {new Date().getFullYear()} {COMPANY.name} · {COMPANY.cvr && `CVR ${COMPANY.cvr} · `}
+        © {copyrightYear.format(new Date())} {COMPANY.name} · {COMPANY.cvr && `CVR ${COMPANY.cvr} · `}
         {COMPANY.address} ·{' '}
         <a href={`mailto:${COMPANY.email}`} className="hover:text-ink">
           {COMPANY.email}

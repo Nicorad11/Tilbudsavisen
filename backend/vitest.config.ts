@@ -16,6 +16,8 @@ export default defineConfig({
       VAT_REGISTERED: 'false',
       // Standardværdien – uafhængigt af en lokal .env.
       COOKIE_SAMESITE: 'strict',
+      // Testene afhænger ikke af, om frontenden er bygget (SSR testes direkte på kilden i ssr.test.ts).
+      FRONTEND_DIST: 'ingen-frontend-i-tests',
     },
   },
 });

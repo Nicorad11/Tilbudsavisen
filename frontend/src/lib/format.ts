@@ -30,16 +30,21 @@ export function packageSize(unit: BaseUnit, min: number | null, max: number | nu
   return fmt(min);
 }
 
-const dayFmt = new Intl.DateTimeFormat('da-DK', { weekday: 'short', day: 'numeric', month: 'short' });
-const shortDay = new Intl.DateTimeFormat('da-DK', { weekday: 'short' });
-const dateFmt = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short' });
-const timeFmt = new Intl.DateTimeFormat('da-DK', { hour: '2-digit', minute: '2-digit' });
+/** Altid dansk tid – også når siden renderes på serveren (UTC), så server og browser viser det samme. */
+export const TIME_ZONE = 'Europe/Copenhagen';
+
+const dayFmt = new Intl.DateTimeFormat('da-DK', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TIME_ZONE });
+const shortDay = new Intl.DateTimeFormat('da-DK', { weekday: 'short', timeZone: TIME_ZONE });
+const dateFmt = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short', timeZone: TIME_ZONE });
+const timeFmt = new Intl.DateTimeFormat('da-DK', { hour: '2-digit', minute: '2-digit', timeZone: TIME_ZONE });
+const isoDayFmt = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TIME_ZONE });
 
 export const formatDay = (iso: string) => dayFmt.format(new Date(iso));
 export const formatDate = (iso: string) => dateFmt.format(new Date(iso));
 export const formatTime = (iso: string) => timeFmt.format(new Date(iso));
 
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+/** Kalenderdagen i dansk tid som tidspunkt (midnat UTC den dag) – til at tælle dage. */
+const startOfDay = (d: Date) => Date.parse(`${isoDayFmt.format(d)}T00:00:00Z`);
 
 /** "til og med søn." / "fra fre." / "i dag" */
 export function validityLabel(from: string, to: string, now = new Date()): { text: string; upcoming: boolean; endsSoon: boolean } {
@@ -67,8 +72,10 @@ export function relativeTime(iso: string | null, now = Date.now()): string {
   return days === 1 ? 'i går' : `${days} dage siden`;
 }
 
+const hourFmt = new Intl.DateTimeFormat('da-DK', { hour: 'numeric', hourCycle: 'h23', timeZone: TIME_ZONE });
+
 export function greeting(now = new Date()): string {
-  const h = now.getHours();
+  const h = Number(hourFmt.format(now));
   if (h < 5) return 'God nat';
   if (h < 10) return 'God morgen';
   if (h < 12) return 'God formiddag';

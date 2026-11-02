@@ -4,7 +4,7 @@
  * Navigationer går altid til netværket; kun uden forbindelse vises den
  * senest hentede app-skal.
  */
-const VERSION = 'tr-static-v1';
+const VERSION = 'tr-static-v2';
 const SHELL = '/offline-shell';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -22,6 +22,8 @@ self.addEventListener('activate', (event) => {
 const isStatic = (url) =>
   url.origin === self.location.origin &&
   !url.pathname.startsWith('/api/') &&
+  // Delingsbilleder (/og/…) laves ud fra ugens data og må ikke caches for altid.
+  !url.pathname.startsWith('/og/') &&
   (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/') || /\.(?:js|css|woff2?|png|svg|webmanifest)$/.test(url.pathname));
 
 self.addEventListener('fetch', (event) => {

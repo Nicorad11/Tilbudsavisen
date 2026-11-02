@@ -91,15 +91,22 @@ function glyphDots(ch: string, spacing: number): Pt[] {
   return dots;
 }
 
+/**
+ * Afrundet til 1/1000 enhed – usynligt, men nødvendigt: sin/cos kan give en
+ * anelse forskellige decimaler på serveren (Node) og i browseren, og så
+ * passer den server-renderede SVG ikke til browserens.
+ */
+const round = (n: number) => Math.round(n * 1000) / 1000;
+
 function layout(text: string, spacing: number) {
   const dots: Pt[] = [];
   let x = 0;
   const chars = [...text].filter((c) => GLYPHS[c]);
   chars.forEach((ch, i) => {
-    for (const [dx, dy] of glyphDots(ch, spacing)) dots.push([x + dx, dy]);
+    for (const [dx, dy] of glyphDots(ch, spacing)) dots.push([round(x + dx), round(dy)]);
     x += GLYPHS[ch]!.w + (i < chars.length - 1 ? 2.2 : 0);
   });
-  return { dots, width: Math.max(x, 1) };
+  return { dots, width: round(Math.max(x, 1)) };
 }
 
 export interface DotNumberProps {

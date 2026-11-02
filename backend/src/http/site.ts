@@ -1,39 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_ELEMENT_ID, metaForPath, SITE_NAME, SITEMAP_PATHS, type PublicConfig } from '@tilbudsradar/shared';
+import { CONFIG_ELEMENT_ID, renderHeadTags, seoForPath, SITEMAP_PATHS, type PublicConfig } from '@tilbudsradar/shared';
 import express, { type Express, type Request } from 'express';
+import type { Db } from '../db/client';
 import { env, log } from '../env';
 import { requestHost } from './canonical';
+import { createSsr, isServerRendered, loadSsrModule, type Ssr } from './ssr';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-/** Meta-tags til en side – erstatter blokken mellem <!--seo--> og <!--/seo--> i index.html. */
+/** Meta-tags til en fast side ud fra stien – erstatter blokken mellem <!--seo--> og <!--/seo--> i index.html. */
 export function seoTags(pathname: string): string {
-  const meta = metaForPath(pathname);
-  const url = `${env.APP_URL}${pathname === '/' ? '/' : pathname.replace(/\/+$/, '')}`;
-  const image = `${env.APP_URL}/og-image.png`;
-  return [
-    `<title>${esc(meta.title)}</title>`,
-    `<meta name="description" content="${esc(meta.description)}" />`,
-    `<link rel="canonical" href="${esc(url)}" />`,
-    meta.noindex ? '<meta name="robots" content="noindex" />' : '',
-    `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="${SITE_NAME}" />`,
-    `<meta property="og:locale" content="da_DK" />`,
-    `<meta property="og:title" content="${esc(meta.title)}" />`,
-    `<meta property="og:description" content="${esc(meta.description)}" />`,
-    `<meta property="og:url" content="${esc(url)}" />`,
-    `<meta property="og:image" content="${esc(image)}" />`,
-    `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="630" />`,
-    `<meta property="og:image:alt" content="Tilbudsradar – find ugens bedste tilbud" />`,
-    `<meta name="twitter:card" content="summary_large_image" />`,
-    `<meta name="twitter:title" content="${esc(meta.title)}" />`,
-    `<meta name="twitter:description" content="${esc(meta.description)}" />`,
-    `<meta name="twitter:image" content="${esc(image)}" />`,
-  ]
-    .filter(Boolean)
-    .join('\n    ');
+  return renderHeadTags(seoForPath(pathname), env.APP_URL);
 }
 
 /** Det frontenden må vide om driften – ingen hemmeligheder. */
@@ -111,7 +89,7 @@ export function securityTxt(): string {
   ].join('\n');
 }
 
-export function mountSite(app: Express, distDir = env.FRONTEND_DIST): void {
+export function mountSite(app: Express, distDir = env.FRONTEND_DIST, deps: { db?: Db } = {}): void {
   if (Date.now() > Date.parse(SECURITY_TXT_EXPIRES)) {
     log.warn(`security.txt udløb ${SECURITY_TXT_EXPIRES.slice(0, 10)} – forny SECURITY_TXT_EXPIRES i backend/src/http/site.ts.`);
   }
@@ -140,6 +118,17 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST): void {
   const adminTemplate = existsSync(adminFile) ? readFileSync(adminFile, 'utf8') : null;
   const config = configTag();
 
+  // Server-rendering af de offentlige sider, når frontenden er bygget med SSR-bundlet (og der er en database).
+  const db = deps.db;
+  const ssr: Promise<Ssr | null> = db
+    ? loadSsrModule(distDir, publicConfig())
+        .then((module) => (module ? createSsr({ db, module, template, configTag: config }) : null))
+        .catch((err: unknown) => {
+          log.error('SSR-bundlet kunne ikke indlæses – siderne renderes i browseren', { err: String(err) });
+          return null;
+        })
+    : Promise.resolve(null);
+
   const assets = express.static(distDir, {
     index: false,
     setHeaders(res, file) {
@@ -149,8 +138,9 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST): void {
       else res.setHeader('Cache-Control', 'public, max-age=86400');
     },
   });
-  // admin.html udleveres kun som side på admin-domænet (nedenfor), aldrig som fil.
-  app.use((req, res, next) => (req.path === '/admin.html' ? next() : assets(req, res, next)));
+  // admin.html udleveres kun som side på admin-domænet (nedenfor), aldrig som fil – og SSR-bundlet
+  // (dist/server) er serverkode, ikke en offentlig fil.
+  app.use((req, res, next) => (req.path === '/admin.html' || req.path.startsWith('/server/') ? next() : assets(req, res, next)));
 
   app.get(/^(?!\/api(\/|$)).*/, (req, res, next) => {
     if (!isAdminHost(req)) return next();
@@ -165,10 +155,22 @@ export function mountSite(app: Express, distDir = env.FRONTEND_DIST): void {
       .send(adminTemplate.replace('<!--config-->', () => config));
   });
 
-  app.get(/^(?!\/api(\/|$)).*/, (req, res) => {
+  app.get(/^(?!\/api(\/|$)).*/, async (req, res) => {
+    const renderer = isServerRendered(req.path) ? await ssr : null;
+    if (renderer) {
+      try {
+        const page = await renderer.render(req.path);
+        res.status(page.status).set('Cache-Control', 'no-cache').type('html').send(page.html);
+        return;
+      } catch (err) {
+        // Siden virker stadig – den renderes bare i browseren.
+        log.error(`SSR af ${req.path} fejlede`, { err: err instanceof Error ? (err.stack ?? err.message) : String(err) });
+      }
+    }
+    // /app og reserven: app-skallen, som renderes i browseren.
     const html = template.replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, () => `${seoTags(req.path)}\n    ${config}`);
     res
-      .status(metaForPath(req.path).notFound ? 404 : 200)
+      .status(seoForPath(req.path).notFound ? 404 : 200)
       .set('Cache-Control', 'no-cache')
       .type('html')
       .send(html);

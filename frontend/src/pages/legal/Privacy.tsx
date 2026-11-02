@@ -1,9 +1,11 @@
 import { PLAN } from '@tilbudsradar/shared';
 import { Link } from 'react-router';
 import { COMPANY } from '../../lib/company';
+import { useSeo } from '../../lib/seo';
 import { DraftNotice, LegalPage, Section, Table } from './LegalPage';
 
 export function Privacy() {
+  useSeo();
   return (
     <LegalPage kicker="Sådan behandler vi dine personoplysninger" title="Privatlivspolitik" updated="17. oktober 2026">
       <DraftNotice />

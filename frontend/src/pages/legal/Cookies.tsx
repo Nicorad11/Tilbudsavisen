@@ -1,6 +1,8 @@
+import { useSeo } from '../../lib/seo';
 import { DraftNotice, LegalPage, Section, Table } from './LegalPage';
 
 export function Cookies() {
+  useSeo();
   return (
     <LegalPage kicker="Derfor ingen cookie-banner" title="Cookies og lokal lagring" updated="17. oktober 2026">
       <DraftNotice />
