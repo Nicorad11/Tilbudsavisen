@@ -15,6 +15,9 @@ import { useSeo } from '../lib/seo';
 import { useHomeLinks, useStats } from '../lib/hooks';
 import { storeColor } from '../lib/storeColors';
 
+/** Version af hero-teksten over knapperne – sendes med klikket, så tekster kan sammenlignes. */
+const HERO_COPY = 'premium-14-dage-v1';
+
 const CHAINS = [
   { id: 'rema1000', name: 'REMA 1000' },
   { id: 'netto', name: 'Netto' },
@@ -109,8 +112,16 @@ function Hero() {
           placeholder="Prøv fx okse, kaffe eller kyllingebryst"
           submitLabel="Søg gratis"
         />
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Link to="/app/konto?opret=1" onClick={() => track('CTA prøv gratis', { placering: 'hero' })}>
+        {!launch && (
+          <p className="mt-6 max-w-[52ch] text-pretty text-[15px] leading-snug text-muted">
+            Opret dig gratis og få alle premiumfunktioner i&nbsp;{PLAN.trialDays}&nbsp;dage: prisalarmer, prishistorik og indkøbslister, der finder de billigste&nbsp;butikker.
+          </p>
+        )}
+        <div className={`${launch ? 'mt-6' : 'mt-4'} flex flex-wrap items-center gap-3`}>
+          <Link
+            to="/app/konto?opret=1&fra=hero"
+            onClick={() => track('CTA prøv gratis', launch ? { placering: 'hero' } : { placering: 'hero', tekst: HERO_COPY })}
+          >
             <Button tone="dark" size="lg" icon={<ArrowRight className="size-4" />}>
               {launch ? 'Opret gratis konto' : `Prøv gratis i ${PLAN.trialDays} dage`}
             </Button>
@@ -337,7 +348,7 @@ function FinalCta() {
         <p className="mt-2 max-w-[18ch] text-[34px] leading-[1.05] tracking-[-0.04em] text-white sm:text-[46px]">Bladr mindre. Spar mere.</p>
       </div>
       <div className="flex flex-col items-start gap-3">
-        <Link to="/app/konto?opret=1" onClick={() => track('CTA prøv gratis', { placering: 'bund' })}>
+        <Link to="/app/konto?opret=1&fra=bund" onClick={() => track('CTA prøv gratis', { placering: 'bund' })}>
           <Button tone="lime" size="lg" icon={<ArrowRight className="size-4" />}>
             {launch ? 'Opret gratis konto' : `Prøv gratis i ${PLAN.trialDays} dage`}
           </Button>

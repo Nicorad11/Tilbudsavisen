@@ -20,6 +20,15 @@ export function initAnalytics(): void {
   document.head.appendChild(script);
 }
 
+/** Hvor på siden en "Prøv gratis"-knap sidder. Følger med til oprettelsen som `?fra=`. */
+export const CTA_PLACEMENTS = ['hero', 'header', 'bund'] as const;
+export type CtaPlacement = (typeof CTA_PLACEMENTS)[number];
+
+/** `?fra=` fra adressen – kun kendte værdier, så statistikken ikke fyldes med tilfældig tekst. */
+export function ctaPlacement(value: string | null): CtaPlacement | null {
+  return CTA_PLACEMENTS.find((p) => p === value) ?? null;
+}
+
 /** Måler en hændelse (fx "Prøveperiode startet"). Gør intet uden Plausible. */
 export function track(event: string, props?: Record<string, string | number>): void {
   const plausible = (window as unknown as { plausible?: Plausible }).plausible;

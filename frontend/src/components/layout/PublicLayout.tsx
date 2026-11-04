@@ -3,6 +3,7 @@ import { PLAN } from '@tilbudsradar/shared';
 import { Outlet, NavLink, Link } from 'react-router';
 import clsx from 'clsx';
 import { useAccess, useLaunch } from '../../lib/access';
+import { track } from '../../lib/analytics';
 import { Button } from '../ui/primitives';
 import { Footer } from './Footer';
 import { Wordmark } from './Wordmark';
@@ -39,7 +40,7 @@ export function PublicLayout() {
               <NavLink to="/app/konto" className={({ isActive }) => clsx('flex h-9 items-center rounded-full px-3.5 text-[13.5px] transition', isActive ? 'text-ink' : 'text-ink-2 hover:text-ink')}>
                 Log ind
               </NavLink>
-              <Link to="/app/konto?opret=1">
+              <Link to="/app/konto?opret=1&fra=header" onClick={() => track('CTA prøv gratis', { placering: 'header' })}>
                 <Button tone="dark" size="sm">
                   {launch ? (
                     <span>

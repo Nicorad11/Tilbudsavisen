@@ -7,7 +7,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { SubscribePanel } from '../components/billing/SubscribePanel';
 import { Button, Card, Chip, Pill, Segmented, StoreDot, TextInput } from '../components/ui/primitives';
 import { formatLongDate, useAccess, useBillingStatus, useLaunch, usePortal, useResendVerification } from '../lib/access';
-import { track } from '../lib/analytics';
+import { ctaPlacement, track, type CtaPlacement } from '../lib/analytics';
 import { api, ApiError } from '../lib/api';
 import { formatDay } from '../lib/format';
 import { useStores } from '../lib/hooks';
@@ -33,7 +33,11 @@ export function Account() {
       </div>
       {!isMember || !user ? (
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <AuthCard guest={Boolean(user?.isGuest)} initialMode={params.get('opret') === '1' || user?.isGuest ? 'register' : 'login'} />
+          <AuthCard
+            guest={Boolean(user?.isGuest)}
+            initialMode={params.get('opret') === '1' || user?.isGuest ? 'register' : 'login'}
+            source={ctaPlacement(params.get('fra'))}
+          />
           <WhyCard />
           {token && user?.isGuest && <PreferencesCard user={user} />}
         </div>
@@ -66,7 +70,8 @@ function errorText(err: unknown): string | null {
   return details ? `${err.message}: ${details}` : err.message;
 }
 
-function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMode }) {
+/** `source`: hvilken "Prøv gratis"-knap brugeren kom fra (`?fra=`), så oprettelser kan tilskrives den. */
+function AuthCard({ guest, initialMode, source }: { guest: boolean; initialMode: AuthMode; source: CtaPlacement | null }) {
   const launch = useLaunch();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
@@ -89,7 +94,7 @@ function AuthCard({ guest, initialMode }: { guest: boolean; initialMode: AuthMod
       setAuth(r.accessToken, r.user);
       void qc.invalidateQueries();
       if (mode === 'register') {
-        track('Prøveperiode startet');
+        track('Prøveperiode startet', source ? { placering: source } : undefined);
         toast(
           r.user.access.status === 'launch'
             ? 'Kontoen er oprettet – alle funktioner er åbne'
