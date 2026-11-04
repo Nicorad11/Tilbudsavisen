@@ -49,7 +49,7 @@ services:
         sync: false
 
       # Virksomheden – vises i footer, på /om, i betingelserne og i e-mails.
-      # Tomme felter vises som [UDFYLD: …], indtil de er sat.
+      # Tomme felter vises ikke (uden navn står der kun "Tilbudsradar").
       - key: COMPANY_NAME
         sync: false
       - key: COMPANY_CVR

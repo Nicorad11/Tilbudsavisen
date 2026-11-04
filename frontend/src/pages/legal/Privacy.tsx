@@ -12,8 +12,9 @@ export function Privacy() {
 
       <Section title="Dataansvarlig">
         <p>
-          {COMPANY.name}
-          {COMPANY.cvr && `, CVR-nr. ${COMPANY.cvr}`}, {COMPANY.address}, er dataansvarlig for behandlingen af dine personoplysninger på
+          {COMPANY.name ?? 'Tilbudsradar'}
+          {COMPANY.cvr && `, CVR-nr. ${COMPANY.cvr}`}
+          {COMPANY.address && `, ${COMPANY.address}`} er dataansvarlig for behandlingen af dine personoplysninger på
           Tilbudsradar. Kontakt os på <a href={`mailto:${COMPANY.email}`} className="text-ink underline">{COMPANY.email}</a>.
         </p>
       </Section>

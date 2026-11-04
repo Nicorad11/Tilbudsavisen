@@ -50,9 +50,9 @@ export function About() {
         <Table
           head={['', '']}
           rows={[
-            ['Navn', COMPANY.name],
+            ...(COMPANY.name ? [['Navn', COMPANY.name]] : []),
             ...(COMPANY.cvr ? [['CVR-nr.', COMPANY.cvr]] : []),
-            ['Adresse', COMPANY.address],
+            ...(COMPANY.address ? [['Adresse', COMPANY.address]] : []),
             ['E-mail', <a key="m" href={`mailto:${COMPANY.email}`} className="underline">{COMPANY.email}</a>],
           ]}
         />

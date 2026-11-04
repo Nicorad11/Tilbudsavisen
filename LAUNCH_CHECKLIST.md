@@ -16,7 +16,7 @@
 | Besøgsstatistik | ✅ Egen, cookiefri statistik – vises i admin-appen (Overblik) |
 | Admin | ✅ admin.tilbudsradaren.dk – overblik, kunder og kilder. Administratorer: `ADMIN_EMAILS` |
 | Betaling | ✅ **Live siden 27/10:** Stripe-kontoen er aktiveret som enkeltmand. 49 kr/md med 14 dages prøveperiode. Første abonnement er oprettet 27/10, og webhooks behandles. Lanceringsperioden er slut |
-| Sælger | ⚠️ Enkeltmand uden CVR (aftalt med advokat og revisor). **Navn og adresse mangler stadig** på siden og i mails – et lovkrav nu, hvor der tages betaling |
+| Sælger | Enkeltmand uden CVR (aftalt med advokat og revisor). Navn og adresse vises ikke, før `COMPANY_NAME` og `COMPANY_ADDRESS` er sat – siden og mails viser "Tilbudsradar" og kontaktmailen |
 | Kontaktmail | ⏳ `kontakt@tilbudsradaren.dk` kan endnu ikke modtage mails |
 | Jurist | ⏳ Ikke gennemgået |
 | Søgemaskiner | ✅ **Live siden 2/11:** server-renderede sider, datasider, `/indsigt` og sitemaps med 123 adresser. ⏳ Search Console, Bing og `INDEXNOW_KEY` mangler (trin 10) |
@@ -25,21 +25,20 @@ Rækkefølgen herunder er den anbefalede for det, der mangler.
 
 ---
 
-## 1. Sælger og pladsholdere
+## 1. Sælger
 
 Tilbudsradar drives som **enkeltmand uden CVR** (aftalt med advokat og revisor, oktober 2026). Uden CVR vises der ingen CVR-linje nogen steder, og uden momsregistrering står priserne uden "inkl. moms".
 
-> **Haster:** Betaling er åbnet, men footer, `/om`, betingelserne og alle e-mails viser stadig `[UDFYLD: firmanavn]` og `[UDFYLD: adresse]`. Mailen om, at betaling er åbnet (27/10), blev sendt med pladsholderne.
+Navn og adresse er valgfri. Uden dem står der "Tilbudsradar" og kontaktmailen i footer, på `/om`, i betingelserne, i privatlivspolitikken og i e-mails – ingen pladsholdere. En gammel værdi som `[UDFYLD: …]` tæller som tom.
 
-- [ ] Udfyld i Render → tilbudsradar → **Environment**. Værdierne vises i footer, på `/om`, i betingelserne, i privatlivspolitikken og i alle e-mails – uden nyt build:
-  - `COMPANY_NAME` – handelsnavnet **Kodo**. For en enkeltmand skal ejerens navn fremgå, fx `Kodo v/ <fulde navn>`.
-  - `COMPANY_ADDRESS` – adressen (e-handelsloven § 7 kræver en geografisk adresse)
+- [ ] Når navn og adresse er klar: sæt dem i Render → tilbudsradar → **Environment**. De vises med det samme – uden nyt build:
+  - `COMPANY_NAME` – fx handelsnavnet **Kodo** eller `Kodo v/ <fulde navn>`.
+  - `COMPANY_ADDRESS` – adressen.
   - `COMPANY_CVR` – lades tom. Sæt den, hvis du senere får CVR.
   - `VAT_REGISTERED` – lades tom/`false`. Sæt `true`, når du bliver momsregistreret.
   - `VITE_INSTAGRAM_URL` – fx `https://www.instagram.com/<profil>` (linket vises kun, når den starter med `https://`)
 - [ ] Tjek, at adressen passer med Stripes offentlige support-adresse (*Settings → Business → Public details*). Stripe udfyldte den selv med din hjemmeadresse ved aktiveringen, og den kan stå på kvitteringer og fakturaer.
 - [x] `ADMIN_EMAILS` = `nicorad2005@gmail.com,nicorad120@gmail.com`. Admin-rollen sættes ved login – log ind igen, når listen ændres.
-- [ ] Søg i koden efter `[UDFYLD` for at sikre, at intet er glemt: `git grep -n "UDFYLD"`.
 
 ## 2. E-mail
 

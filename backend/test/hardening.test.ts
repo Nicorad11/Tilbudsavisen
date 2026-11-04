@@ -1,4 +1,4 @@
-import { scrubSentryEvent } from '@tilbudsradar/shared';
+import { scrubSentryEvent, termsAsText } from '@tilbudsradar/shared';
 import { silentLogger } from '@tilbudsradar/scrapers';
 import express from 'express';
 import request from 'supertest';
@@ -7,6 +7,7 @@ import { createDatabase, type Database } from '../src/db/client';
 import { companyProblems } from '../src/env';
 import { createApp } from '../src/http/app';
 import { mountSite, SECURITY_TXT_EXPIRES } from '../src/http/site';
+import { verifyEmailMail } from '../src/services/emails';
 import { ScrapeManager } from '../src/services/scrapeJobs';
 
 let database: Database;
@@ -93,17 +94,25 @@ describe('Sentry: ingen persondata eller hemmeligheder', () => {
 });
 
 describe('firmaoplysninger', () => {
-  const base = { name: '[UDFYLD: firmanavn]', address: '[UDFYLD: adresse]', cvr: null, vatRegistered: false };
+  const info = { cvr: null, vatRegistered: false, email: 'kontakt@tilbudsradar.test', appUrl: 'https://tilbudsradar.test' };
 
-  it('advarer, når betaling er slået til, og navn eller adresse mangler', () => {
-    const [problem] = companyProblems({ ...base, billingEnabled: true });
-    expect(problem).toMatch(/COMPANY_NAME og COMPANY_ADDRESS mangler/);
-    expect(companyProblems({ ...base, name: 'Kodo v/ Test', billingEnabled: true })[0]).toMatch(/COMPANY_ADDRESS mangler/);
-    expect(companyProblems({ ...base, billingEnabled: false })).toEqual([]);
-    expect(companyProblems({ name: 'Kodo', address: 'Testvej 1, 8000 Aarhus C', cvr: null, vatRegistered: false, billingEnabled: true })).toEqual([]);
+  it('navn og adresse er valgfri – ingen advarsel, og intet vises, når de mangler', () => {
+    expect(companyProblems({ cvr: null, vatRegistered: false })).toEqual([]);
+    const terms = termsAsText({ ...info, name: null, address: null });
+    expect(terms).toContain('Tilbudsradar ("vi"). Du kan altid kontakte os på kontakt@tilbudsradar.test.');
+    expect(terms).toContain('Til: Tilbudsradar, kontakt@tilbudsradar.test');
+    expect(terms).not.toMatch(/UDFYLD|null/);
+    const mail = verifyEmailMail('a@eksempel.dk', 'https://tilbudsradar.test/app/bekraeft-email?token=x');
+    expect(mail.text).not.toMatch(/UDFYLD|null/);
+  });
+
+  it('vises, når de er sat', () => {
+    const terms = termsAsText({ ...info, name: 'Kodo v/ Test', address: 'Testvej 1, 8000 Aarhus C' });
+    expect(terms).toContain('Tilbudsradar drives af Kodo v/ Test, Testvej 1, 8000 Aarhus C ("vi").');
+    expect(terms).toContain('Til: Kodo v/ Test, Testvej 1, 8000 Aarhus C, kontakt@tilbudsradar.test');
   });
 
   it('advarer ved momsregistrering uden CVR', () => {
-    expect(companyProblems({ name: 'Kodo', address: 'Testvej 1', cvr: null, vatRegistered: true, billingEnabled: true })[0]).toMatch(/COMPANY_CVR/);
+    expect(companyProblems({ cvr: null, vatRegistered: true })[0]).toMatch(/COMPANY_CVR/);
   });
 });

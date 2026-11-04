@@ -18,6 +18,8 @@ const optional = z
   .string()
   .optional()
   .transform((v) => (v && v.trim() ? v.trim() : null));
+/** Valgfri tekst – en gammel pladsholder som "[UDFYLD: firmanavn]" tæller som tom. */
+const optionalUnlessPlaceholder = optional.transform((v) => (v && /^\[UDFYLD/i.test(v) ? null : v));
 /** Tekst med pladsholder – også når variablen findes, men er tom (fx i Render). */
 const withPlaceholder = (placeholder: string) =>
   z
@@ -110,16 +112,16 @@ const schema = z.object({
   SMTP_URL: optional,
   MAIL_FROM: z.string().default('Tilbudsradar <noreply@tilbudsradaren.dk>'),
 
-  // Virksomheden (vises i e-mails – samme værdier som VITE_COMPANY_* i frontenden)
-  COMPANY_NAME: withPlaceholder('[UDFYLD: firmanavn]'),
+  // Virksomheden (på siden, i betingelserne og i e-mails). Tomme felter vises ikke.
+  COMPANY_NAME: optionalUnlessPlaceholder,
   /** Tom = intet CVR (enkeltmand) – så vises CVR ingen steder. */
-  COMPANY_CVR: optional,
+  COMPANY_CVR: optionalUnlessPlaceholder,
   /** Momsregistreret: priser vises "inkl. moms". Ellers står der kun prisen, og betingelserne siger, at der ikke er moms. */
   VAT_REGISTERED: z
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
-  COMPANY_ADDRESS: withPlaceholder('[UDFYLD: adresse]'),
+  COMPANY_ADDRESS: optionalUnlessPlaceholder,
   CONTACT_EMAIL: withPlaceholder(DEFAULT_CONTACT),
   /** Link til Instagram-profilen i footer og på /om. Tom eller pladsholder = linket vises ikke. */
   VITE_INSTAGRAM_URL: optional.transform((v) => (v && /^https:\/\//.test(v) ? v : null)),
@@ -220,41 +222,15 @@ export const log: Logger = createAppLogger('api', {
 
 /**
  * Firmaoplysningerne på siden, i betingelserne og i e-mails kommer fra COMPANY_NAME,
- * COMPANY_ADDRESS og COMPANY_CVR. Mangler de, vises "[UDFYLD …]" – med vilje synligt.
+ * COMPANY_ADDRESS og COMPANY_CVR. Tomme felter vises ikke (så står der kun "Tilbudsradar").
  */
-export function companyProblems(c: {
-  name: string;
-  address: string;
-  cvr: string | null;
-  vatRegistered: boolean;
-  billingEnabled: boolean;
-}): string[] {
+export function companyProblems(c: { cvr: string | null; vatRegistered: boolean }): string[] {
   const problems: string[] = [];
-  const missing = [
-    c.name.includes('[UDFYLD') && 'COMPANY_NAME',
-    c.address.includes('[UDFYLD') && 'COMPANY_ADDRESS',
-  ].filter(Boolean);
-  if (c.billingEnabled && missing.length) {
-    problems.push(
-      `Betaling er slået til, men ${missing.join(' og ')} mangler. E-handelsloven § 7 kræver sælgerens navn og ` +
-        'geografiske adresse på siden – den viser nu "[UDFYLD …]". Sæt dem i Render → Environment.',
-    );
-  }
   if (c.vatRegistered && !c.cvr) problems.push('VAT_REGISTERED=true, men COMPANY_CVR er tom – en momsregistreret virksomhed har et CVR-nummer.');
   return problems;
 }
 
-const company = {
-  name: raw.COMPANY_NAME,
-  address: raw.COMPANY_ADDRESS,
-  cvr: raw.COMPANY_CVR,
-  vatRegistered: raw.VAT_REGISTERED,
-  billingEnabled: env.billingEnabled,
-};
-if (!env.isTest) for (const problem of companyProblems(company)) log.error(problem);
-if (env.isProd && !env.billingEnabled && [raw.COMPANY_NAME, raw.COMPANY_ADDRESS].some((v) => v.includes('[UDFYLD'))) {
-  log.warn('Navn og adresse (COMPANY_NAME, COMPANY_ADDRESS) er ikke udfyldt – de vises i e-mails og på siden.');
-}
+if (!env.isTest) for (const problem of companyProblems({ cvr: raw.COMPANY_CVR, vatRegistered: raw.VAT_REGISTERED })) log.error(problem);
 if (env.isProd && !raw.VITE_INSTAGRAM_URL) log.warn('VITE_INSTAGRAM_URL er ikke sat (eller er ikke https://) – Instagram-linket vises ikke.');
 if (env.isProd && !env.billingEnabled) {
   log.warn('Stripe er ikke sat op – prøveperioder kører, men abonnementer kan ikke tegnes endnu (se LAUNCH_CHECKLIST.md).');

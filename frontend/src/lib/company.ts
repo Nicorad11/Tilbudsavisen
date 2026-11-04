@@ -3,8 +3,8 @@ import { CONFIG } from './config';
 
 /**
  * Virksomhedens oplysninger til footer, /om og de juridiske sider. Kommer fra
- * serverens COMPANY_*-variabler (se lib/config.ts) – indtil de er sat, vises
- * tydelige pladsholdere.
+ * serverens COMPANY_*-variabler (se lib/config.ts). Navn og adresse er null,
+ * indtil de er sat – så vises de ikke.
  */
 export const COMPANY = {
   name: CONFIG.companyName,

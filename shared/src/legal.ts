@@ -8,10 +8,12 @@ import { PLAN, TERMS_VERSION, WITHDRAWAL_DAYS } from './billing';
  */
 
 export interface CompanyInfo {
-  name: string;
+  /** Sælgerens navn – null, indtil COMPANY_NAME er sat (så står der kun "Tilbudsradar"). */
+  name: string | null;
   /** CVR-nummer – null for en enkeltmand uden CVR (så vises det ikke). */
   cvr: string | null;
-  address: string;
+  /** null, indtil COMPANY_ADDRESS er sat (så vises ingen adresse). */
+  address: string | null;
   /** Momsregistreret: priserne står "inkl. moms". Ellers er prisen den samlede pris uden moms. */
   vatRegistered: boolean;
   email: string;
@@ -32,7 +34,7 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
       id: 'om-os',
       title: '1. Om Tilbudsradar',
       paragraphs: [
-        `Tilbudsradar drives af ${c.name}${c.cvr ? `, CVR-nr. ${c.cvr}` : ''}, ${c.address} ("vi"). Du kan altid kontakte os på ${c.email}.`,
+        `${c.name ? `Tilbudsradar drives af ${c.name}${c.cvr ? `, CVR-nr. ${c.cvr}` : ''}${c.address ? `, ${c.address}` : ''} ("vi").` : `Tilbudsradar ("vi")${c.cvr ? `, CVR-nr. ${c.cvr}` : ''}.`} Du kan altid kontakte os på ${c.email}.`,
         'Betingelserne gælder, når du opretter en konto og når du tegner et abonnement på Tilbudsradar. Du skal være mindst 18 år for at tegne et abonnement.',
       ],
     },
@@ -137,7 +139,7 @@ export function termsSections(c: CompanyInfo): LegalSection[] {
       title: 'Standardfortrydelsesformular',
       paragraphs: [
         '(Denne formular udfyldes og returneres kun, hvis du ønsker at gøre fortrydelsesretten gældende.)',
-        `Til: ${c.name}, ${c.address}, ${c.email}`,
+        `Til: ${[c.name ?? 'Tilbudsradar', c.address, c.email].filter(Boolean).join(', ')}`,
         'Jeg meddeler herved, at jeg ønsker at gøre min fortrydelsesret gældende i forbindelse med min aftale om levering af følgende tjenesteydelse: Tilbudsradar-abonnement.',
         'Aftalen blev indgået den: ________   Forbrugerens navn: ________   Forbrugerens e-mail på kontoen: ________',
         'Dato: ________   (Underskrift, kun hvis formularen sendes på papir)',

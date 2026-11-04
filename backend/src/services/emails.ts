@@ -58,7 +58,7 @@ const textParagraph = (p: Paragraph) => partsOf(p).map((x) => (typeof x === 'str
 
 function render(l: Layout): Pick<Mail, 'subject' | 'html' | 'text'> {
   const c = company();
-  const footer = [c.name, c.cvr && `CVR ${c.cvr}`, c.address, c.email].filter(Boolean).join(' · ');
+  const footer = [c.name ?? 'Tilbudsradar', c.cvr && `CVR ${c.cvr}`, c.address, c.email].filter(Boolean).join(' · ');
   const html = `<!doctype html>
 <html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(l.subject)}</title></head>
 <body style="margin:0;padding:0;background:#e7e7e5;font-family:'Inter Tight','Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased">

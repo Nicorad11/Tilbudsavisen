@@ -69,6 +69,9 @@ describe('server-renderede offentlige sider', () => {
       expect(page.html).toContain(`<link rel="canonical" href="${canonical}" />`);
       expect(page.html).toContain('<meta name="robots" content="max-image-preview:large, max-snippet:-1" />');
       expect(page.html).not.toContain('<title>Standard</title>');
+      // Uden COMPANY_NAME og COMPANY_ADDRESS vises hverken navn, adresse eller pladsholdere.
+      expect(page.html).not.toContain('UDFYLD');
+      expect(page.html).toMatch(/© (<!-- -->)?\d{4}(<!-- -->)? (<!-- -->)?Tilbudsradar/);
       // Konfiguration og query-data til hydrering ligger som JSON – ikke som kode, der udføres.
       expect(page.html).toContain('<script id="tr-config" type="application/json">');
       expect(page.html).toContain('<script id="tr-state" type="application/json">');

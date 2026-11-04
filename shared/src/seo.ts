@@ -49,10 +49,10 @@ export const PAGE_META: Record<string, PageMeta> = {
  * at frontenden skal bygges igen. Kun ikke-hemmelige værdier.
  */
 export interface PublicConfig {
-  companyName: string;
+  companyName: string | null;
   companyCvr: string | null;
   vatRegistered: boolean;
-  companyAddress: string;
+  companyAddress: string | null;
   contactEmail: string;
   instagramUrl: string | null;
   appUrl: string;

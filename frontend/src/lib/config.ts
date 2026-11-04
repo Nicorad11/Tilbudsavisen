@@ -25,10 +25,10 @@ const pick = <K extends keyof PublicConfig>(key: K, fallback: PublicConfig[K]): 
   key in server ? (server[key] as PublicConfig[K]) : fallback;
 
 export const CONFIG: PublicConfig = {
-  companyName: pick('companyName', '[UDFYLD: firmanavn]'),
+  companyName: pick('companyName', null),
   companyCvr: pick('companyCvr', null),
   vatRegistered: pick('vatRegistered', false),
-  companyAddress: pick('companyAddress', '[UDFYLD: adresse]'),
+  companyAddress: pick('companyAddress', null),
   contactEmail: pick('contactEmail', 'kontakt@tilbudsradaren.dk'),
   instagramUrl: pick('instagramUrl', httpsOnly(fromEnv('VITE_INSTAGRAM_URL'))),
   appUrl: pick('appUrl', typeof window !== 'undefined' ? window.location.origin : 'https://tilbudsradaren.dk'),
